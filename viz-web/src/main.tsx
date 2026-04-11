@@ -10,7 +10,6 @@ import "@fontsource/inter/600.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 
-import "./styles.css";
 import "./styles/globals.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
