@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-@theme {
+@theme inline {
   --color-paper: var(--color-paper);
   --color-card: var(--color-card);
   --color-surface-2: var(--color-surface-2);
@@ -19,9 +19,9 @@
   --color-kind-nation: var(--color-kind-nation);
   --color-kind-org: var(--color-kind-org);
   --color-kind-place: var(--color-kind-place);
-  --font-display: "Fraunces", "GT Sectra", Georgia, serif;
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 * {
