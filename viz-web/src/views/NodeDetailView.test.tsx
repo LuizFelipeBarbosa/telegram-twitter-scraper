@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { NodeDetailView } from "./NodeDetailView";
 
 vi.stubGlobal(
@@ -56,8 +56,8 @@ describe("NodeDetailView", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("April 8 Hormuz Reclosure")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Alpha story preview/i }));
+    expect(await screen.findByRole("heading", { level: 1, name: "April 8 Hormuz Reclosure" })).toBeInTheDocument();
+    await user.click(screen.getByText("Alpha story preview"));
     expect(await screen.findByText("Alpha story preview with the full body.")).toBeInTheDocument();
   });
 });
