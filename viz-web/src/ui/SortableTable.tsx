@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 
 export interface ColumnDef<Row> {
   key: string;
@@ -89,16 +89,27 @@ export function SortableTable<Row>({
                 key={column.key}
                 scope="col"
                 aria-sort={isSorted ? (sort!.dir === "asc" ? "ascending" : "descending") : undefined}
-                onClick={sortable ? () => toggleSort(column.key) : undefined}
                 className={clsx(
                   "text-[0.56rem] uppercase tracking-[0.1em] text-muted font-semibold py-2 px-1 border-b border-ink text-left",
                   column.numeric && "text-right",
-                  sortable && "cursor-pointer select-none hover:text-ink",
                 )}
                 style={column.width ? { width: column.width } : undefined}
               >
-                {column.header}
-                {isSorted ? <span aria-hidden="true">{sort!.dir === "asc" ? " ↑" : " ↓"}</span> : null}
+                {sortable ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(column.key)}
+                    className="inline-flex items-center gap-1 bg-transparent border-0 p-0 font-semibold uppercase tracking-[0.1em] text-[0.56rem] text-muted cursor-pointer select-none hover:text-ink focus:outline-none focus:text-ink"
+                  >
+                    {column.header}
+                    {isSorted ? <span aria-hidden="true">{sort!.dir === "asc" ? " ↑" : " ↓"}</span> : null}
+                  </button>
+                ) : (
+                  <>
+                    {column.header}
+                    {isSorted ? <span aria-hidden="true">{sort!.dir === "asc" ? " ↑" : " ↓"}</span> : null}
+                  </>
+                )}
               </th>
             );
           })}
@@ -114,9 +125,21 @@ export function SortableTable<Row>({
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               onMouseEnter={onRowHover ? () => onRowHover(rowId) : undefined}
               onMouseLeave={onRowHover ? () => onRowHover(null) : undefined}
+              {...(onRowClick
+                ? {
+                    role: "button",
+                    tabIndex: 0,
+                    onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onRowClick(row);
+                      }
+                    },
+                  }
+                : {})}
               className={clsx(
                 "border-b border-ink/10 align-middle transition-colors",
-                onRowClick && "cursor-pointer",
+                onRowClick && "cursor-pointer focus:outline-none focus:bg-phase-emerging/10",
                 hovered && "bg-phase-emerging/5",
               )}
             >

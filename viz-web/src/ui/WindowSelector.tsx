@@ -11,14 +11,13 @@ interface WindowSelectorProps {
 
 export function WindowSelector({ value, onChange, className }: WindowSelectorProps) {
   return (
-    <div role="tablist" aria-label="Time window selector" className={clsx("inline-flex gap-1", className)}>
+    <div role="group" aria-label="Time window" className={clsx("inline-flex gap-1", className)}>
       {WINDOWS.map((key) => {
         const active = key === value;
         return (
           <button
             key={key}
             type="button"
-            role="tab"
             aria-pressed={active}
             onClick={() => onChange(key)}
             className={clsx(

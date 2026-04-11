@@ -49,7 +49,7 @@ describe("SortableTable", () => {
         initialSort={{ key: "score", dir: "desc" }}
       />,
     );
-    await userEvent.click(screen.getByRole("columnheader", { name: /Score/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Score/ }));
     const cells = screen.getAllByRole("row").slice(1).map((row) => row.querySelector("td")?.textContent);
     expect(cells).toEqual(["Alpha", "Charlie", "Bravo"]);
   });
