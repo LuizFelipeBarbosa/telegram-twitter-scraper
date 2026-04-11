@@ -2,14 +2,14 @@ import { Route, Routes } from "react-router-dom";
 import { AppShell } from "./layout/AppShell";
 import { ComingSoonPanel } from "./components/ComingSoonPanel";
 import { LandscapeView } from "./views/LandscapeView";
-import { TopicDetailView } from "./views/TopicDetailView";
+import { NodeDetailView } from "./views/NodeDetailView";
 
 export default function App() {
   return (
     <AppShell>
       <Routes>
         <Route path="/" element={<LandscapeView />} />
-        <Route path="/node/:kind/:slug" element={<TopicDetailView />} />
+        <Route path="/node/:kind/:slug" element={<NodeDetailView />} />
         <Route
           path="/trends"
           element={
