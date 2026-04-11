@@ -34,6 +34,8 @@ export function NodeDetailView() {
   const detail = detailState.data;
   const history = historyState.data?.history ?? [];
   const latestDrift = history.length > 0 ? history[history.length - 1].centroid_drift : null;
+  // TODO: the NodeDetail API does not expose per-theme phase yet.
+  // When the backend adds a `phase` field to the detail payload, read it here.
   const themePhase = detail.kind === "theme" ? "steady" : null;
 
   const connectedCount =

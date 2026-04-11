@@ -39,6 +39,7 @@ export function NodeStoriesList({ stories }: NodeStoriesListProps) {
                 <button
                   type="button"
                   onClick={() => toggle(story.story_id)}
+                  aria-expanded={isOpen}
                   className="w-full grid grid-cols-[5.5rem_1fr_auto] gap-3 items-baseline text-left bg-transparent border-0 cursor-pointer"
                 >
                   <time className="font-mono text-[0.66rem] text-muted leading-tight">
