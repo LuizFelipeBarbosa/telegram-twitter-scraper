@@ -1,0 +1,66 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-card: var(--color-card);
+  --color-surface-2: var(--color-surface-2);
+  --color-ink: var(--color-ink);
+  --color-muted: var(--color-muted);
+  --color-cream-neutral: var(--color-cream-neutral);
+  --color-phase-emerging: var(--color-phase-emerging);
+  --color-phase-flash: var(--color-phase-flash);
+  --color-phase-sustained: var(--color-phase-sustained);
+  --color-phase-fading: var(--color-phase-fading);
+  --color-phase-steady: var(--color-phase-steady);
+  --color-kind-event: var(--color-kind-event);
+  --color-kind-theme: var(--color-kind-theme);
+  --color-kind-person: var(--color-kind-person);
+  --color-kind-nation: var(--color-kind-nation);
+  --color-kind-org: var(--color-kind-org);
+  --color-kind-place: var(--color-kind-place);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
