@@ -4,7 +4,6 @@ import type { DragState } from "./useLandscapeDrag";
 
 interface LandscapeHitLayerProps {
   nodes: PositionedNode[];
-  hoveredNodeId: string | null;
   dragState: DragState;
   onHover: (nodeId: string | null, clientX: number, clientY: number) => void;
   onHoverEnd: () => void;
