@@ -125,6 +125,19 @@ export function LandscapeView() {
         <EmptyState
           title="No active nodes"
           message="This window and filter combination returned no nodes."
+          suggestions={[
+            { label: "Widen the window to 31d", onClick: () => setWindowKey("31d") },
+            {
+              label: "Enable all kinds",
+              onClick: () =>
+                setKindFilter(new Set(["event", "theme", "person", "nation", "org", "place"])),
+            },
+            { label: "Enable all phases", onClick: () => setPhaseFilter(new Set(ALL_PHASES)) },
+          ]}
+          onReset={() => {
+            setKindFilter(new Set(DEFAULT_KINDS));
+            setPhaseFilter(new Set(ALL_PHASES));
+          }}
         />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] border-b border-ink">

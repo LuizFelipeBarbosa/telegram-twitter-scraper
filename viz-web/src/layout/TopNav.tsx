@@ -71,11 +71,22 @@ export function TopNav() {
               );
             }
             if (route.detailOnly) {
+              if (!onDetail) {
+                return (
+                  <span
+                    key={route.label}
+                    aria-disabled="true"
+                    className="text-ink/35 cursor-not-allowed select-none"
+                  >
+                    {route.label}
+                  </span>
+                );
+              }
               return (
                 <NavItem
                   key={route.label}
-                  to={onDetail ? location.pathname : "/"}
-                  active={onDetail}
+                  to={location.pathname}
+                  active={true}
                 >
                   {route.label}
                 </NavItem>
