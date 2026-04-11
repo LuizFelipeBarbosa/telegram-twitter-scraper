@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sqlite3
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +11,15 @@ from telegram_scraper.markdown_writer import MarkdownWriter
 from telegram_scraper.models import ChatRecord, ChatType, MediaRecord, MessageRecord
 from telegram_scraper.state_store import StateStore
 from telegram_scraper.sync_service import SyncService
+
+
+def load_stored_messages(path: Path, chat_id: int) -> list[dict[str, object]]:
+    with sqlite3.connect(path) as connection:
+        rows = connection.execute(
+            "SELECT payload FROM messages WHERE chat_id = ? ORDER BY position",
+            (chat_id,),
+        ).fetchall()
+    return [json.loads(row[0]) for row in rows]
 
 
 class FakeTelegramClient:
@@ -99,14 +109,14 @@ class SyncServiceTests(unittest.TestCase):
             second = asyncio.run(service.sync_chat(chat))
 
             state = json.loads(state_store.state_path(chat).read_text(encoding="utf-8"))
-            raw_path = Path(temp_dir) / "group" / "marketresearch_55" / "_messages.json"
-            raw_payload = json.loads(raw_path.read_text(encoding="utf-8"))
+            raw_path = Path(temp_dir) / "telegram_messages.db"
+            raw_payload = load_stored_messages(raw_path, 55)
 
             self.assertEqual(first.exported_messages, 2)
             self.assertEqual(second.exported_messages, 0)
             self.assertEqual(state["last_message_id"], 2)
             self.assertEqual(state["last_status"], "ok")
-            self.assertEqual([item["text"] for item in raw_payload["messages"]], ["first", "second"])
+            self.assertEqual([item["text"] for item in raw_payload], ["first", "second"])
 
     def test_sync_all_continues_when_one_chat_errors(self):
         with TemporaryDirectory() as temp_dir:
@@ -198,14 +208,7 @@ class SyncServiceTests(unittest.TestCase):
             result = asyncio.run(service.sync_chat(chat))
 
             self.assertEqual(result.exported_messages, 1)
-            self.assertTrue(
-                (
-                    Path(temp_dir)
-                    / "channel"
-                    / "recentonly_77"
-                    / "_messages.json"
-                ).exists()
-            )
+            self.assertTrue((Path(temp_dir) / "telegram_messages.db").exists())
             self.assertFalse((Path(temp_dir) / "channel" / "recentonly_77" / "2025").exists())
 
     def test_repair_missing_media_updates_markdown_with_image_links(self):
@@ -239,20 +242,16 @@ class SyncServiceTests(unittest.TestCase):
             service = SyncService(DummySettings(), fake_client, state_store, writer)
 
             writer.write_message(cached_message)
-            before = json.loads(
-                (Path(temp_dir) / "channel" / "imagechannel_88" / "_messages.json").read_text(encoding="utf-8")
-            )
-            self.assertEqual(before["messages"][0]["media_files"], [])
+            before = load_stored_messages(Path(temp_dir) / "telegram_messages.db", 88)
+            self.assertEqual(before[0]["media_files"], [])
 
             result = asyncio.run(service.repair_missing_media(chat))
 
-            after = json.loads(
-                (Path(temp_dir) / "channel" / "imagechannel_88" / "_messages.json").read_text(encoding="utf-8")
-            )
+            after = load_stored_messages(Path(temp_dir) / "telegram_messages.db", 88)
 
             self.assertEqual(result.scanned_messages, 1)
             self.assertEqual(result.repaired_messages, 1)
-            self.assertEqual(after["messages"][0]["media_files"][0]["relative_path"], "media/msg-1.jpg")
+            self.assertEqual(after[0]["media_files"][0]["relative_path"], "media/msg-1.jpg")
 
 
 if __name__ == "__main__":

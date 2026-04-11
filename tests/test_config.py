@@ -1,5 +1,8 @@
 import unittest
+import tempfile
+from os import environ
 from pathlib import Path
+from unittest.mock import patch
 
 from telegram_scraper.config import Settings
 from telegram_scraper.models import ChatType
@@ -19,6 +22,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.api_hash, "hash")
         self.assertEqual(settings.phone, "+15555555555")
         self.assertEqual(settings.output_root, Path("/Volumes/T7/theVault/raw/telegram"))
+        self.assertEqual(settings.messages_db_path, Path("/Volumes/T7/telegram_messages.db"))
         self.assertIsNone(settings.since_date)
         self.assertEqual(settings.chat_types, (ChatType.GROUP, ChatType.CHANNEL, ChatType.SAVED))
 
@@ -30,6 +34,7 @@ class SettingsTests(unittest.TestCase):
                 "TG_PHONE": "+15555555555",
                 "SESSION_PATH": "sessions/custom",
                 "OUTPUT_ROOT": "/tmp/output",
+                "MESSAGES_DB_PATH": "/tmp/telegram_messages.db",
                 "SINCE_DATE": "2026-01-01T00:00:00Z",
                 "CHAT_TYPES": "direct,group",
                 "INCLUDE_CHATS": "alpha,@beta,123",
@@ -39,10 +44,30 @@ class SettingsTests(unittest.TestCase):
 
         self.assertEqual(settings.session_path, Path("sessions/custom"))
         self.assertEqual(settings.output_root, Path("/tmp/output"))
+        self.assertEqual(settings.messages_db_path, Path("/tmp/telegram_messages.db"))
         self.assertEqual(settings.since_date.isoformat(), "2026-01-01T00:00:00+00:00")
         self.assertEqual(settings.chat_types, (ChatType.DIRECT, ChatType.GROUP))
         self.assertEqual(settings.include_chats, ("alpha", "@beta", "123"))
         self.assertEqual(settings.exclude_chats, ("gamma",))
+
+    def test_load_prefers_env_file_over_process_environment(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env_file = Path(tmpdir) / ".env"
+            env_file.write_text(
+                "\n".join(
+                    [
+                        "TG_API_ID=123",
+                        "TG_API_HASH=file-hash",
+                        "TG_PHONE=+15555555555",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with patch.dict(environ, {"TG_API_HASH": "process-hash"}, clear=False):
+                settings = Settings.load(env_file)
+
+            self.assertEqual(settings.api_hash, "file-hash")
 
 
 if __name__ == "__main__":

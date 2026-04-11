@@ -1,0 +1,140 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: telegram-kg-postgres
+    environment:
+      POSTGRES_DB: telegram_kg
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d telegram_kg"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: telegram-kg-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kg-segment-worker:
+    build:
+      context: .
+    container_name: telegram-kg-worker
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/telegram_kg
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command:
+      - uv
+      - run
+      - telegram-scraper
+      - kg-segment-worker
+      - --consumer
+      - compose-worker
+      - --batch-size
+      - "50"
+      - --loop
+      - --poll-interval-seconds
+      - "5"
+    restart: unless-stopped
+
+  kg-listen:
+    build:
+      context: .
+    container_name: telegram-kg-listen
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/telegram_kg
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command:
+      - uv
+      - run
+      - telegram-scraper
+      - kg-listen
+    volumes:
+      - ./sessions:/app/sessions
+      - /Volumes/T7:/Volumes/T7
+    profiles:
+      - live
+    restart: unless-stopped
+
+  viz-api:
+    build:
+      context: .
+    container_name: telegram-kg-viz-api
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/telegram_kg
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command:
+      - uv
+      - run
+      - telegram-scraper
+      - viz-api
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    ports:
+      - "${VIZ_API_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  viz-web:
+    image: node:20-alpine
+    container_name: telegram-kg-viz-web
+    working_dir: /app/viz-web
+    environment:
+      VIZ_API_PROXY_TARGET: http://viz-api:8000
+    depends_on:
+      viz-api:
+        condition: service_started
+    command:
+      - sh
+      - -lc
+      - npm install && npm run dev -- --host 0.0.0.0 --port 5173
+    volumes:
+      - .:/app
+      - viz-web-node-modules:/app/viz-web/node_modules
+    ports:
+      - "${VIZ_WEB_PORT:-5173}:5173"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  viz-web-node-modules:

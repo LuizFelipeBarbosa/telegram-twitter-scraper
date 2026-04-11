@@ -1,25 +1,54 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 from telegram_scraper.models import ChatRecord, MediaRecord, MessageRecord
 from telegram_scraper.state_store import StateStore
 from telegram_scraper.utils import (
-    atomic_write_text,
     isoformat_z,
     parse_isoformat_z,
 )
 
 
 class MarkdownWriter:
-    """Persists raw chat archives for incremental scraping."""
+    """Persists chat notes and raw messages for incremental scraping."""
 
     def __init__(self, state_store: StateStore):
         self.state_store = state_store
 
-    def chat_store_path(self, chat: ChatRecord) -> Path:
-        return self.state_store.messages_path(chat)
+    def chat_store_path(self) -> Path:
+        return self.state_store.messages_db_path()
+
+    def legacy_chat_db_path(self, chat: ChatRecord) -> Path:
+        return self.state_store.legacy_messages_db_path(chat)
+
+    def legacy_chat_json_path(self, chat: ChatRecord) -> Path:
+        return self.state_store.legacy_messages_json_path(chat)
+
+    def _connect(self) -> sqlite3.Connection:
+        path = self.chat_store_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(path)
+        self._ensure_schema(connection)
+        return connection
+
+    def _ensure_schema(self, connection: sqlite3.Connection) -> None:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS messages (
+                chat_id INTEGER NOT NULL,
+                message_id INTEGER NOT NULL,
+                position INTEGER NOT NULL,
+                payload TEXT NOT NULL,
+                PRIMARY KEY (chat_id, message_id)
+            )
+            """
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_messages_chat_position ON messages (chat_id, position)"
+        )
 
     def _serialize_media_file(self, media_file: MediaRecord) -> dict[str, object]:
         return {
@@ -75,27 +104,68 @@ class MarkdownWriter:
             ),
         )
 
+    def _load_legacy_json_messages(self, chat: ChatRecord) -> list[MessageRecord]:
+        store_path = self.legacy_chat_json_path(chat)
+        if not store_path.exists():
+            return []
+        payload = json.loads(store_path.read_text(encoding="utf-8"))
+        return [
+            self._deserialize_message(chat, item)
+            for item in payload.get("messages", [])
+            if isinstance(item, dict)
+        ]
+
+    def _load_legacy_database_messages(self, chat: ChatRecord) -> list[MessageRecord]:
+        store_path = self.legacy_chat_db_path(chat)
+        if not store_path.exists():
+            return []
+        with sqlite3.connect(store_path) as connection:
+            rows = connection.execute("SELECT payload FROM messages ORDER BY position").fetchall()
+        return [self._deserialize_message(chat, json.loads(row[0])) for row in rows]
+
+    def _load_database_messages(self, chat: ChatRecord) -> list[MessageRecord]:
+        store_path = self.chat_store_path()
+        if not store_path.exists():
+            return []
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT payload FROM messages WHERE chat_id = ? ORDER BY position",
+                (chat.chat_id,),
+            ).fetchall()
+        return [self._deserialize_message(chat, json.loads(row[0])) for row in rows]
+
+    def _migrate_legacy_store(self, chat: ChatRecord) -> None:
+        if self._load_database_messages(chat):
+            return
+        legacy_messages = self._load_legacy_database_messages(chat)
+        if not legacy_messages:
+            legacy_messages = self._load_legacy_json_messages(chat)
+        if not legacy_messages:
+            return
+        self._save_messages(chat, legacy_messages)
+
     def load_messages(self, chat: ChatRecord) -> list[MessageRecord]:
-        store_path = self.chat_store_path(chat)
-        if store_path.exists():
-            payload = json.loads(store_path.read_text(encoding="utf-8"))
-            return [
-                self._deserialize_message(chat, item)
-                for item in payload.get("messages", [])
-                if isinstance(item, dict)
-            ]
-        return []
+        self._migrate_legacy_store(chat)
+        return self._load_database_messages(chat)
 
     def _save_messages(self, chat: ChatRecord, messages: list[MessageRecord]) -> Path:
-        payload = {
-            "chat_id": chat.chat_id,
-            "chat_slug": chat.slug,
-            "chat_type": chat.chat_type.value,
-            "message_count": len(messages),
-            "messages": [self._serialize_message(message) for message in messages],
-        }
-        path = self.chat_store_path(chat)
-        atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
+        path = self.chat_store_path()
+        rows = [
+            (
+                chat.chat_id,
+                message.message_id,
+                position,
+                json.dumps(self._serialize_message(message)),
+            )
+            for position, message in enumerate(messages)
+        ]
+        with self._connect() as connection:
+            connection.execute("DELETE FROM messages WHERE chat_id = ?", (chat.chat_id,))
+            connection.executemany(
+                "INSERT INTO messages (chat_id, message_id, position, payload) VALUES (?, ?, ?, ?)",
+                rows,
+            )
+            connection.commit()
         return path
 
     def _merge_messages(

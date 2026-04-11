@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,6 +10,15 @@ from tempfile import TemporaryDirectory
 from telegram_scraper.markdown_writer import MarkdownWriter
 from telegram_scraper.models import ChatRecord, ChatType, MediaRecord, MessageRecord
 from telegram_scraper.state_store import StateStore
+
+
+def load_stored_messages(path: Path, chat_id: int) -> list[dict[str, object]]:
+    with sqlite3.connect(path) as connection:
+        rows = connection.execute(
+            "SELECT payload FROM messages WHERE chat_id = ? ORDER BY position",
+            (chat_id,),
+        ).fetchall()
+    return [json.loads(row[0]) for row in rows]
 
 
 def build_chat() -> ChatRecord:
@@ -52,23 +62,22 @@ def build_message(
 
 
 class MarkdownWriterTests(unittest.TestCase):
-    def test_markdown_writer_creates_chat_level_raw_cache(self):
+    def test_markdown_writer_creates_chat_level_message_database(self):
         with TemporaryDirectory() as temp_dir:
             state_store = StateStore(Path(temp_dir))
             writer = MarkdownWriter(state_store)
             message = build_message(1043, hour=18, minute=14, second=55, text="Telegram message text goes here.")
 
             path = writer.write_message(message)
-            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload = load_stored_messages(path, 55)
 
-            expected = Path(temp_dir) / "group" / "marketresearch_55" / "_messages.json"
+            expected = Path(temp_dir) / "telegram_messages.db"
             self.assertEqual(path, expected)
-            self.assertEqual(payload["message_count"], 1)
-            self.assertEqual(payload["chat_id"], 55)
-            self.assertEqual(payload["messages"][0]["message_id"], 1043)
-            self.assertFalse((expected.parent / "2026").exists())
+            self.assertEqual(len(payload), 1)
+            self.assertEqual(payload[0]["message_id"], 1043)
+            self.assertFalse(((Path(temp_dir) / "group" / "marketresearch_55") / "2026").exists())
 
-    def test_markdown_writer_merges_new_messages_into_existing_chat_cache(self):
+    def test_markdown_writer_merges_new_messages_into_existing_chat_database(self):
         with TemporaryDirectory() as temp_dir:
             state_store = StateStore(Path(temp_dir))
             writer = MarkdownWriter(state_store)
@@ -77,15 +86,13 @@ class MarkdownWriterTests(unittest.TestCase):
             writer.write_message(build_message(1, hour=18, minute=0, second=0, text="first"))
             writer.write_message(build_message(2, hour=18, minute=2, second=0, text="second updated"))
 
-            payload = json.loads(
-                (Path(temp_dir) / "group" / "marketresearch_55" / "_messages.json").read_text(encoding="utf-8")
-            )
+            payload = load_stored_messages(Path(temp_dir) / "telegram_messages.db", 55)
 
-            self.assertEqual(payload["message_count"], 2)
-            self.assertEqual([item["message_id"] for item in payload["messages"]], [2, 1])
-            self.assertEqual([item["text"] for item in payload["messages"]], ["second updated", "first"])
+            self.assertEqual(len(payload), 2)
+            self.assertEqual([item["message_id"] for item in payload], [2, 1])
+            self.assertEqual([item["text"] for item in payload], ["second updated", "first"])
 
-    def test_markdown_writer_ignores_legacy_day_cache_when_root_cache_absent(self):
+    def test_markdown_writer_ignores_legacy_day_cache_when_database_absent(self):
         with TemporaryDirectory() as temp_dir:
             state_store = StateStore(Path(temp_dir))
             writer = MarkdownWriter(state_store)
@@ -123,12 +130,97 @@ class MarkdownWriterTests(unittest.TestCase):
             )
 
             writer.write_message(build_message(2, hour=18, minute=5, second=0, text="fresh"))
-            payload = json.loads((chat_dir / "_messages.json").read_text(encoding="utf-8"))
+            payload = load_stored_messages(Path(temp_dir) / "telegram_messages.db", 55)
 
-            self.assertEqual(payload["message_count"], 1)
-            self.assertEqual([item["message_id"] for item in payload["messages"]], [2])
+            self.assertEqual(len(payload), 1)
+            self.assertEqual([item["message_id"] for item in payload], [2])
 
-    def test_markdown_writer_preserves_media_metadata_in_root_cache(self):
+    def test_markdown_writer_migrates_legacy_per_chat_database_to_root_database(self):
+        with TemporaryDirectory() as temp_dir:
+            state_store = StateStore(Path(temp_dir))
+            writer = MarkdownWriter(state_store)
+            chat_dir = Path(temp_dir) / "group" / "marketresearch_55"
+            chat_dir.mkdir(parents=True, exist_ok=True)
+            legacy_path = chat_dir / "_messages.db"
+            with sqlite3.connect(legacy_path) as connection:
+                connection.execute(
+                    """
+                    CREATE TABLE messages (
+                        message_id INTEGER PRIMARY KEY,
+                        position INTEGER NOT NULL,
+                        payload TEXT NOT NULL
+                    )
+                    """
+                )
+                connection.execute(
+                    "INSERT INTO messages (message_id, position, payload) VALUES (?, ?, ?)",
+                    (
+                        1,
+                        0,
+                        json.dumps(
+                            {
+                                "message_id": 1,
+                                "posted_at": "2026-04-07T18:00:00Z",
+                                "edited_at": None,
+                                "sender_id": 999,
+                                "sender_name": "Alice Smith",
+                                "direction": "incoming",
+                                "reply_to_message_id": None,
+                                "has_media": False,
+                                "text": "legacy sqlite",
+                                "media_files": [],
+                            }
+                        ),
+                    ),
+                )
+                connection.commit()
+
+            messages = writer.load_messages(build_chat())
+
+            self.assertEqual([message.text for message in messages], ["legacy sqlite"])
+            self.assertTrue((Path(temp_dir) / "telegram_messages.db").exists())
+
+    def test_markdown_writer_migrates_legacy_root_json_cache_to_database(self):
+        with TemporaryDirectory() as temp_dir:
+            state_store = StateStore(Path(temp_dir))
+            writer = MarkdownWriter(state_store)
+            chat_dir = Path(temp_dir) / "group" / "marketresearch_55"
+            legacy_message = build_message(1, hour=18, minute=0, second=0, text="legacy root")
+            chat_dir.mkdir(parents=True, exist_ok=True)
+            (chat_dir / "_messages.json").write_text(
+                json.dumps(
+                    {
+                        "chat_id": 55,
+                        "chat_slug": "marketresearch",
+                        "chat_type": "group",
+                        "message_count": 1,
+                        "messages": [
+                            {
+                                "message_id": legacy_message.message_id,
+                                "posted_at": "2026-04-07T18:00:00Z",
+                                "edited_at": None,
+                                "sender_id": legacy_message.sender_id,
+                                "sender_name": legacy_message.sender_name,
+                                "direction": legacy_message.direction,
+                                "reply_to_message_id": None,
+                                "has_media": False,
+                                "text": legacy_message.text,
+                                "media_files": [],
+                            }
+                        ],
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            messages = writer.load_messages(build_chat())
+
+            self.assertEqual([message.text for message in messages], ["legacy root"])
+            self.assertTrue((Path(temp_dir) / "telegram_messages.db").exists())
+
+    def test_markdown_writer_preserves_media_metadata_in_message_database(self):
         with TemporaryDirectory() as temp_dir:
             state_store = StateStore(Path(temp_dir))
             writer = MarkdownWriter(state_store)
@@ -149,10 +241,10 @@ class MarkdownWriterTests(unittest.TestCase):
             )
 
             path = writer.write_message(message)
-            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload = load_stored_messages(path, 55)
 
-            self.assertTrue(payload["messages"][0]["has_media"])
-            self.assertEqual(payload["messages"][0]["media_files"][0]["relative_path"], "media/msg-1043.jpg")
+            self.assertTrue(payload[0]["has_media"])
+            self.assertEqual(payload[0]["media_files"][0]["relative_path"], "media/msg-1043.jpg")
 
 
 if __name__ == "__main__":

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import AsyncIterator
+from typing import AsyncIterator, Awaitable, Callable
 
 from telegram_scraper.models import ChatRecord, MediaRecord, MessageRecord
 from telegram_scraper.utils import chat_output_dir
@@ -10,6 +12,12 @@ from telegram_scraper.utils import chat_output_dir
 
 class TelegramClientError(RuntimeError):
     """Raised when Telethon is unavailable or Telegram operations fail."""
+
+
+@dataclass(frozen=True)
+class TelegramMessageEnvelope:
+    record: MessageRecord
+    raw_json: dict[str, object]
 
 
 def _sender_name(message: object) -> str | None:
@@ -35,6 +43,44 @@ def _reply_to_id(message: object) -> int | None:
         return int(reply_to.reply_to_msg_id)
     value = getattr(message, "reply_to_msg_id", None)
     return int(value) if value is not None else None
+
+
+def _raw_message_payload(message: object) -> dict[str, object]:
+    if hasattr(message, "to_dict"):
+        payload = message.to_dict()
+        if isinstance(payload, dict):
+            return payload
+    if hasattr(message, "to_json"):
+        raw_json = message.to_json()
+        if isinstance(raw_json, str):
+            try:
+                parsed = json.loads(raw_json)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, dict):
+                return parsed
+    return {
+        "id": int(getattr(message, "id")),
+        "date": getattr(message, "date").isoformat() if getattr(message, "date", None) is not None else None,
+        "message": getattr(message, "message", "") or "",
+        "reply_to_msg_id": _reply_to_id(message),
+        "sender_id": getattr(message, "sender_id", None),
+    }
+
+
+def _event_chat_id(event: object) -> int | None:
+    value = getattr(event, "chat_id", None)
+    if value is not None:
+        return int(value)
+    message = getattr(event, "message", None)
+    if message is None:
+        return None
+    peer_id = getattr(message, "peer_id", None)
+    for attribute in ("channel_id", "chat_id", "user_id"):
+        nested = getattr(peer_id, attribute, None)
+        if nested is not None:
+            return int(nested)
+    return None
 
 
 def normalize_message(chat: ChatRecord, message: object, *, media_files: tuple[MediaRecord, ...] = ()) -> MessageRecord:
@@ -195,6 +241,31 @@ class TelegramAccountClient:
             media_files = await self._download_message_media(chat, message)
             yield normalize_message(chat, message, media_files=media_files)
 
+    async def iter_message_envelopes(
+        self,
+        chat: ChatRecord,
+        *,
+        min_message_id: int = 0,
+        limit: int | None = None,
+        reverse: bool = True,
+        offset_id: int = 0,
+    ) -> AsyncIterator[TelegramMessageEnvelope]:
+        await self.connect()
+        assert self._client is not None
+        entity = chat.entity or chat.chat_id
+        async for message in self._client.iter_messages(
+            entity,
+            limit=limit,
+            min_id=min_message_id,
+            reverse=reverse,
+            offset_id=offset_id,
+        ):
+            media_files = await self._download_message_media(chat, message)
+            yield TelegramMessageEnvelope(
+                record=normalize_message(chat, message, media_files=media_files),
+                raw_json=_raw_message_payload(message),
+            )
+
     async def get_messages_by_ids(self, chat: ChatRecord, ids: list[int]) -> list[MessageRecord]:
         if not ids:
             return []
@@ -215,3 +286,68 @@ class TelegramAccountClient:
             media_files = await self._download_message_media(chat, message)
             messages.append(normalize_message(chat, message, media_files=media_files))
         return messages
+
+    async def get_message_envelopes_by_ids(self, chat: ChatRecord, ids: list[int]) -> list[TelegramMessageEnvelope]:
+        if not ids:
+            return []
+
+        await self.connect()
+        assert self._client is not None
+        entity = chat.entity or chat.chat_id
+        fetched = await self._client.get_messages(entity, ids=ids)
+        if fetched is None:
+            return []
+        if not isinstance(fetched, list):
+            fetched = [fetched]
+
+        messages: list[TelegramMessageEnvelope] = []
+        for message in fetched:
+            if message is None:
+                continue
+            media_files = await self._download_message_media(chat, message)
+            messages.append(
+                TelegramMessageEnvelope(
+                    record=normalize_message(chat, message, media_files=media_files),
+                    raw_json=_raw_message_payload(message),
+                )
+            )
+        return messages
+
+    async def listen_channel_messages(
+        self,
+        chats: list[ChatRecord],
+        handler: Callable[[TelegramMessageEnvelope], Awaitable[None]],
+    ) -> None:
+        await self.connect()
+        assert self._client is not None
+        if not chats:
+            return
+        try:
+            from telethon import events  # type: ignore
+        except ImportError as exc:
+            raise TelegramClientError(
+                "Telethon is not installed. Install project dependencies before using the CLI."
+            ) from exc
+
+        chat_map = {chat.chat_id: chat for chat in chats}
+        entities = [chat.entity or chat.chat_id for chat in chats]
+        stop_signal = asyncio.Event()
+
+        @self._client.on(events.NewMessage(chats=entities))
+        async def _listener(event: object) -> None:
+            chat_id = _event_chat_id(event)
+            if chat_id is None or chat_id not in chat_map:
+                return
+            message = getattr(event, "message", None)
+            if message is None:
+                return
+            chat = chat_map[chat_id]
+            media_files = await self._download_message_media(chat, message)
+            await handler(
+                TelegramMessageEnvelope(
+                    record=normalize_message(chat, message, media_files=media_files),
+                    raw_json=_raw_message_payload(message),
+                )
+            )
+
+        await stop_signal.wait()

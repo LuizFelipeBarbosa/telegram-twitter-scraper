@@ -13,8 +13,9 @@ from telegram_scraper.utils import (
 
 
 class StateStore:
-    def __init__(self, output_root: Path):
+    def __init__(self, output_root: Path, messages_db_path: Path | None = None):
         self.output_root = output_root
+        self._messages_db_path = messages_db_path or (output_root / "telegram_messages.db")
 
     def chat_type_dir(self, chat: ChatRecord) -> Path:
         return self.output_root / chat.chat_type.value
@@ -28,7 +29,13 @@ class StateStore:
     def chat_note_path(self, chat: ChatRecord) -> Path:
         return self.chat_dir(chat) / "_chat.md"
 
-    def messages_path(self, chat: ChatRecord) -> Path:
+    def messages_db_path(self) -> Path:
+        return self._messages_db_path
+
+    def legacy_messages_db_path(self, chat: ChatRecord) -> Path:
+        return self.chat_dir(chat) / "_messages.db"
+
+    def legacy_messages_json_path(self, chat: ChatRecord) -> Path:
         return self.chat_dir(chat) / "_messages.json"
 
     def load_state(self, chat: ChatRecord) -> SyncState:

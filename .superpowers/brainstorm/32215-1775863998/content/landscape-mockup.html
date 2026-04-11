@@ -1,0 +1,367 @@
+<h2>Landscape view</h2>
+<p class="subtitle">List-primary with a companion bubble map. Full mockup below — scroll if needed.</p>
+
+<style>
+  .ls {
+    background: #F7F1E3;
+    color: #1A1715;
+    font-family: "Inter", system-ui, sans-serif;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid rgba(26,23,21,0.2);
+    overflow: hidden;
+  }
+  .ls h1, .ls h2, .ls h3 { font-family: "Fraunces", "GT Sectra", Georgia, serif; font-weight: 500; letter-spacing: -0.02em; margin: 0; }
+  .ls .mono { font-family: "JetBrains Mono", monospace; }
+  .ls .eyebrow { text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.62rem; font-weight: 600; color: #8B5E3C; }
+  .ls .muted { color: #8B5E3C; }
+
+  /* top nav */
+  .topnav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.85rem 1.4rem;
+    border-bottom: 1px solid #1A1715;
+  }
+  .topnav .brand {
+    display: flex; flex-direction: column; gap: 0.1rem;
+  }
+  .topnav .brand .mark { font-family: "Fraunces", serif; font-size: 1.05rem; letter-spacing: -0.01em; font-weight: 500; }
+  .topnav .brand .tag { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: #8B5E3C; font-weight: 600; }
+  .topnav .routes { display: flex; gap: 1.4rem; font-size: 0.76rem; }
+  .topnav .routes a { position: relative; padding: 0.3rem 0; cursor: pointer; }
+  .topnav .routes a.active { font-weight: 600; }
+  .topnav .routes a.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -0.9rem; height: 2px; background: #C94F2B; }
+  .topnav .routes a.disabled { color: rgba(26,23,21,0.35); }
+  .topnav .status { font-size: 0.68rem; color: #8B5E3C; font-family: "JetBrains Mono", monospace; }
+
+  /* page header */
+  .page-head {
+    padding: 1.4rem 1.4rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+  }
+  .page-head h1 { font-size: 2rem; line-height: 0.98; }
+  .page-head .eyebrow { margin-bottom: 0.35rem; }
+  .window-selector { display: flex; gap: 0.35rem; }
+  .window-selector button {
+    background: transparent; border: 1px solid rgba(26,23,21,0.25); padding: 0.35rem 0.65rem;
+    font-family: "Inter", sans-serif; font-size: 0.7rem; cursor: pointer; border-radius: 2px;
+    font-weight: 500;
+  }
+  .window-selector button.active { background: #1A1715; color: #F7F1E3; border-color: #1A1715; }
+
+  /* metrics strip */
+  .metrics-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border-top: 1px solid #1A1715;
+    border-bottom: 1px solid #1A1715;
+    margin: 0 1.4rem;
+  }
+  .metric-cell {
+    padding: 0.7rem 0.9rem;
+    border-right: 1px solid rgba(26,23,21,0.16);
+  }
+  .metric-cell:last-child { border-right: 0; }
+  .metric-cell .k { font-size: 0.56rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; color: #8B5E3C; }
+  .metric-cell .v { font-family: "JetBrains Mono", monospace; font-size: 1.25rem; font-weight: 500; margin-top: 0.15rem; }
+  .metric-cell .d { font-size: 0.68rem; color: #8B5E3C; }
+  .metric-cell .d.up { color: #C94F2B; }
+  .metric-cell .d.down { color: #2F6FB5; }
+
+  /* filter bar */
+  .filter-bar {
+    padding: 0.8rem 1.4rem;
+    display: flex;
+    gap: 1.2rem;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(26,23,21,0.16);
+  }
+  .filter-group { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
+  .filter-group .label {
+    font-size: 0.56rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: #8B5E3C; font-weight: 600;
+  }
+  .ch-chip {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.22rem 0.55rem;
+    border: 1px solid rgba(26,23,21,0.22);
+    background: transparent;
+    font-size: 0.7rem;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  .ch-chip.active { background: #1A1715; color: #F7F1E3; border-color: #1A1715; }
+  .ch-chip .dot { width: 0.45rem; height: 0.45rem; border-radius: 50%; }
+  .phase-pill {
+    padding: 0.22rem 0.55rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    border: 1px solid transparent;
+  }
+  .phase-pill.emerging { background: rgba(201,79,43,0.14); color: #C94F2B; border-color: rgba(201,79,43,0.3); }
+  .phase-pill.flash { background: rgba(217,119,6,0.16); color: #A85D04; border-color: rgba(217,119,6,0.3); }
+  .phase-pill.sustained { background: rgba(13,124,102,0.14); color: #0D7C66; border-color: rgba(13,124,102,0.3); }
+  .phase-pill.fading { background: rgba(79,134,198,0.16); color: #2F6FB5; border-color: rgba(79,134,198,0.3); }
+  .phase-pill.steady { background: rgba(26,23,21,0.08); color: #5C4A39; border-color: rgba(26,23,21,0.16); }
+  .phase-pill.inactive { opacity: 0.4; }
+
+  /* main split */
+  .main-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 0;
+    border-bottom: 1px solid #1A1715;
+  }
+  .list-side {
+    padding: 0.8rem 1.4rem 1.2rem;
+    border-right: 1px solid rgba(26,23,21,0.2);
+  }
+  .list-side table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  .list-side th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.56rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #8B5E3C;
+    font-weight: 600;
+    text-align: left;
+    padding: 0.5rem 0.4rem;
+    border-bottom: 1px solid #1A1715;
+    white-space: nowrap;
+  }
+  .list-side th.num { text-align: right; }
+  .list-side td {
+    padding: 0.55rem 0.4rem;
+    border-bottom: 1px solid rgba(26,23,21,0.1);
+    vertical-align: middle;
+  }
+  .list-side td.num { font-family: "JetBrains Mono", monospace; text-align: right; white-space: nowrap; }
+  .list-side tr.hover { background: rgba(201,79,43,0.06); }
+  .list-side .t-title { font-weight: 500; }
+  .list-side .t-sub { font-size: 0.7rem; color: #8B5E3C; margin-top: 0.15rem; }
+  .list-side .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; display: inline-block; vertical-align: middle; }
+
+  .map-side {
+    padding: 0.9rem 1.4rem 1rem;
+    position: relative;
+    background: rgba(26,23,21,0.02);
+  }
+  .map-caption {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .map-canvas {
+    position: relative;
+    height: 320px;
+    border: 1px solid rgba(26,23,21,0.12);
+    background: #FDF9EC;
+    border-radius: 2px;
+  }
+  .bubble {
+    position: absolute; border-radius: 50%;
+    border: 2px solid #1A1715;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.62rem; font-weight: 600; color: #F7F1E3;
+    text-align: center; padding: 0 0.3rem; line-height: 1;
+    box-shadow: 0 6px 14px rgba(26,23,21,0.12);
+  }
+  .b-em { background: #C94F2B; }
+  .b-em-m { background: rgba(201,79,43,0.72); }
+  .b-sus { background: #0D7C66; }
+  .b-fla { background: #D97706; }
+  .b-fad { background: #2F6FB5; }
+  .b-std { background: #5C4A39; }
+
+  /* footer */
+  .footer-strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.7rem 1.4rem;
+    font-size: 0.68rem;
+    color: #8B5E3C;
+    font-family: "JetBrains Mono", monospace;
+  }
+</style>
+
+<div class="ls">
+
+  <div class="topnav">
+    <div class="brand">
+      <div class="mark">Signal Room</div>
+      <div class="tag">Telegram Knowledge Graph</div>
+    </div>
+    <nav class="routes">
+      <a class="active">Landscape</a>
+      <a>Topic Detail</a>
+      <a class="disabled">Trends</a>
+      <a class="disabled">Propagation</a>
+      <a class="disabled">Evolution</a>
+    </nav>
+    <div class="status">● LIVE · 14:32 UTC</div>
+  </div>
+
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Live topic landscape</p>
+      <h1>What's happening now</h1>
+    </div>
+    <div class="window-selector">
+      <button>24H</button>
+      <button class="active">7D</button>
+      <button>30D</button>
+      <button>90D</button>
+    </div>
+  </div>
+
+  <div class="metrics-strip">
+    <div class="metric-cell"><div class="k">Topics</div><div class="v">184</div><div class="d">across 23 channels</div></div>
+    <div class="metric-cell"><div class="k">Emerging</div><div class="v">12</div><div class="d up">↑ 3 since yesterday</div></div>
+    <div class="metric-cell"><div class="k">Flash events</div><div class="v">3</div><div class="d up">↑ 1 since yesterday</div></div>
+    <div class="metric-cell"><div class="k">Fading</div><div class="v">28</div><div class="d down">↓ 2 since yesterday</div></div>
+    <div class="metric-cell"><div class="k">Heat Σ</div><div class="v">2.3×</div><div class="d">vs 7d baseline</div></div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="label">Channels</span>
+      <button class="ch-chip active"><span class="dot" style="background:#C94F2B;"></span>All</button>
+      <button class="ch-chip"><span class="dot" style="background:#0D7C66;"></span>Reuters</button>
+      <button class="ch-chip"><span class="dot" style="background:#D97706;"></span>RT</button>
+      <button class="ch-chip"><span class="dot" style="background:#2F6FB5;"></span>Tass</button>
+      <button class="ch-chip"><span class="dot" style="background:#5C4A39;"></span>AP</button>
+    </div>
+    <div class="filter-group">
+      <span class="label">Phases</span>
+      <span class="phase-pill emerging">Emerging</span>
+      <span class="phase-pill flash">Flash</span>
+      <span class="phase-pill sustained">Sustained</span>
+      <span class="phase-pill fading inactive">Fading</span>
+      <span class="phase-pill steady inactive">Steady</span>
+    </div>
+  </div>
+
+  <div class="main-split">
+
+    <div class="list-side">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:0.6rem;"></th>
+            <th>Topic</th>
+            <th class="num">Heat</th>
+            <th class="num">Δ 7D</th>
+            <th class="num">Stories</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="hover">
+            <td><span class="dot" style="background:#C94F2B;"></span></td>
+            <td>
+              <div class="t-title">US election narratives</div>
+              <div class="t-sub">RT · emerging · 4 related</div>
+            </td>
+            <td class="num">84</td>
+            <td class="num" style="color:#C94F2B;">↑2.3×</td>
+            <td class="num">142</td>
+          </tr>
+          <tr>
+            <td><span class="dot" style="background:#D97706;"></span></td>
+            <td>
+              <div class="t-title">Middle East strikes</div>
+              <div class="t-sub">Reuters · flash event · 2 related</div>
+            </td>
+            <td class="num">72</td>
+            <td class="num" style="color:#C94F2B;">↑1.8×</td>
+            <td class="num">89</td>
+          </tr>
+          <tr>
+            <td><span class="dot" style="background:#0D7C66;"></span></td>
+            <td>
+              <div class="t-title">Tech earnings Q4</div>
+              <div class="t-sub">Reuters · sustained · 1 related</div>
+            </td>
+            <td class="num">51</td>
+            <td class="num muted" style="color:#8B5E3C;">↓0.9×</td>
+            <td class="num">67</td>
+          </tr>
+          <tr>
+            <td><span class="dot" style="background:#C94F2B;"></span></td>
+            <td>
+              <div class="t-title">Ukraine front line</div>
+              <div class="t-sub">Tass · emerging · 3 related</div>
+            </td>
+            <td class="num">47</td>
+            <td class="num" style="color:#C94F2B;">↑1.2×</td>
+            <td class="num">55</td>
+          </tr>
+          <tr>
+            <td><span class="dot" style="background:#0D7C66;"></span></td>
+            <td>
+              <div class="t-title">Climate summit reactions</div>
+              <div class="t-sub">AP · sustained · —</div>
+            </td>
+            <td class="num">44</td>
+            <td class="num" style="color:#C94F2B;">↑1.1×</td>
+            <td class="num">48</td>
+          </tr>
+          <tr>
+            <td><span class="dot" style="background:#2F6FB5;"></span></td>
+            <td>
+              <div class="t-title">Banking crisis chatter</div>
+              <div class="t-sub">Reuters · fading · —</div>
+            </td>
+            <td class="num">38</td>
+            <td class="num muted" style="color:#8B5E3C;">—</td>
+            <td class="num">41</td>
+          </tr>
+          <tr>
+            <td><span class="dot" style="background:#0D7C66;"></span></td>
+            <td>
+              <div class="t-title">AI regulation debate</div>
+              <div class="t-sub">Reuters · sustained · 2 related</div>
+            </td>
+            <td class="num">33</td>
+            <td class="num muted" style="color:#8B5E3C;">↓0.2×</td>
+            <td class="num">39</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="map-side">
+      <div class="map-caption">
+        <p class="eyebrow" style="margin:0;">Heat map</p>
+        <p class="eyebrow muted" style="margin:0;text-transform:none;letter-spacing:0;color:#8B5E3C;font-size:0.68rem;font-family:'JetBrains Mono',monospace;">ring = channel · fill = phase · size = heat</p>
+      </div>
+      <div class="map-canvas">
+        <div class="bubble b-em" style="width:86px;height:86px;top:30%;left:22%;">US<br/>election</div>
+        <div class="bubble b-fla" style="width:68px;height:68px;top:16%;left:52%;">ME<br/>strikes</div>
+        <div class="bubble b-sus" style="width:58px;height:58px;top:58%;left:38%;">Tech<br/>Q4</div>
+        <div class="bubble b-em-m" style="width:52px;height:52px;top:50%;left:66%;">Ukraine</div>
+        <div class="bubble b-sus" style="width:46px;height:46px;top:20%;left:80%;">Climate</div>
+        <div class="bubble b-fad" style="width:40px;height:40px;top:68%;left:78%;">Banking</div>
+        <div class="bubble b-sus" style="width:36px;height:36px;top:74%;left:14%;">AI reg</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-strip">
+    <span>184 topics · 7 shown · sort by heat desc</span>
+    <span>updated 14:32 · next refresh 14:33</span>
+  </div>
+
+</div>

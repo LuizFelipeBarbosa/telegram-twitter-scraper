@@ -1,0 +1,17 @@
+<h2>Heatmap zoom &amp; interactivity</h2>
+<p class="subtitle">New feature on the freshly-merged viz-web redesign. Let's scope it.</p>
+
+<div class="section">
+  <p class="label">What the heatmap does today</p>
+  <div class="mockup">
+    <div class="mockup-header">Current LandscapeMap — shipped in the redesign</div>
+    <div class="mockup-body">
+      <p><strong>Visualization:</strong> D3 force-simulated bubble graph, 180 ticks, rendered as inline SVG with a fixed viewBox.</p>
+      <p><strong>Interactions today:</strong> hover a bubble → tooltip + dim non-related; click a bubble → navigate to <code>/node/:kind/:slug</code>; table ↔ map hover sync via parent state.</p>
+      <p><strong>Not interactive:</strong> no pan, no zoom, no node drag, no keyboard controls, no way to see details without leaving the page.</p>
+      <p><strong>Scale:</strong> currently bounded to whatever fits the fixed 720 × 520 viewBox. A snapshot with 50+ nodes gets crowded fast.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle">Head back to the terminal — I have a first question for you there.</p>

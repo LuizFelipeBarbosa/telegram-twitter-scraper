@@ -1,0 +1,348 @@
+<h2>Topic Detail view</h2>
+<p class="subtitle">Header band, metrics strip, and a 2-column body: timeline + stories on the left, related + events rail on the right.</p>
+
+<style>
+  .td {
+    background: #F7F1E3;
+    color: #1A1715;
+    font-family: "Inter", system-ui, sans-serif;
+    border-radius: 6px;
+    border: 1px solid rgba(26,23,21,0.2);
+    overflow: hidden;
+  }
+  .td h1, .td h2, .td h3 { font-family: "Fraunces", "GT Sectra", Georgia, serif; font-weight: 500; letter-spacing: -0.02em; margin: 0; }
+  .td .mono { font-family: "JetBrains Mono", monospace; }
+  .td .eyebrow { text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.6rem; font-weight: 600; color: #8B5E3C; }
+  .td .muted { color: #8B5E3C; }
+
+  /* top bar mimics the same nav */
+  .topnav { display:flex;justify-content:space-between;align-items:center;padding:0.85rem 1.4rem;border-bottom:1px solid #1A1715; }
+  .topnav .brand .mark { font-family: "Fraunces", serif; font-size: 1rem; font-weight: 500; }
+  .topnav .brand .tag { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: #8B5E3C; font-weight: 600; }
+  .topnav .routes { display: flex; gap: 1.4rem; font-size: 0.76rem; }
+  .topnav .routes a.active { font-weight: 600; position: relative; }
+  .topnav .routes a.active::after { content:""; position:absolute; left:0; right:0; bottom:-0.9rem; height:2px; background:#C94F2B; }
+  .topnav .routes a.disabled { color: rgba(26,23,21,0.35); }
+  .topnav .status { font-family: "JetBrains Mono", monospace; font-size: 0.68rem; color: #8B5E3C; }
+
+  /* breadcrumb */
+  .bc { padding: 0.6rem 1.4rem 0; font-size: 0.7rem; color: #8B5E3C; }
+  .bc a { color: #1A1715; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; text-decoration-color: rgba(26,23,21,0.25); }
+  .bc span { margin: 0 0.4rem; }
+
+  /* header band */
+  .td-head { padding: 0.9rem 1.4rem 1.1rem; display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: end; }
+  .td-head h1 { font-size: 2.1rem; line-height: 0.98; }
+  .td-head .eyebrow { margin: 0 0 0.2rem; }
+  .td-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; }
+  .phase-pill { padding: 0.22rem 0.55rem; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 2px; }
+  .phase-pill.emerging { background: rgba(201,79,43,0.14); color: #C94F2B; border:1px solid rgba(201,79,43,0.3); }
+  .subline { font-size: 0.76rem; color: #5C4A39; display:flex; gap:0.8rem; align-items:center; flex-wrap:wrap; }
+  .subline .dot { width:0.55rem; height:0.55rem; border-radius:50%; display:inline-block; vertical-align:middle; margin-right:0.35rem; }
+  .kw-row { display:flex; gap:0.4rem; flex-wrap:wrap; margin-top: 0.7rem; }
+  .kw {
+    padding: 0.22rem 0.55rem;
+    background: rgba(13,124,102,0.08);
+    color: #0D7C66;
+    border: 1px solid rgba(13,124,102,0.18);
+    border-radius: 2px;
+    font-size: 0.72rem;
+  }
+
+  /* metrics strip */
+  .metrics-strip { display: grid; grid-template-columns: repeat(6, 1fr); border-top: 1px solid #1A1715; border-bottom: 1px solid #1A1715; margin: 0 1.4rem; }
+  .metric-cell { padding: 0.6rem 0.8rem; border-right: 1px solid rgba(26,23,21,0.16); }
+  .metric-cell:last-child { border-right: 0; }
+  .metric-cell .k { font-size: 0.56rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; color: #8B5E3C; }
+  .metric-cell .v { font-family: "JetBrains Mono", monospace; font-size: 1.1rem; font-weight: 500; margin-top: 0.1rem; }
+  .metric-cell .d { font-size: 0.64rem; color: #8B5E3C; }
+  .metric-cell .d.up { color: #C94F2B; }
+
+  /* body grid */
+  .body-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0; border-bottom: 1px solid #1A1715; }
+  .left { padding: 1rem 1.4rem 1.4rem; border-right: 1px solid rgba(26,23,21,0.2); display: flex; flex-direction: column; gap: 1.2rem; }
+  .right { padding: 1rem 1.4rem 1.4rem; display: flex; flex-direction: column; gap: 1.2rem; }
+
+  /* timeline chart */
+  .chart-section h3 { font-size: 1.05rem; margin-bottom: 0.1rem; }
+  .chart-canvas {
+    margin-top: 0.5rem;
+    position: relative;
+    height: 180px;
+    border-bottom: 1px solid #1A1715;
+    border-left: 1px solid rgba(26,23,21,0.16);
+    background: linear-gradient(to top, rgba(26,23,21,0.03), transparent 50%);
+    overflow: hidden;
+  }
+  .chart-canvas .gridline {
+    position: absolute; left: 0; right: 0; height: 1px; background: rgba(26,23,21,0.08);
+  }
+  .bar {
+    position: absolute; bottom: 0;
+    background: #0D7C66;
+    width: 16px;
+  }
+  .line-svg { position: absolute; inset: 0; pointer-events: none; }
+  .ref-line {
+    position: absolute; top: 0; bottom: 0; width: 0;
+    border-left: 1px dashed #C94F2B;
+  }
+  .ref-label {
+    position: absolute; top: 0; transform: translateX(4px);
+    font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: #C94F2B; font-weight: 600;
+    background: #F7F1E3; padding: 0 0.3rem;
+  }
+  .chart-x {
+    display: flex; justify-content: space-between;
+    font-family: "JetBrains Mono", monospace; font-size: 0.58rem;
+    color: #8B5E3C; margin-top: 0.35rem;
+  }
+
+  /* stories */
+  .stories h3 { font-size: 1.05rem; }
+  .stories-head {
+    display: flex; justify-content: space-between; align-items: end;
+    border-bottom: 1px solid #1A1715;
+    padding-bottom: 0.4rem; margin-bottom: 0.2rem;
+  }
+  .pager { display: flex; align-items: center; gap: 0.5rem; font-size: 0.68rem; color: #8B5E3C; font-family: "JetBrains Mono", monospace; }
+  .pager button { padding: 0.2rem 0.5rem; background: transparent; border: 1px solid rgba(26,23,21,0.25); font-size: 0.64rem; cursor: pointer; border-radius: 2px; font-family: inherit; }
+  .story-row {
+    display: grid; grid-template-columns: 5.5rem 1fr auto; gap: 0.8rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(26,23,21,0.12);
+    align-items: baseline;
+  }
+  .story-row .ts { font-family: "JetBrains Mono", monospace; font-size: 0.66rem; color: #8B5E3C; }
+  .story-row .title { font-size: 0.82rem; line-height: 1.35; }
+  .story-row .chn { font-family: "JetBrains Mono", monospace; font-size: 0.64rem; color: #8B5E3C; text-align: right; }
+
+  /* related rail */
+  .rail h3 { font-size: 0.98rem; }
+  .rail-head { border-bottom: 1px solid #1A1715; padding-bottom: 0.35rem; margin-bottom: 0.3rem; }
+  .related-item {
+    display: grid; grid-template-columns: 1fr auto; gap: 0.5rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(26,23,21,0.1);
+    cursor: pointer;
+  }
+  .related-item .name { font-size: 0.8rem; font-weight: 500; }
+  .related-item .chn { font-size: 0.66rem; color: #8B5E3C; margin-top: 0.1rem; }
+  .related-item .sim { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-align: right; color: #1A1715; }
+  .related-item .sim-bar {
+    width: 3rem; height: 3px; background: rgba(26,23,21,0.08); margin-top: 0.3rem; position: relative;
+  }
+  .related-item .sim-bar .fill { position: absolute; top: 0; left: 0; bottom: 0; background: #0D7C66; }
+
+  /* event log */
+  .event-log .event {
+    display: grid; grid-template-columns: 4rem 1fr; gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px dashed rgba(26,23,21,0.16);
+    font-size: 0.72rem;
+  }
+  .event .date { font-family: "JetBrains Mono", monospace; color: #8B5E3C; }
+  .event .label .kind { font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; color: #C94F2B; margin-right: 0.35rem; }
+</style>
+
+<div class="td">
+
+  <div class="topnav">
+    <div class="brand">
+      <div class="mark">Telegram Knowledge Graph</div>
+      <div class="tag">Signal mapping for channel narratives</div>
+    </div>
+    <nav class="routes">
+      <a>Landscape</a>
+      <a class="active">Topic Detail</a>
+      <a class="disabled">Trends</a>
+      <a class="disabled">Propagation</a>
+      <a class="disabled">Evolution</a>
+    </nav>
+    <div class="status">● LIVE · 14:32 UTC</div>
+  </div>
+
+  <div class="bc"><a>Landscape</a><span>›</span><span class="mono">t_5a2f</span><span>›</span>US election narratives</div>
+
+  <div class="td-head">
+    <div>
+      <p class="eyebrow">Topic detail · RT</p>
+      <h1>US election narratives</h1>
+      <div class="subline">
+        <span><span class="dot" style="background:#C94F2B;"></span>RT</span>
+        <span class="mono">first seen Mar 4, 2026</span>
+        <span class="mono">updated Apr 10, 2026</span>
+        <span>4 related topics</span>
+      </div>
+      <div class="kw-row">
+        <span class="kw">election</span>
+        <span class="kw">ballot</span>
+        <span class="kw">swing state</span>
+        <span class="kw">voter fraud</span>
+        <span class="kw">campaign</span>
+        <span class="kw">primary</span>
+      </div>
+    </div>
+    <div class="td-head-right">
+      <span class="phase-pill emerging">Emerging</span>
+    </div>
+  </div>
+
+  <div class="metrics-strip">
+    <div class="metric-cell"><div class="k">Stories</div><div class="v">142</div><div class="d">7d window</div></div>
+    <div class="metric-cell"><div class="k">Heat</div><div class="v">84</div><div class="d up">↑ 2.3×</div></div>
+    <div class="metric-cell"><div class="k">Peak day</div><div class="v">Apr 8</div><div class="d">24 stories</div></div>
+    <div class="metric-cell"><div class="k">First seen</div><div class="v">Mar 4</div><div class="d">37 days ago</div></div>
+    <div class="metric-cell"><div class="k">Drift</div><div class="v">0.18</div><div class="d">centroid</div></div>
+    <div class="metric-cell"><div class="k">Related</div><div class="v">4</div><div class="d">topics</div></div>
+  </div>
+
+  <div class="body-grid">
+
+    <div class="left">
+
+      <div class="chart-section">
+        <p class="eyebrow">Volume and drift</p>
+        <h3>Topic evolution over time</h3>
+        <div class="chart-canvas">
+          <div class="gridline" style="top: 25%;"></div>
+          <div class="gridline" style="top: 50%;"></div>
+          <div class="gridline" style="top: 75%;"></div>
+          <div class="bar" style="height: 24%; left: 5%;"></div>
+          <div class="bar" style="height: 32%; left: 12%;"></div>
+          <div class="bar" style="height: 28%; left: 19%;"></div>
+          <div class="bar" style="height: 44%; left: 26%;"></div>
+          <div class="bar" style="height: 38%; left: 33%;"></div>
+          <div class="bar" style="height: 52%; left: 40%;"></div>
+          <div class="bar" style="height: 68%; left: 47%;"></div>
+          <div class="bar" style="height: 60%; left: 54%;"></div>
+          <div class="bar" style="height: 88%; left: 61%;"></div>
+          <div class="bar" style="height: 72%; left: 68%;"></div>
+          <div class="bar" style="height: 56%; left: 75%;"></div>
+          <div class="bar" style="height: 48%; left: 82%;"></div>
+          <div class="bar" style="height: 40%; left: 89%;"></div>
+          <svg class="line-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M 6 80 L 13 75 L 20 72 L 27 68 L 34 65 L 41 60 L 48 55 L 55 50 L 62 42 L 69 38 L 76 35 L 83 32 L 90 28" stroke="#C94F2B" stroke-width="1.2" fill="none" vector-effect="non-scaling-stroke"/>
+          </svg>
+          <div class="ref-line" style="left: 54%;"></div>
+          <div class="ref-label" style="left: 54%;">merge</div>
+          <div class="ref-line" style="left: 82%;"></div>
+          <div class="ref-label" style="left: 82%;">split</div>
+        </div>
+        <div class="chart-x"><span>Mar 4</span><span>Mar 18</span><span>Apr 1</span><span>Apr 8</span><span>Apr 10</span></div>
+      </div>
+
+      <div class="stories">
+        <div class="stories-head">
+          <div>
+            <p class="eyebrow">Recent stories</p>
+            <h3>Latest assignments</h3>
+          </div>
+          <div class="pager">
+            <button disabled>‹</button>
+            <span>1 / 8</span>
+            <button>›</button>
+          </div>
+        </div>
+        <div class="story-row">
+          <span class="ts">Apr 10<br/>14:22</span>
+          <span class="title">Swing state polls tighten as new campaign ads flood Pennsylvania airwaves</span>
+          <span class="chn">RT · 0.87</span>
+        </div>
+        <div class="story-row">
+          <span class="ts">Apr 10<br/>11:08</span>
+          <span class="title">Ballot integrity officials respond to renewed accusations in Arizona</span>
+          <span class="chn">RT · 0.82</span>
+        </div>
+        <div class="story-row">
+          <span class="ts">Apr 10<br/>08:41</span>
+          <span class="title">Primary challenger launches campaign with focus on border policy</span>
+          <span class="chn">RT · 0.79</span>
+        </div>
+        <div class="story-row">
+          <span class="ts">Apr 9<br/>22:15</span>
+          <span class="title">Voter registration drives surge in three key counties</span>
+          <span class="chn">RT · 0.76</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="right">
+
+      <div class="rail">
+        <div class="rail-head">
+          <p class="eyebrow">Related topics</p>
+          <h3>4 linked via similarity</h3>
+        </div>
+        <div class="related-item">
+          <div>
+            <div class="name">Voter ID legislation</div>
+            <div class="chn">RT · sustained</div>
+          </div>
+          <div>
+            <div class="sim">0.81</div>
+            <div class="sim-bar"><div class="fill" style="width: 81%;"></div></div>
+          </div>
+        </div>
+        <div class="related-item">
+          <div>
+            <div class="name">Campaign finance probe</div>
+            <div class="chn">Reuters · emerging</div>
+          </div>
+          <div>
+            <div class="sim">0.74</div>
+            <div class="sim-bar"><div class="fill" style="width: 74%;"></div></div>
+          </div>
+        </div>
+        <div class="related-item">
+          <div>
+            <div class="name">Border policy debate</div>
+            <div class="chn">RT · sustained</div>
+          </div>
+          <div>
+            <div class="sim">0.68</div>
+            <div class="sim-bar"><div class="fill" style="width: 68%;"></div></div>
+          </div>
+        </div>
+        <div class="related-item">
+          <div>
+            <div class="name">Primary calendar</div>
+            <div class="chn">AP · steady</div>
+          </div>
+          <div>
+            <div class="sim">0.61</div>
+            <div class="sim-bar"><div class="fill" style="width: 61%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-log">
+        <div class="rail-head">
+          <p class="eyebrow">Event log</p>
+          <h3>Topic lifecycle</h3>
+        </div>
+        <div class="event">
+          <span class="date">Mar 4</span>
+          <span class="label"><span class="kind">Created</span>Clustered from 14 seed stories</span>
+        </div>
+        <div class="event">
+          <span class="date">Mar 22</span>
+          <span class="label"><span class="kind">Merged</span>Absorbed "Election coverage RT"</span>
+        </div>
+        <div class="event">
+          <span class="date">Apr 2</span>
+          <span class="label"><span class="kind">Relabeled</span>"Election 2026" → "US election narratives"</span>
+        </div>
+        <div class="event">
+          <span class="date">Apr 8</span>
+          <span class="label"><span class="kind">Split</span>Spun off "Ballot integrity disputes"</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

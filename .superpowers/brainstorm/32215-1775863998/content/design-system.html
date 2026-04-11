@@ -1,0 +1,189 @@
+<h2>Design system</h2>
+<p class="subtitle">Tokens and primitives that everything else builds from.</p>
+
+<style>
+  .ds { font-family: "Inter", system-ui, sans-serif; color: #1A1715; }
+  .ds-page {
+    background: #F7F1E3;
+    padding: 1.6rem 1.8rem;
+    border-radius: 6px;
+    border: 1px solid rgba(26,23,21,0.16);
+  }
+  .ds h3 {
+    font-family: "Fraunces", "GT Sectra", Georgia, serif;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin: 1.6rem 0 0.8rem;
+    font-size: 1.2rem;
+  }
+  .ds h3:first-child { margin-top: 0; }
+  .ds .eyebrow {
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #8B5E3C;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+  }
+  .ds .rule { height: 1px; background: #1A1715; margin: 1rem 0; }
+  .ds .rule-thin { height: 1px; background: rgba(26,23,21,0.16); margin: 0.8rem 0; }
+  .ds-cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; }
+  .ds-cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+
+  /* palette */
+  .swatch { display: flex; align-items: center; gap: 0.6rem; font-size: 0.72rem; }
+  .swatch .chip { width: 2.2rem; height: 2.2rem; border-radius: 3px; border: 1px solid rgba(26,23,21,0.2); }
+  .swatch code { font-family: "JetBrains Mono", monospace; font-size: 0.64rem; color: #5C4A39; }
+  .swatch-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+
+  /* type scale */
+  .type-row { display: flex; align-items: baseline; gap: 1rem; padding: 0.3rem 0; border-bottom: 1px solid rgba(26,23,21,0.08); }
+  .type-row .label { font-family: "JetBrains Mono", monospace; font-size: 0.62rem; color: #8B5E3C; width: 5rem; }
+  .display-xl { font-family: "Fraunces", serif; font-weight: 500; font-size: 2.4rem; line-height: 0.98; letter-spacing: -0.03em; }
+  .display-lg { font-family: "Fraunces", serif; font-weight: 500; font-size: 1.6rem; line-height: 1.02; letter-spacing: -0.02em; }
+  .display-md { font-family: "Fraunces", serif; font-weight: 500; font-size: 1.2rem; line-height: 1.05; letter-spacing: -0.01em; }
+  .body-md { font-family: "Inter", system-ui, sans-serif; font-size: 0.88rem; }
+  .body-sm { font-family: "Inter", system-ui, sans-serif; font-size: 0.78rem; }
+  .mono { font-family: "JetBrains Mono", monospace; font-size: 0.82rem; }
+  .eyebrow-sample { font-family: "Inter", sans-serif; text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.68rem; font-weight: 600; color: #8B5E3C; }
+
+  /* primitives */
+  .btn-ink { background: #1A1715; color: #F7F1E3; padding: 0.45rem 0.85rem; border-radius: 3px; font-size: 0.76rem; font-weight: 500; border: 0; cursor: pointer; }
+  .btn-ghost { background: transparent; color: #1A1715; padding: 0.45rem 0.85rem; border: 1px solid rgba(26,23,21,0.3); border-radius: 3px; font-size: 0.76rem; cursor: pointer; }
+  .btn-ghost.active { background: #1A1715; color: #F7F1E3; border-color: #1A1715; }
+  .pill { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.18rem 0.55rem; border-radius: 2px; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .pill.emerging { background: rgba(201,79,43,0.14); color: #C94F2B; }
+  .pill.flash { background: rgba(217,119,6,0.16); color: #A85D04; }
+  .pill.sustained { background: rgba(13,124,102,0.14); color: #0D7C66; }
+  .pill.fading { background: rgba(79,134,198,0.16); color: #2F6FB5; }
+  .pill.steady { background: rgba(26,23,21,0.08); color: #5C4A39; }
+
+  .card {
+    background: #FDF9EC;
+    border: 1px solid rgba(26,23,21,0.16);
+    border-radius: 3px;
+    padding: 0.9rem 1rem;
+  }
+  .rule-ink { border-bottom: 1px solid #1A1715; }
+  .rule-ink-thin { border-bottom: 1px solid rgba(26,23,21,0.16); }
+  .ds-input {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid rgba(26,23,21,0.3);
+    background: #FDF9EC;
+    border-radius: 3px;
+    font-family: "Inter", sans-serif;
+    font-size: 0.8rem;
+    width: 100%;
+  }
+  .ds-table {
+    width: 100%;
+    font-size: 0.76rem;
+    border-collapse: collapse;
+  }
+  .ds-table th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #8B5E3C;
+    font-weight: 600;
+    text-align: left;
+    padding: 0.4rem 0.3rem;
+    border-bottom: 1px solid #1A1715;
+  }
+  .ds-table td {
+    padding: 0.4rem 0.3rem;
+    border-bottom: 1px solid rgba(26,23,21,0.1);
+  }
+  .ds-table td.num { font-family: "JetBrains Mono", monospace; text-align: right; }
+</style>
+
+<div class="ds ds-page">
+
+  <h3>Palette</h3>
+  <div class="ds-cols-2">
+    <div>
+      <p class="eyebrow">Surface</p>
+      <div class="swatch-list">
+        <div class="swatch"><div class="chip" style="background:#F7F1E3;"></div><div><div>Paper</div><code>#F7F1E3</code></div></div>
+        <div class="swatch"><div class="chip" style="background:#FDF9EC;"></div><div><div>Card</div><code>#FDF9EC</code></div></div>
+        <div class="swatch"><div class="chip" style="background:#EFE6D0;"></div><div><div>Surface-2</div><code>#EFE6D0</code></div></div>
+        <div class="swatch"><div class="chip" style="background:#1A1715;"></div><div><div>Ink</div><code>#1A1715</code></div></div>
+      </div>
+    </div>
+    <div>
+      <p class="eyebrow">Phase semantic</p>
+      <div class="swatch-list">
+        <div class="swatch"><div class="chip" style="background:#C94F2B;"></div><div><div>Emerging</div><code>#C94F2B</code></div></div>
+        <div class="swatch"><div class="chip" style="background:#D97706;"></div><div><div>Flash</div><code>#D97706</code></div></div>
+        <div class="swatch"><div class="chip" style="background:#0D7C66;"></div><div><div>Sustained</div><code>#0D7C66</code></div></div>
+        <div class="swatch"><div class="chip" style="background:#2F6FB5;"></div><div><div>Fading</div><code>#2F6FB5</code></div></div>
+        <div class="swatch"><div class="chip" style="background:#5C4A39;"></div><div><div>Steady</div><code>#5C4A39</code></div></div>
+        <div class="swatch"><div class="chip" style="background:#8B5E3C;"></div><div><div>Muted</div><code>#8B5E3C</code></div></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Typography</h3>
+  <div style="display:flex;flex-direction:column;gap:0.1rem;">
+    <div class="type-row"><span class="label">display-xl</span><span class="display-xl">What's happening now</span></div>
+    <div class="type-row"><span class="label">display-lg</span><span class="display-lg">Topic evolution over time</span></div>
+    <div class="type-row"><span class="label">display-md</span><span class="display-md">Recent stories</span></div>
+    <div class="type-row"><span class="label">eyebrow</span><span class="eyebrow-sample">LIVE TOPIC LANDSCAPE</span></div>
+    <div class="type-row"><span class="label">body-md</span><span class="body-md">The signal mapping view for channel narratives.</span></div>
+    <div class="type-row"><span class="label">body-sm</span><span class="body-sm">7-day window · 23 channels · 184 topics</span></div>
+    <div class="type-row"><span class="label">mono</span><span class="mono">heat 84 · ↑2.3× · 0.72</span></div>
+  </div>
+  <p class="body-sm" style="color:#5C4A39;margin-top:0.6rem;">Fraunces (display, serif) + Inter (UI, sans) + JetBrains Mono (data). All Google Fonts, self-host via <code style="font-size:0.7rem;">@fontsource</code>.</p>
+
+  <h3>Primitives</h3>
+  <div class="ds-cols-3">
+    <div>
+      <p class="eyebrow">Buttons</p>
+      <div style="display:flex;flex-direction:column;gap:0.5rem;align-items:flex-start;">
+        <button class="btn-ink">Primary</button>
+        <button class="btn-ghost">Ghost</button>
+        <button class="btn-ghost active">Active</button>
+      </div>
+    </div>
+    <div>
+      <p class="eyebrow">Phase pills</p>
+      <div style="display:flex;flex-direction:column;gap:0.3rem;align-items:flex-start;">
+        <span class="pill emerging">Emerging</span>
+        <span class="pill flash">Flash event</span>
+        <span class="pill sustained">Sustained</span>
+        <span class="pill fading">Fading</span>
+        <span class="pill steady">Steady</span>
+      </div>
+    </div>
+    <div>
+      <p class="eyebrow">Input</p>
+      <input class="ds-input" placeholder="Search topics..." />
+      <p class="eyebrow" style="margin-top:0.8rem;">Rules</p>
+      <div class="rule-ink"></div>
+      <div style="height:0.4rem;"></div>
+      <div class="rule-ink-thin"></div>
+      <p class="body-sm" style="color:#5C4A39;margin:0.3rem 0 0;">ink · ink/16</p>
+    </div>
+  </div>
+
+  <h3>Card &amp; table</h3>
+  <div class="card">
+    <p class="eyebrow" style="margin:0;">Sample card</p>
+    <div class="display-md">US election narratives</div>
+    <div class="body-sm" style="color:#5C4A39;margin-bottom:0.5rem;">RT · 7-day window</div>
+    <div style="display:flex;gap:0.4rem;margin-bottom:0.6rem;"><span class="pill emerging">Emerging</span><span class="pill" style="background:rgba(26,23,21,0.08);color:#5C4A39;">heat 84</span></div>
+    <table class="ds-table">
+      <thead><tr><th></th><th>Topic</th><th style="text-align:right;">Heat</th><th style="text-align:right;">Δ</th></tr></thead>
+      <tbody>
+        <tr><td><span style="display:inline-block;width:0.55rem;height:0.55rem;background:#C94F2B;border-radius:50%;"></span></td><td>Middle East strikes</td><td class="num">72</td><td class="num" style="color:#C94F2B;">↑1.8</td></tr>
+        <tr><td><span style="display:inline-block;width:0.55rem;height:0.55rem;background:#0D7C66;border-radius:50%;"></span></td><td>Tech earnings Q4</td><td class="num">51</td><td class="num" style="color:#8B5E3C;">↓0.9</td></tr>
+        <tr><td><span style="display:inline-block;width:0.55rem;height:0.55rem;background:#2F6FB5;border-radius:50%;"></span></td><td>Ukraine front line</td><td class="num">47</td><td class="num" style="color:#C94F2B;">↑1.2</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Spacing &amp; shape</h3>
+  <p class="body-sm" style="color:#5C4A39;margin:0;">4px base scale (Tailwind default). Border-radius tops out at <code style="font-size:0.72rem;">rounded-sm</code> (2px) and <code style="font-size:0.72rem;">rounded</code> (4px). Explicit no pill buttons. No glassmorphism. No drop shadows except on the bubble graph nodes (inherits editorial print feel).</p>
+
+</div>

@@ -54,6 +54,7 @@ class Settings:
     phone: str
     session_path: Path
     output_root: Path
+    messages_db_path: Path
     since_date: datetime | None
     chat_types: tuple[ChatType, ...]
     include_chats: tuple[str, ...]
@@ -63,7 +64,7 @@ class Settings:
     def load(cls, env_file: str | Path = ".env") -> "Settings":
         env_path = Path(env_file)
         file_values = load_dotenv(env_path)
-        values = {**file_values, **os.environ}
+        values = {**os.environ, **file_values}
         return cls.from_mapping(values)
 
     @classmethod
@@ -87,6 +88,7 @@ class Settings:
             phone=values.get("TG_PHONE", "").strip(),
             session_path=Path(values.get("SESSION_PATH", "sessions/telegram")),
             output_root=Path(values.get("OUTPUT_ROOT", "/Volumes/T7/theVault/raw/telegram")),
+            messages_db_path=Path(values.get("MESSAGES_DB_PATH", "/Volumes/T7/telegram_messages.db")),
             since_date=parse_since_date(values.get("SINCE_DATE")),
             chat_types=chat_types,
             include_chats=tuple(item.lower() for item in split_csv(values.get("INCLUDE_CHATS"))),
@@ -112,3 +114,10 @@ class Settings:
             raise ConfigError(f"output root is not a directory: {self.output_root}")
         if not os.access(self.output_root, os.W_OK):
             raise ConfigError(f"output root is not writable: {self.output_root}")
+        db_parent = self.messages_db_path.parent
+        if not db_parent.exists():
+            raise ConfigError(f"message database directory does not exist: {db_parent}")
+        if not db_parent.is_dir():
+            raise ConfigError(f"message database directory is not a directory: {db_parent}")
+        if not os.access(db_parent, os.W_OK):
+            raise ConfigError(f"message database directory is not writable: {db_parent}")
