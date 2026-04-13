@@ -23,7 +23,6 @@ from telegram_scraper.kg.models import (
     StorySemanticRecord,
     StoryUnit,
     ThemeDailyStat,
-    NodeHeatSnapshot,
     ThemeHistoryPoint,
 )
 
