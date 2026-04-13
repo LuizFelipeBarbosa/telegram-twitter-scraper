@@ -13,6 +13,7 @@ from telegram_scraper.kg.models import (
     MediaRef,
     Node,
     NodeDetail,
+    NodeHeatSnapshot,
     NodeKind,
     NodeListEntry,
     NodeRelation,
@@ -23,7 +24,6 @@ from telegram_scraper.kg.models import (
     StorySemanticRecord,
     StoryUnit,
     ThemeDailyStat,
-    ThemeHeatSnapshot,
     ThemeHistoryPoint,
 )
 from telegram_scraper.utils import ensure_utc
@@ -177,9 +177,11 @@ SCHEMA_STATEMENTS = [
         PRIMARY KEY (node_id, date)
     )
     """,
+    "DROP MATERIALIZED VIEW IF EXISTS theme_heat_view CASCADE",
     """
-    CREATE MATERIALIZED VIEW IF NOT EXISTS theme_heat_view AS
-    WITH windows AS (
+    CREATE MATERIALIZED VIEW IF NOT EXISTS node_heat_view AS
+    WITH RECURSIVE
+    windows AS (
         SELECT unnest(ARRAY[1, 3, 5, 7, 14, 31]) AS days
     ),
     window_totals AS (
@@ -188,45 +190,53 @@ SCHEMA_STATEMENTS = [
         JOIN story_units su ON su.timestamp_start >= NOW() - (w.days || ' days')::INTERVAL
         GROUP BY w.days
     ),
+    node_descendants AS (
+        SELECT node_id AS root_id, node_id AS descendant_id, 0 AS depth
+        FROM nodes
+        WHERE status = 'active'
+
+        UNION ALL
+
+        SELECT nd.root_id, n.node_id, nd.depth + 1
+        FROM node_descendants nd
+        JOIN nodes n ON n.parent_node_id = nd.descendant_id
+        WHERE n.status = 'active' AND nd.depth < 10
+    ),
     window_counts AS (
-        SELECT sn.node_id, w.days, COUNT(*) AS cnt
-        FROM windows w
-        JOIN story_units su ON su.timestamp_start >= NOW() - (w.days || ' days')::INTERVAL
-        JOIN story_nodes sn ON sn.story_id = su.story_id
-        JOIN nodes n ON n.node_id = sn.node_id
-        WHERE n.kind = 'theme' AND n.status = 'active'
-        GROUP BY sn.node_id, w.days
+        SELECT
+            nd.root_id AS node_id,
+            w.days,
+            COUNT(DISTINCT su.story_id) AS cnt
+        FROM node_descendants nd
+        JOIN story_nodes sn ON sn.node_id = nd.descendant_id
+        JOIN story_units su ON su.story_id = sn.story_id
+        CROSS JOIN windows w
+        WHERE su.timestamp_start >= NOW() - (w.days || ' days')::INTERVAL
+        GROUP BY nd.root_id, w.days
     ),
     base AS (
         SELECT
             n.node_id,
+            n.kind,
             n.slug,
             n.display_name,
             n.article_count,
-            COALESCE(MAX(CASE WHEN wc.days = 1 THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_1d,
-            COALESCE(MAX(CASE WHEN wc.days = 3 THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_3d,
-            COALESCE(MAX(CASE WHEN wc.days = 5 THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_5d,
-            COALESCE(MAX(CASE WHEN wc.days = 7 THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_7d,
+            COALESCE(MAX(CASE WHEN wc.days = 1  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_1d,
+            COALESCE(MAX(CASE WHEN wc.days = 3  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_3d,
+            COALESCE(MAX(CASE WHEN wc.days = 5  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_5d,
+            COALESCE(MAX(CASE WHEN wc.days = 7  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_7d,
             COALESCE(MAX(CASE WHEN wc.days = 14 THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_14d,
             COALESCE(MAX(CASE WHEN wc.days = 31 THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_31d
         FROM nodes n
         LEFT JOIN window_counts wc ON wc.node_id = n.node_id
         LEFT JOIN window_totals wt ON wt.days = wc.days
-        WHERE n.kind = 'theme' AND n.status = 'active'
-        GROUP BY n.node_id, n.slug, n.display_name, n.article_count
+        WHERE n.status = 'active'
+        GROUP BY n.node_id, n.kind, n.slug, n.display_name, n.article_count
     )
-    SELECT
-        base.*,
-        CASE
-            WHEN base.heat_1d > 0.10 AND base.heat_31d < 0.02 THEN 'emerging'
-            WHEN base.heat_31d > 0.05 AND base.heat_1d < 0.01 THEN 'fading'
-            WHEN ABS(base.heat_1d - base.heat_31d) < 0.02 THEN 'sustained'
-            WHEN base.heat_3d > 0.10 AND base.heat_7d < 0.02 THEN 'flash_event'
-            ELSE 'steady'
-        END AS phase
-    FROM base
+    SELECT * FROM base
     """,
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_theme_heat_view_node ON theme_heat_view (node_id)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_node_heat_view_node ON node_heat_view (node_id)",
+    "CREATE INDEX IF NOT EXISTS idx_node_heat_view_kind ON node_heat_view (kind)",
 ]
 
 
@@ -1228,11 +1238,14 @@ class PostgresStoryRepository:
                 )
             connection.commit()
 
-    def refresh_theme_heat_view(self) -> None:
+    def refresh_node_heat_view(self) -> None:
         with self._connect() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("REFRESH MATERIALIZED VIEW theme_heat_view")
+                cursor.execute("REFRESH MATERIALIZED VIEW node_heat_view")
             connection.commit()
+
+    def refresh_theme_heat_view(self) -> None:
+        self.refresh_node_heat_view()
 
     def clear_semantic_state(self, *, channel_id: int | None = None) -> tuple[list[str], list[str], list[str]]:
         with self._connect() as connection:
@@ -1354,24 +1367,37 @@ class PostgresStoryRepository:
                     cursor.execute("SELECT pg_advisory_unlock(hashtextextended(%s, 0))", (lock_name,))
                 connection.commit()
 
-    def list_theme_heat(self, *, phase: str | None = None, limit: int | None = None) -> list[ThemeHeatSnapshot]:
-        query = """
-            SELECT node_id, slug, display_name, article_count, heat_1d, heat_3d, heat_5d, heat_7d, heat_14d, heat_31d, phase
-            FROM theme_heat_view
-        """
-        params: list[Any] = []
-        if phase is not None:
-            query += " WHERE phase = %s"
-            params.append(phase)
-        query += " ORDER BY heat_1d DESC, heat_3d DESC, display_name ASC"
-        if limit is not None:
-            query += " LIMIT %s"
-            params.append(limit)
+    def list_node_heat_rows(self, *, kind: str) -> list[NodeHeatSnapshot]:
         with self._connect() as connection:
             with connection.cursor() as cursor:
-                cursor.execute(query, params)
+                cursor.execute(
+                    """
+                    SELECT node_id, kind, slug, display_name, article_count,
+                           heat_1d, heat_3d, heat_5d, heat_7d, heat_14d, heat_31d
+                    FROM node_heat_view
+                    WHERE kind = %s
+                    ORDER BY heat_1d DESC, heat_3d DESC, display_name ASC
+                    """,
+                    (kind,),
+                )
                 rows = cursor.fetchall()
-        return [_theme_heat_from_row(row) for row in rows]
+        return [_node_heat_from_row(row) for row in rows]
+
+    def list_theme_heat(self, *, phase: str | None = None, limit: int | None = None) -> list[NodeHeatSnapshot]:
+        from dataclasses import replace
+
+        from telegram_scraper.kg.heat_phase import DEFAULT_THEME_HEAT_THRESHOLDS, classify_phase
+
+        rows = self.list_node_heat_rows(kind="theme")
+        classified = [
+            replace(row, phase=classify_phase(row, DEFAULT_THEME_HEAT_THRESHOLDS))
+            for row in rows
+        ]
+        if phase is not None:
+            classified = [r for r in classified if r.phase == phase]
+        if limit is not None:
+            classified = classified[:limit]
+        return classified
 
     def get_theme_history(self, *, slug: str) -> list[ThemeHistoryPoint]:
         with self._connect() as connection:
@@ -1684,20 +1710,20 @@ def _cross_channel_match_from_row(row: Sequence[Any]) -> CrossChannelMatch:
     )
 
 
-def _theme_heat_from_row(row: Sequence[Any]) -> ThemeHeatSnapshot:
-    return ThemeHeatSnapshot(
+def _node_heat_from_row(row: Sequence[Any]) -> NodeHeatSnapshot:
+    return NodeHeatSnapshot(
         node_id=str(row[0]),
-        kind="theme",
-        slug=str(row[1]),
-        display_name=str(row[2]),
-        article_count=int(row[3]),
-        heat_1d=float(row[4]),
-        heat_3d=float(row[5]),
-        heat_5d=float(row[6]),
-        heat_7d=float(row[7]),
-        heat_14d=float(row[8]),
-        heat_31d=float(row[9]),
-        phase=str(row[10]),
+        kind=str(row[1]),
+        slug=str(row[2]),
+        display_name=str(row[3]),
+        article_count=int(row[4]),
+        heat_1d=float(row[5]),
+        heat_3d=float(row[6]),
+        heat_5d=float(row[7]),
+        heat_7d=float(row[8]),
+        heat_14d=float(row[9]),
+        heat_31d=float(row[10]),
+        phase=None,
     )
 
 

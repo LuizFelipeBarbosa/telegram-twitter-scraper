@@ -17,11 +17,14 @@ class RepositorySchemaTests(unittest.TestCase):
         self.assertIn("CREATE TABLE IF NOT EXISTS node_relations", schema)
         self.assertIn("shared_story_count INT NOT NULL", schema)
         self.assertIn("CREATE TABLE IF NOT EXISTS theme_daily_stats", schema)
-        self.assertIn("CREATE MATERIALIZED VIEW IF NOT EXISTS theme_heat_view", schema)
-        self.assertIn("WHERE n.kind = 'theme' AND n.status = 'active'", schema)
-        self.assertIn("WHEN base.heat_1d > 0.10 AND base.heat_31d < 0.02 THEN 'emerging'", schema)
-        self.assertIn("WHEN base.heat_31d > 0.05 AND base.heat_1d < 0.01 THEN 'fading'", schema)
-        self.assertIn("WHEN base.heat_3d > 0.10 AND base.heat_7d < 0.02 THEN 'flash_event'", schema)
+        self.assertIn("DROP MATERIALIZED VIEW IF EXISTS theme_heat_view CASCADE", schema)
+        self.assertIn("CREATE MATERIALIZED VIEW IF NOT EXISTS node_heat_view", schema)
+        self.assertIn("WITH RECURSIVE", schema)
+        self.assertIn("node_descendants", schema)
+        self.assertIn("idx_node_heat_view_node", schema)
+        self.assertIn("idx_node_heat_view_kind", schema)
+        self.assertNotIn("THEN 'emerging'", schema)
+        self.assertNotIn("THEN 'fading'", schema)
 
 
 if __name__ == "__main__":

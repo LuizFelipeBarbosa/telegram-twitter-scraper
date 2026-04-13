@@ -10,6 +10,7 @@ from telegram_scraper.kg.models import (
     Node,
     NodeCentroidRecord,
     NodeDetail,
+    NodeHeatSnapshot,
     NodeKind,
     NodeListEntry,
     NodeMatch,
@@ -125,7 +126,11 @@ class StoryRepository(Protocol):
 
     def save_theme_daily_stats(self, stats: Sequence[ThemeDailyStat]) -> None: ...
 
+    def refresh_node_heat_view(self) -> None: ...
+
     def refresh_theme_heat_view(self) -> None: ...
+
+    def list_node_heat_rows(self, *, kind: str) -> list[NodeHeatSnapshot]: ...
 
     def clear_semantic_state(
         self,
