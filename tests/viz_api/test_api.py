@@ -53,7 +53,7 @@ class FakeVisualizationQueries:
         }
 
     def get_graph_snapshot(
-        self, *, window="7d", kinds=None, phase=None, limit=300,
+        self, *, window="7d", kinds=None, phase=None, limit=300, include_children=False,
     ) -> dict:
         selected_kinds = tuple(kinds or ("event", "theme"))
         ranked_nodes: list[dict] = []
@@ -76,6 +76,8 @@ class FakeVisualizationQueries:
                     "score": node["heat"],
                     "heat": node["heat"],
                     "phase": node["phase"],
+                    "child_count": 0,
+                    "parent_event": None,
                 })
 
         ranked_nodes.sort(key=lambda item: (-float(item["score"]), str(item["display_name"]).lower()))
@@ -115,8 +117,8 @@ class FakeVisualizationQueries:
             nodes = [n for n in nodes if n.get("phase") == phase]
         return {"window": window, "kind": kind, "total": len(nodes), "nodes": nodes[:limit]}
 
-    def list_kind_nodes(self, *, kind: str, limit: int = 50) -> dict:
-        del limit
+    def list_kind_nodes(self, *, kind: str, limit: int = 50, include_children: bool = False) -> dict:
+        del limit, include_children
         return {
             "kind": kind,
             "nodes": [
@@ -128,6 +130,8 @@ class FakeVisualizationQueries:
                     "summary": None,
                     "article_count": 2,
                     "last_updated": "2026-04-08T00:00:00Z",
+                    "child_count": 0,
+                    "parent_event": None,
                 }
             ],
         }
@@ -152,6 +156,22 @@ class FakeVisualizationQueries:
             "display_name": "April 8 Hormuz Reclosure",
             "summary": "Node summary",
             "article_count": 3,
+            "parent_event": None,
+            "child_events": [
+                {
+                    "node_id": "event-2",
+                    "slug": "april-9-follow-up",
+                    "display_name": "April 9 Follow-up",
+                    "summary": None,
+                    "article_count": 1,
+                    "child_count": 0,
+                    "last_updated": "2026-04-09T00:00:00Z",
+                    "event_start_at": "2026-04-08T23:45:00Z",
+                    "primary_location": "Tel Aviv",
+                    "location_labels": ["Tel Aviv"],
+                    "organization_labels": ["Home Front Command"],
+                }
+            ] if kind == "event" else [],
             "events": [],
             "people": [
                 {
@@ -218,7 +238,10 @@ class VisualizationApiTests(unittest.TestCase):
         self.assertEqual(theme_heat_response.status_code, 200)
         self.assertEqual(theme_heat_response.json()["themes"][0]["slug"], "ceasefire-peace-negotiations")
         self.assertIn(("channels", 3600, {}), FakeCache.calls)
-        self.assertIn(("graph_snapshot", 900, {"window": "7d", "phase": None, "limit": 300, "kind": []}), FakeCache.calls)
+        self.assertIn(
+            ("graph_snapshot", 900, {"window": "7d", "phase": None, "limit": 300, "kind": [], "include_children": False}),
+            FakeCache.calls,
+        )
 
     def test_node_detail_and_theme_alias_routes_return_404_when_missing(self):
         client = self._build_client()

@@ -11,6 +11,8 @@ class RepositorySchemaTests(unittest.TestCase):
 
         self.assertIn("CREATE TABLE IF NOT EXISTS nodes", schema)
         self.assertIn("UNIQUE (kind, slug)", schema)
+        self.assertIn("parent_node_id UUID REFERENCES nodes(node_id) ON DELETE SET NULL", schema)
+        self.assertIn("CREATE INDEX IF NOT EXISTS idx_nodes_event_parent", schema)
         self.assertIn("CREATE INDEX IF NOT EXISTS idx_nodes_kind_canonical_name", schema)
         self.assertIn("CREATE TABLE IF NOT EXISTS story_nodes", schema)
         self.assertIn("is_primary_event BOOLEAN NOT NULL DEFAULT FALSE", schema)

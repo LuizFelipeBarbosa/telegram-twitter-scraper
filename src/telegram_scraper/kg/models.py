@@ -130,6 +130,7 @@ class Node:
     last_updated: datetime | None = None
     event_start_at: datetime | None = None
     event_end_at: datetime | None = None
+    parent_node_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -249,6 +250,27 @@ class NodeListEntry:
     summary: str | None
     article_count: int
     last_updated: datetime | None = None
+    child_count: int = 0
+    parent_event: "EventHierarchyRef | None" = None
+
+
+@dataclass(frozen=True)
+class EventHierarchyRef:
+    node_id: str
+    slug: str
+    display_name: str
+    summary: str | None
+    article_count: int
+    child_count: int = 0
+    last_updated: datetime | None = None
+
+
+@dataclass(frozen=True)
+class EventChildSummary(EventHierarchyRef):
+    event_start_at: datetime | None = None
+    primary_location: str | None = None
+    location_labels: tuple[str, ...] = ()
+    organization_labels: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -287,6 +309,8 @@ class NodeDetail:
     display_name: str
     summary: str | None
     article_count: int
+    parent_event: EventHierarchyRef | None = None
+    child_events: tuple[EventChildSummary, ...] = ()
     events: tuple[RelatedNode, ...] = ()
     people: tuple[RelatedNode, ...] = ()
     nations: tuple[RelatedNode, ...] = ()

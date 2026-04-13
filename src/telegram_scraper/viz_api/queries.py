@@ -4,6 +4,7 @@ from dataclasses import asdict
 from typing import Literal, Sequence
 
 from telegram_scraper.kg.heat_phase import HeatPhaseThresholds
+from telegram_scraper.kg.models import NodeListEntry
 from telegram_scraper.kg.repository import PostgresStoryRepository
 from telegram_scraper.kg.services import KGQueryService
 
@@ -29,6 +30,7 @@ class VisualizationQueries:
         event_heat_thresholds: HeatPhaseThresholds | None = None,
     ):
         self.repository = PostgresStoryRepository(database_url)
+        self.repository.ensure_schema()
         self.service = KGQueryService(self.repository)
         self.theme_heat_thresholds = theme_heat_thresholds
         self.event_heat_thresholds = event_heat_thresholds
@@ -43,10 +45,10 @@ class VisualizationQueries:
     def list_channels(self) -> dict[str, object]:
         return {"channels": [asdict(channel) for channel in self.service.channels()]}
 
-    def list_kind_nodes(self, *, kind: str, limit: int = 50) -> dict[str, object]:
+    def list_kind_nodes(self, *, kind: str, limit: int = 50, include_children: bool = False) -> dict[str, object]:
         return {
             "kind": kind,
-            "nodes": [asdict(node) for node in self.service.list_nodes(kind=kind, limit=limit)],
+            "nodes": [asdict(node) for node in self.service.list_nodes(kind=kind, limit=limit, include_children=include_children)],
         }
 
     def list_theme_heat(
@@ -130,11 +132,13 @@ class VisualizationQueries:
         kinds: Sequence[str] | None = None,
         phase: str | None = None,
         limit: int = 300,
+        include_children: bool = False,
     ) -> dict[str, object]:
         from telegram_scraper.kg.heat_phase import classify_phase
 
         selected_kinds = tuple(kinds or ("event", "theme"))
-        nodes: list[dict[str, object]] = []
+        ranked_nodes: list[dict[str, object]] = []
+        selected_entries: list[NodeListEntry] = []
         field_name = WINDOW_FIELD_MAP[window]
 
         for kind in selected_kinds:
@@ -149,7 +153,19 @@ class VisualizationQueries:
                 if phase is not None and classified_phase != phase:
                     continue
                 heat_value = getattr(row, field_name)
-                nodes.append(
+                entry = NodeListEntry(
+                    node_id=row.node_id,
+                    kind=row.kind,
+                    slug=row.slug,
+                    display_name=row.display_name,
+                    summary=None,
+                    article_count=row.article_count,
+                    last_updated=None,
+                    child_count=0,
+                    parent_event=None,
+                )
+                selected_entries.append(entry)
+                ranked_nodes.append(
                     {
                         "node_id": row.node_id,
                         "kind": row.kind,
@@ -160,28 +176,25 @@ class VisualizationQueries:
                         "score": heat_value,
                         "heat": heat_value,
                         "phase": classified_phase,
+                        "child_count": 0,
+                        "parent_event": None,
                     }
                 )
 
-        nodes.sort(key=lambda item: (-float(item["score"]), str(item["display_name"]).lower()))
-        nodes = nodes[:limit]
-        node_ids = {str(node["node_id"]) for node in nodes}
-
-        relation_map: dict[tuple[str, str, str], dict[str, object]] = {}
-        for node_id in node_ids:
-            for relation in self.repository.list_node_relations(node_id):
-                if relation.source_node_id not in node_ids or relation.target_node_id not in node_ids:
-                    continue
-                key = (relation.source_node_id, relation.target_node_id, relation.relation_type)
-                relation_map[key] = {
-                    "source": relation.source_node_id,
-                    "target": relation.target_node_id,
-                    "type": relation.relation_type,
-                    "score": relation.score,
-                }
-
-        relations = sorted(relation_map.values(), key=lambda item: (-float(item["score"]), item["source"], item["target"]))
-        return {"window": window, "nodes": nodes, "relations": relations}
+        ranked_nodes.sort(key=lambda item: (-float(item["score"]), str(item["display_name"]).lower()))
+        ranked_nodes = ranked_nodes[:limit]
+        selected_entry_lookup = {row.node_id: row for row in selected_entries}
+        visible_entries = [selected_entry_lookup[str(node["node_id"])] for node in ranked_nodes if str(node["node_id"]) in selected_entry_lookup]
+        relations = [
+            {
+                "source": relation.source_node_id,
+                "target": relation.target_node_id,
+                "type": relation.relation_type,
+                "score": relation.score,
+            }
+            for relation in self.service.snapshot_relations(nodes=visible_entries)
+        ]
+        return {"window": window, "nodes": ranked_nodes, "relations": relations}
 
     def get_theme_history(self, slug: str) -> dict[str, object]:
         history = self.service.theme_history(slug)

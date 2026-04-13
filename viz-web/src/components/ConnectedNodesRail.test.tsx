@@ -10,6 +10,8 @@ const detail: NodeDetail = {
   slug: "april-8",
   display_name: "April 8 Hormuz",
   article_count: 20,
+  parent_event: null,
+  child_events: [],
   events: [],
   people: [
     {

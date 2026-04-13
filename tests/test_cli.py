@@ -20,6 +20,7 @@ class CliTests(unittest.TestCase):
             "kg-segment-worker",
             "kg-reset-channel",
             "kg-repair-channels",
+            "kg-rebuild-event-hierarchy",
             "kg-resegment-channel",
             "kg-resegment-channels",
             "kg-sync-status",
@@ -58,6 +59,14 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("--kind", result.output)
         self.assertIn("--slug", result.output)
+
+    def test_events_list_help_exposes_include_children_toggle(self):
+        runner = CliRunner()
+
+        result = runner.invoke(app, ["kg-events-list", "--help"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("--include-children", result.output)
 
     def test_resegment_channels_help_exposes_repeatable_channel_and_workers(self):
         runner = CliRunner()

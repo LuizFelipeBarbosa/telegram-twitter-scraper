@@ -1,4 +1,5 @@
 import type { NodeDetail } from "../lib/types";
+import { Link } from "react-router-dom";
 import { Eyebrow, PhaseBadge } from "../ui";
 
 interface NodeHeaderBandProps {
@@ -8,6 +9,8 @@ interface NodeHeaderBandProps {
 
 export function NodeHeaderBand({ detail, phase }: NodeHeaderBandProps) {
   const showPhase = detail.kind === "theme" && phase != null;
+  const showParent = detail.kind === "event" && detail.parent_event != null;
+  const childEvents = detail.child_events ?? [];
   return (
     <div className="px-5 pt-3 pb-5 grid grid-cols-[minmax(0,1fr)_auto] gap-4 items-end">
       <div>
@@ -19,7 +22,24 @@ export function NodeHeaderBand({ detail, phase }: NodeHeaderBandProps) {
           <span className="font-mono">{detail.slug}</span>
           <span>·</span>
           <span>{detail.article_count} stories</span>
+          {detail.kind === "event" && childEvents.length > 0 ? (
+            <>
+              <span>·</span>
+              <span>{childEvents.length} sub-events</span>
+            </>
+          ) : null}
         </div>
+        {showParent ? (
+          <div className="mt-2 text-[0.76rem] text-muted">
+            Part of{" "}
+            <Link
+              to={`/node/event/${detail.parent_event?.slug}`}
+              className="text-ink underline underline-offset-[3px] decoration-ink/25 hover:decoration-ink/60"
+            >
+              {detail.parent_event?.display_name}
+            </Link>
+          </div>
+        ) : null}
         {detail.summary ? (
           <p className="mt-3 text-[0.88rem] text-ink/85 max-w-prose leading-relaxed">{detail.summary}</p>
         ) : null}

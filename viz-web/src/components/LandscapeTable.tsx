@@ -49,6 +49,7 @@ export function LandscapeTable({ nodes, hoveredNodeId, onHover, onRowClick, clas
           <div className="text-[0.68rem] text-muted mt-0.5">
             {KIND_LABEL[node.kind]}
             {node.kind === "theme" && node.phase ? <> · {String(node.phase).replace("_", " ")}</> : null}
+            {node.kind === "event" && node.child_count > 0 ? <> · {node.child_count} sub-events</> : null}
             {node.summary ? (
               <>
                 {" · "}

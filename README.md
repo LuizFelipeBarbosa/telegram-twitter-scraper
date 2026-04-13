@@ -34,7 +34,7 @@ Currently out of scope:
 
 1. Archive commands such as `sync-all` and `sync-chat` write Markdown exports plus a local SQLite message database under `OUTPUT_ROOT`.
 2. KG producers such as `kg-backfill` and `kg-listen` stream Telegram channel messages into Redis.
-3. `kg-segment-worker` consumes those raw messages, persists them in Postgres, translates non-English content, segments stories, extracts typed nodes, updates Pinecone vectors, and refreshes read projections.
+3. `kg-segment-worker` consumes those raw messages, persists them in Postgres, stores English translations for non-English content, segments stories, extracts typed nodes, updates Pinecone vectors, and refreshes read projections.
 4. `viz-api` serves a read-only FastAPI surface, and `viz-web` renders the React frontend on top of it.
 
 There is no standalone scheduler command in the current CLI. Projection refresh happens inside `kg-segment-worker` after each processed batch.
@@ -245,6 +245,11 @@ Compose-specific notes:
 - Channel profiles are created automatically during KG ingestion. Use `kg-profile-upsert` only when you need to tune segmentation for a specific channel.
 - `kg-segment-preview --channel <id>` previews segmentation without writing stories.
 - Semantic extraction emits strict typed buckets for `events`, `people`, `nations`, `orgs`, `places`, and `themes`.
+- Event hierarchy is two levels only: top-level parent event plus leaf sub-events. Named operations/campaigns outrank generic grouping.
+- Generic `strike` and `airstrike` families are consolidated at the actor level. For example, `Iranian strikes in Tel Aviv` and `Iranian strikes in Haifa` roll up under `Iranian strikes`, while location and organization browsing happens on the parent event page through child-event metadata.
+- `GET /api/events` and `GET /api/graph/snapshot` collapse event children by default. Use `include_children=true` only when you explicitly need leaf events in those list views.
+- Parent event detail payloads expose enriched `child_events[]` rows with `last_updated`, `event_start_at`, `primary_location`, `location_labels`, and `organization_labels`. Child event detail payloads expose `parent_event` for breadcrumbs.
+- Person canonicalization collapses simple middle-initial variants into one node. For example, `Donald Trump`, `Donald J Trump`, and `Donald J. Trump` resolve to the same person, with alternate forms retained as aliases.
 - Event pages and theme pages expose sectioned related nodes. The frontend derives the `Actors` grouping from `people + nations + orgs`.
 
 ## Rebuild and Repair
@@ -284,6 +289,12 @@ Rebuild semantic state for multiple channels with the historical path:
 uv run telegram-scraper kg-resegment-channels --channel <id-a> --channel <id-b> --workers 8
 ```
 
+Rebuild the event hierarchy after changing hierarchy logic or after a bulk semantic repair:
+
+```bash
+uv run telegram-scraper kg-rebuild-event-hierarchy
+```
+
 Keep live sync running after repairs if you want new Telegram messages to continue landing in `raw_messages`:
 
 ```bash
@@ -314,6 +325,7 @@ KG write-path commands:
 - `uv run telegram-scraper kg-reset-channel --channel <id> --yes`
 - `uv run telegram-scraper kg-resegment-channel --channel <id> [--workers <n>]`
 - `uv run telegram-scraper kg-resegment-channels --channel <id>... [--workers <n>]`
+- `uv run telegram-scraper kg-rebuild-event-hierarchy`
 
 KG read-path commands:
 
@@ -362,6 +374,13 @@ Important query parameters:
 - `phase`: optional theme phase filter on heat and graph endpoints
 - `limit` and `offset`: paging controls on list endpoints
 - `kind`: repeatable filter on `GET /api/graph/snapshot`
+- `include_children`: optional boolean on `GET /api/events` and `GET /api/graph/snapshot`. Defaults to `false`, which means event browse surfaces return top-level parent events only.
+
+Event-detail hierarchy behavior:
+
+- Parent event detail returns rolled-up `article_count`, rolled-up stories, direct related nodes, and a `child_events[]` array for sub-event browsing.
+- Each `child_events[]` row includes `node_id`, `slug`, `display_name`, `summary`, `article_count`, `last_updated`, `event_start_at`, `primary_location`, `location_labels`, and `organization_labels`.
+- Child event detail keeps its own direct stories and related nodes and exposes a lightweight `parent_event` reference for breadcrumb navigation.
 
 Deprecated theme-only aliases:
 

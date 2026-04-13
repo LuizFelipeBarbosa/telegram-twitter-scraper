@@ -14,6 +14,8 @@ const nodes: GraphNodeRow[] = [
     article_count: 142,
     score: 84,
     phase: "emerging",
+    child_count: 0,
+    parent_event: null,
   },
   {
     node_id: "2",
@@ -22,6 +24,8 @@ const nodes: GraphNodeRow[] = [
     display_name: "April 8 Hormuz Reclosure",
     article_count: 89,
     score: 72,
+    child_count: 3,
+    parent_event: null,
   },
 ];
 
@@ -39,6 +43,7 @@ describe("LandscapeTable", () => {
     expect(screen.getByText("April 8 Hormuz Reclosure")).toBeInTheDocument();
     expect(screen.getByText("84.00")).toBeInTheDocument();
     expect(screen.getByText("72.00")).toBeInTheDocument();
+    expect(screen.getByText(/3 sub-events/)).toBeInTheDocument();
   });
 
   it("fires onRowClick with the clicked node", async () => {

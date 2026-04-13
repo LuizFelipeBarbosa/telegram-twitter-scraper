@@ -74,13 +74,20 @@ def create_app(settings: KGSettings) -> FastAPI:
         phase: Optional[str] = Query(default=None),
         limit: int = Query(default=300, ge=1, le=300),
         kind: Annotated[Optional[List[str]], Query()] = None,
+        include_children: bool = Query(default=False),
     ) -> dict:
-        params = {"window": window, "phase": phase, "limit": limit, "kind": kind or []}
+        params = {"window": window, "phase": phase, "limit": limit, "kind": kind or [], "include_children": include_children}
         return cache.get_or_set(
             "graph_snapshot",
             params,
             ttl_seconds=15 * 60,
-            loader=lambda: queries.get_graph_snapshot(window=window, phase=phase, limit=limit, kinds=kind),
+            loader=lambda: queries.get_graph_snapshot(
+                window=window,
+                phase=phase,
+                limit=limit,
+                kinds=kind,
+                include_children=include_children,
+            ),
         )
 
     @app.get("/api/nodes/heat", response_model=NodesHeatResponse)
@@ -105,37 +112,40 @@ def create_app(settings: KGSettings) -> FastAPI:
         except PhaseNotSupported as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    def _list_nodes(kind: str, limit: int) -> dict:
+    def _list_nodes(kind: str, limit: int, include_children: bool) -> dict:
         return cache.get_or_set(
             "node_list",
-            {"kind": kind, "limit": limit},
+            {"kind": kind, "limit": limit, "include_children": include_children},
             ttl_seconds=15 * 60,
-            loader=lambda: queries.list_kind_nodes(kind=kind, limit=limit),
+            loader=lambda: queries.list_kind_nodes(kind=kind, limit=limit, include_children=include_children),
         )
 
     @app.get("/api/events", response_model=NodeListResponse)
-    def events(limit: int = Query(default=50, ge=1, le=500)) -> dict:
-        return _list_nodes("event", limit)
+    def events(
+        limit: int = Query(default=50, ge=1, le=500),
+        include_children: bool = Query(default=False),
+    ) -> dict:
+        return _list_nodes("event", limit, include_children)
 
     @app.get("/api/people", response_model=NodeListResponse)
     def people(limit: int = Query(default=50, ge=1, le=500)) -> dict:
-        return _list_nodes("person", limit)
+        return _list_nodes("person", limit, False)
 
     @app.get("/api/nations", response_model=NodeListResponse)
     def nations(limit: int = Query(default=50, ge=1, le=500)) -> dict:
-        return _list_nodes("nation", limit)
+        return _list_nodes("nation", limit, False)
 
     @app.get("/api/orgs", response_model=NodeListResponse)
     def orgs(limit: int = Query(default=50, ge=1, le=500)) -> dict:
-        return _list_nodes("org", limit)
+        return _list_nodes("org", limit, False)
 
     @app.get("/api/places", response_model=NodeListResponse)
     def places(limit: int = Query(default=50, ge=1, le=500)) -> dict:
-        return _list_nodes("place", limit)
+        return _list_nodes("place", limit, False)
 
     @app.get("/api/themes", response_model=NodeListResponse)
     def themes(limit: int = Query(default=50, ge=1, le=500)) -> dict:
-        return _list_nodes("theme", limit)
+        return _list_nodes("theme", limit, False)
 
     @app.get("/api/themes/{slug}/history", response_model=ThemeHistoryResponse)
     def theme_history(slug: str) -> dict:
