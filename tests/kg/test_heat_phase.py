@@ -5,6 +5,7 @@ import unittest
 from dataclasses import replace
 
 from telegram_scraper.kg.heat_phase import (
+    DEFAULT_EVENT_HEAT_THRESHOLDS,
     DEFAULT_THEME_HEAT_THRESHOLDS,
     HeatPhaseThresholds,
     PhaseNotSupported,
@@ -70,6 +71,16 @@ class ClassifyPhaseTests(unittest.TestCase):
     def test_cascade_order_emerging_before_sustained(self):
         snap = _snap(heat_1d=0.15, heat_31d=0.015)
         self.assertEqual(classify_phase(snap, DEFAULT_THEME_HEAT_THRESHOLDS), "emerging")
+
+
+class EventPhaseTests(unittest.TestCase):
+    def test_event_emerging(self):
+        snap = replace(_snap(heat_1d=0.15, heat_31d=0.01), kind="event")
+        self.assertEqual(classify_phase(snap, DEFAULT_EVENT_HEAT_THRESHOLDS), "emerging")
+
+    def test_event_flash(self):
+        snap = replace(_snap(heat_3d=0.15, heat_7d=0.01), kind="event")
+        self.assertEqual(classify_phase(snap, DEFAULT_EVENT_HEAT_THRESHOLDS), "flash_event")
 
 
 class NonPhaseKindTests(unittest.TestCase):
