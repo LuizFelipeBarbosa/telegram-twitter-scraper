@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import replace
 from datetime import date, datetime
 import json
 from typing import Any, Callable, Sequence
@@ -177,6 +178,8 @@ SCHEMA_STATEMENTS = [
         PRIMARY KEY (node_id, date)
     )
     """,
+    "ALTER TABLE nodes ADD COLUMN IF NOT EXISTS parent_node_id UUID REFERENCES nodes(node_id) ON DELETE SET NULL",
+    "CREATE INDEX IF NOT EXISTS idx_nodes_event_parent ON nodes (kind, parent_node_id)",
     "DROP MATERIALIZED VIEW IF EXISTS theme_heat_view CASCADE",
     """
     CREATE MATERIALIZED VIEW IF NOT EXISTS node_heat_view AS
@@ -1384,8 +1387,6 @@ class PostgresStoryRepository:
         return [_node_heat_from_row(row) for row in rows]
 
     def list_theme_heat(self, *, phase: str | None = None, limit: int | None = None) -> list[NodeHeatSnapshot]:
-        from dataclasses import replace
-
         from telegram_scraper.kg.heat_phase import DEFAULT_THEME_HEAT_THRESHOLDS, classify_phase
 
         rows = self.list_node_heat_rows(kind="theme")

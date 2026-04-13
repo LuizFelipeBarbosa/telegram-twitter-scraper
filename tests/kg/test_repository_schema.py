@@ -6,7 +6,7 @@ from telegram_scraper.kg.repository import SCHEMA_STATEMENTS
 
 
 class RepositorySchemaTests(unittest.TestCase):
-    def test_schema_includes_node_tables_and_theme_phase_view(self):
+    def test_schema_includes_node_tables_and_node_heat_view(self):
         schema = "\n".join(SCHEMA_STATEMENTS)
 
         self.assertIn("CREATE TABLE IF NOT EXISTS nodes", schema)
@@ -25,6 +25,8 @@ class RepositorySchemaTests(unittest.TestCase):
         self.assertIn("idx_node_heat_view_kind", schema)
         self.assertNotIn("THEN 'emerging'", schema)
         self.assertNotIn("THEN 'fading'", schema)
+        self.assertIn("parent_node_id", schema)
+        self.assertIn("idx_nodes_event_parent", schema)
 
 
 if __name__ == "__main__":
