@@ -45,12 +45,19 @@ def create_app(settings: KGSettings) -> FastAPI:
         offset: int = Query(default=0, ge=0),
     ) -> dict:
         params = {"window": window, "phase": phase, "limit": limit, "offset": offset}
-        return cache.get_or_set(
-            "themes_heat",
-            params,
-            ttl_seconds=15 * 60,
-            loader=lambda: queries.list_theme_heat(window=window, phase=phase, limit=limit, offset=offset),
-        )
+
+        def _load() -> dict:
+            raw = queries.list_node_heat(
+                kind="theme", window=window, phase=phase, limit=limit, offset=offset,
+            )
+            return {
+                "window": raw["window"],
+                "total": raw["total"],
+                "themes": raw["nodes"],
+                "topics": raw["nodes"],
+            }
+
+        return cache.get_or_set("themes_heat", params, ttl_seconds=15 * 60, loader=_load)
 
     @app.get("/api/topics/heat", response_model=ThemesHeatResponse)
     def topics_heat_alias(
