@@ -78,6 +78,39 @@ class FakeVisualizationQueries:
             ],
         }
 
+    def thresholds_for(self, kind):
+        from telegram_scraper.kg.heat_phase import DEFAULT_THEME_HEAT_THRESHOLDS
+        if kind == "theme":
+            return DEFAULT_THEME_HEAT_THRESHOLDS
+        if kind == "event":
+            return DEFAULT_THEME_HEAT_THRESHOLDS  # same defaults for now
+        return None
+
+    def list_node_heat(self, *, kind, window, phase=None, limit=50, offset=0):
+        from telegram_scraper.kg.heat_phase import PhaseNotSupported
+        if phase is not None and self.thresholds_for(kind) is None:
+            raise PhaseNotSupported(kind)
+        if kind == "theme":
+            nodes = [
+                {"node_id": "t1", "kind": "theme", "slug": "ceasefire-peace-negotiations",
+                 "display_name": "Ceasefire", "article_count": 10, "heat": 0.12, "phase": "emerging"},
+            ]
+        elif kind == "event":
+            nodes = [
+                {"node_id": "e1", "kind": "event", "slug": "hormuz-reclosure",
+                 "display_name": "Hormuz Reclosure", "article_count": 50, "heat": 0.20, "phase": "emerging"},
+                {"node_id": "e2", "kind": "event", "slug": "minor-event",
+                 "display_name": "Minor Event", "article_count": 5, "heat": 0.04, "phase": "steady"},
+            ]
+        else:
+            nodes = [
+                {"node_id": f"{kind[0]}1", "kind": kind, "slug": f"test-{kind}",
+                 "display_name": f"Test {kind}", "article_count": 3, "heat": 0.02, "phase": None},
+            ]
+        if phase is not None:
+            nodes = [n for n in nodes if n.get("phase") == phase]
+        return {"window": window, "kind": kind, "total": len(nodes), "nodes": nodes[:limit]}
+
     def list_kind_nodes(self, *, kind: str, limit: int = 50) -> dict:
         del limit
         return {
@@ -193,6 +226,44 @@ class VisualizationApiTests(unittest.TestCase):
         self.assertEqual(detail_response.json()["detail"], "Node not found")
         self.assertEqual(history_response.status_code, 404)
         self.assertEqual(history_response.json()["detail"], "Theme not found")
+
+
+    def test_nodes_heat_route_returns_schema(self):
+        client = self._build_client()
+        response = client.get("/api/nodes/heat?kind=theme&window=7d")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["kind"], "theme")
+        self.assertIn("nodes", body)
+        self.assertIn("total", body)
+        self.assertEqual(body["window"], "7d")
+
+    def test_nodes_heat_rejects_phase_on_non_phase_kind(self):
+        client = self._build_client()
+        response = client.get("/api/nodes/heat?kind=person&phase=emerging")
+        self.assertEqual(response.status_code, 400)
+
+    def test_graph_snapshot_mixed_kinds_ranking(self):
+        client = self._build_client()
+        response = client.get("/api/graph/snapshot?window=7d")
+        self.assertEqual(response.status_code, 200)
+        nodes = response.json()["nodes"]
+        scores = [n["score"] for n in nodes]
+        self.assertEqual(scores, sorted(scores, reverse=True),
+                         "nodes should be sorted by score descending")
+        # Under the fix, events and themes interleave by heat
+        kinds = [n["kind"] for n in nodes]
+        self.assertIn("theme", kinds)
+        self.assertIn("event", kinds)
+
+    def test_graph_snapshot_phase_filter_drops_non_phase_kinds(self):
+        client = self._build_client()
+        response = client.get("/api/graph/snapshot?phase=emerging&kind=event&kind=person")
+        self.assertEqual(response.status_code, 200)
+        nodes = response.json()["nodes"]
+        kinds_present = {n["kind"] for n in nodes}
+        self.assertNotIn("person", kinds_present,
+                         "non-phase kinds should be dropped when phase filter is applied")
 
 
 if __name__ == "__main__":

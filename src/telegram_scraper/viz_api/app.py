@@ -13,6 +13,7 @@ from telegram_scraper.viz_api.schemas import (
     HealthResponse,
     NodeDetailResponse,
     NodeListResponse,
+    NodesHeatResponse,
     ThemesHeatResponse,
     ThemeHistoryResponse,
     Window,
@@ -74,6 +75,28 @@ def create_app(settings: KGSettings) -> FastAPI:
             ttl_seconds=15 * 60,
             loader=lambda: queries.get_graph_snapshot(window=window, phase=phase, limit=limit, kinds=kind),
         )
+
+    @app.get("/api/nodes/heat", response_model=NodesHeatResponse)
+    def nodes_heat(
+        kind: str = Query(...),
+        window: Window = Query(default="7d"),
+        phase: Optional[str] = Query(default=None),
+        limit: int = Query(default=50, ge=1, le=300),
+        offset: int = Query(default=0, ge=0),
+    ) -> dict:
+        from telegram_scraper.kg.heat_phase import PhaseNotSupported
+        params = {"kind": kind, "window": window, "phase": phase, "limit": limit, "offset": offset}
+        try:
+            return cache.get_or_set(
+                "nodes_heat",
+                params,
+                ttl_seconds=15 * 60,
+                loader=lambda: queries.list_node_heat(
+                    kind=kind, window=window, phase=phase, limit=limit, offset=offset,
+                ),
+            )
+        except PhaseNotSupported as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     def _list_nodes(kind: str, limit: int) -> dict:
         return cache.get_or_set(
