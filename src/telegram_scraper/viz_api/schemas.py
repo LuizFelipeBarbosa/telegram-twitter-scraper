@@ -43,6 +43,23 @@ class ThemesHeatResponse(BaseModel):
     topics: Optional[List[ThemeHeatRow]] = None
 
 
+class NodeHeatRow(BaseModel):
+    node_id: str
+    kind: NodeKind
+    slug: str
+    display_name: str
+    article_count: int
+    heat: float
+    phase: Optional[str] = None
+
+
+class NodesHeatResponse(BaseModel):
+    window: Window
+    kind: NodeKind
+    total: int
+    nodes: List[NodeHeatRow]
+
+
 class GraphNodeRow(BaseModel):
     node_id: str
     kind: NodeKind
