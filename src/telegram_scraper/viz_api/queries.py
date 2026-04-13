@@ -131,58 +131,35 @@ class VisualizationQueries:
         phase: str | None = None,
         limit: int = 300,
     ) -> dict[str, object]:
+        from telegram_scraper.kg.heat_phase import classify_phase
+
         selected_kinds = tuple(kinds or ("event", "theme"))
         nodes: list[dict[str, object]] = []
-
-        if "theme" in selected_kinds:
-            theme_payload = self.list_theme_heat(window=window, phase=phase, limit=limit, offset=0)
-            theme_rows = theme_payload["themes"]
-            if theme_rows:
-                for theme in theme_rows:
-                    nodes.append(
-                        {
-                            "node_id": theme["node_id"],
-                            "kind": "theme",
-                            "slug": theme["slug"],
-                            "display_name": theme["display_name"],
-                            "summary": None,
-                            "article_count": theme["article_count"],
-                            "score": theme["heat"],
-                            "heat": theme["heat"],
-                            "phase": theme["phase"],
-                        }
-                    )
-            else:
-                for row in self.service.list_nodes(kind="theme", limit=limit):
-                    nodes.append(
-                        {
-                            "node_id": row.node_id,
-                            "kind": row.kind,
-                            "slug": row.slug,
-                            "display_name": row.display_name,
-                            "summary": row.summary,
-                            "article_count": row.article_count,
-                            "score": float(row.article_count),
-                            "heat": None,
-                            "phase": None,
-                        }
-                    )
+        field_name = WINDOW_FIELD_MAP[window]
 
         for kind in selected_kinds:
-            if kind == "theme":
-                continue
-            for row in self.service.list_nodes(kind=kind, limit=limit):
+            thresholds = self.thresholds_for(kind)
+            if phase is not None and thresholds is None:
+                continue  # non-phase kinds dropped when phase filter active
+
+            rows = self.repository.list_node_heat_rows(kind=kind)
+
+            for row in rows:
+                classified_phase = classify_phase(row, thresholds)
+                if phase is not None and classified_phase != phase:
+                    continue
+                heat_value = getattr(row, field_name)
                 nodes.append(
                     {
                         "node_id": row.node_id,
                         "kind": row.kind,
                         "slug": row.slug,
                         "display_name": row.display_name,
-                        "summary": row.summary,
+                        "summary": None,
                         "article_count": row.article_count,
-                        "score": float(row.article_count),
-                        "heat": None,
-                        "phase": None,
+                        "score": heat_value,
+                        "heat": heat_value,
+                        "phase": classified_phase,
                     }
                 )
 

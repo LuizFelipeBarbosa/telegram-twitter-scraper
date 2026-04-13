@@ -52,31 +52,35 @@ class FakeVisualizationQueries:
             ],
         }
 
-    def get_graph_snapshot(self, **_: object) -> dict:
-        return {
-            "window": "7d",
-            "nodes": [
-                {
-                    "node_id": "event-1",
-                    "kind": "event",
-                    "slug": "april-8-hormuz-reclosure",
-                    "display_name": "April 8 Hormuz Reclosure",
+    def get_graph_snapshot(
+        self, *, window="7d", kinds=None, phase=None, limit=300,
+    ) -> dict:
+        selected_kinds = tuple(kinds or ("event", "theme"))
+        ranked_nodes: list[dict] = []
+
+        for kind in selected_kinds:
+            thresholds = self.thresholds_for(kind)
+            if phase is not None and thresholds is None:
+                continue
+            heat_result = self.list_node_heat(
+                kind=kind, window=window, phase=phase, limit=limit,
+            )
+            for node in heat_result["nodes"]:
+                ranked_nodes.append({
+                    "node_id": node["node_id"],
+                    "kind": node["kind"],
+                    "slug": node["slug"],
+                    "display_name": node["display_name"],
                     "summary": None,
-                    "article_count": 3,
-                    "score": 3.0,
-                    "heat": None,
-                    "phase": None,
-                }
-            ],
-            "relations": [
-                {
-                    "source": "event-1",
-                    "target": "theme-1",
-                    "type": "related",
-                    "score": 2.5,
-                }
-            ],
-        }
+                    "article_count": node["article_count"],
+                    "score": node["heat"],
+                    "heat": node["heat"],
+                    "phase": node["phase"],
+                })
+
+        ranked_nodes.sort(key=lambda item: (-float(item["score"]), str(item["display_name"]).lower()))
+        ranked_nodes = ranked_nodes[:limit]
+        return {"window": window, "nodes": ranked_nodes, "relations": []}
 
     def thresholds_for(self, kind):
         from telegram_scraper.kg.heat_phase import DEFAULT_THEME_HEAT_THRESHOLDS
@@ -210,7 +214,7 @@ class VisualizationApiTests(unittest.TestCase):
         self.assertEqual(channels_response.status_code, 200)
         self.assertEqual(channels_response.json()["channels"][0]["channel_title"], "Signal Watch")
         self.assertEqual(snapshot_response.status_code, 200)
-        self.assertEqual(snapshot_response.json()["nodes"][0]["display_name"], "April 8 Hormuz Reclosure")
+        self.assertEqual(snapshot_response.json()["nodes"][0]["display_name"], "Hormuz Reclosure")
         self.assertEqual(theme_heat_response.status_code, 200)
         self.assertEqual(theme_heat_response.json()["themes"][0]["slug"], "ceasefire-peace-negotiations")
         self.assertIn(("channels", 3600, {}), FakeCache.calls)
