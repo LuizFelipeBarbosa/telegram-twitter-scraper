@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Literal, Sequence
 
+from telegram_scraper.kg.heat_phase import HeatPhaseThresholds
 from telegram_scraper.kg.repository import PostgresStoryRepository
 from telegram_scraper.kg.services import KGQueryService
 
@@ -20,9 +21,24 @@ WINDOW_FIELD_MAP: dict[Window, str] = {
 
 
 class VisualizationQueries:
-    def __init__(self, database_url: str):
+    def __init__(
+        self,
+        database_url: str,
+        *,
+        theme_heat_thresholds: HeatPhaseThresholds | None = None,
+        event_heat_thresholds: HeatPhaseThresholds | None = None,
+    ):
         self.repository = PostgresStoryRepository(database_url)
         self.service = KGQueryService(self.repository)
+        self.theme_heat_thresholds = theme_heat_thresholds
+        self.event_heat_thresholds = event_heat_thresholds
+
+    def thresholds_for(self, kind: str) -> HeatPhaseThresholds | None:
+        if kind == "theme":
+            return self.theme_heat_thresholds
+        if kind == "event":
+            return self.event_heat_thresholds
+        return None
 
     def list_channels(self) -> dict[str, object]:
         return {"channels": [asdict(channel) for channel in self.service.channels()]}

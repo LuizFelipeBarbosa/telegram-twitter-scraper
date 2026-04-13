@@ -10,7 +10,7 @@ from telegram_scraper.viz_api.app import create_app
 
 
 class FakeVisualizationQueries:
-    def __init__(self, database_url: str):
+    def __init__(self, database_url: str, **_kwargs: object):
         self.database_url = database_url
 
     def list_channels(self) -> dict:

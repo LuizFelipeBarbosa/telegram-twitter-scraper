@@ -21,7 +21,11 @@ from telegram_scraper.viz_api.schemas import (
 
 def create_app(settings: KGSettings) -> FastAPI:
     app = FastAPI(title="Telegram KG Visualization API", version="0.2.0")
-    queries = VisualizationQueries(settings.database_url)
+    queries = VisualizationQueries(
+        settings.database_url,
+        theme_heat_thresholds=settings.theme_heat_thresholds,
+        event_heat_thresholds=settings.event_heat_thresholds,
+    )
     cache = RedisResponseCache(settings.redis_url)
 
     @app.get("/api/health", response_model=HealthResponse)
