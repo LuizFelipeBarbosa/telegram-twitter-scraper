@@ -43,6 +43,23 @@ class ThemesHeatResponse(BaseModel):
     topics: Optional[List[ThemeHeatRow]] = None
 
 
+class EventHierarchyRefRow(BaseModel):
+    node_id: str
+    slug: str
+    display_name: str
+    summary: Optional[str] = None
+    article_count: int
+    child_count: int = 0
+    last_updated: Optional[datetime] = None
+
+
+class EventChildSummaryRow(EventHierarchyRefRow):
+    event_start_at: Optional[datetime] = None
+    primary_location: Optional[str] = None
+    location_labels: List[str] = Field(default_factory=list)
+    organization_labels: List[str] = Field(default_factory=list)
+
+
 class GraphNodeRow(BaseModel):
     node_id: str
     kind: NodeKind
@@ -53,6 +70,8 @@ class GraphNodeRow(BaseModel):
     score: float
     heat: Optional[float] = None
     phase: Optional[str] = None
+    child_count: int = 0
+    parent_event: Optional["EventHierarchyRefRow"] = None
 
 
 class SnapshotRelation(BaseModel):
@@ -121,6 +140,8 @@ class NodeDetailResponse(BaseModel):
     display_name: str
     summary: Optional[str] = None
     article_count: int
+    parent_event: Optional[EventHierarchyRefRow] = None
+    child_events: List[EventChildSummaryRow] = Field(default_factory=list)
     events: List[RelatedNodeRow] = Field(default_factory=list)
     people: List[RelatedNodeRow] = Field(default_factory=list)
     nations: List[RelatedNodeRow] = Field(default_factory=list)
@@ -138,6 +159,8 @@ class NodeListRow(BaseModel):
     summary: Optional[str] = None
     article_count: int
     last_updated: Optional[datetime] = None
+    child_count: int = 0
+    parent_event: Optional[EventHierarchyRefRow] = None
 
 
 class NodeListResponse(BaseModel):

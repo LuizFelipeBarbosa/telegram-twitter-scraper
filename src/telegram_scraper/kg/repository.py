@@ -10,6 +10,7 @@ from telegram_scraper.kg.models import (
     ChannelSummary,
     CrossChannelMatch,
     DelimiterPattern,
+    EventHierarchyRef,
     MediaRef,
     Node,
     NodeDetail,
@@ -119,12 +120,15 @@ SCHEMA_STATEMENTS = [
         last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         event_start_at TIMESTAMPTZ,
         event_end_at TIMESTAMPTZ,
+        parent_node_id UUID REFERENCES nodes(node_id) ON DELETE SET NULL,
         UNIQUE (kind, slug)
     )
     """,
+    "ALTER TABLE nodes ADD COLUMN IF NOT EXISTS parent_node_id UUID REFERENCES nodes(node_id) ON DELETE SET NULL",
     "CREATE INDEX IF NOT EXISTS idx_nodes_kind_status ON nodes (kind, status)",
     "CREATE INDEX IF NOT EXISTS idx_nodes_kind_normalized_name ON nodes (kind, normalized_name)",
     "CREATE INDEX IF NOT EXISTS idx_nodes_kind_canonical_name ON nodes (kind, canonical_name)",
+    "CREATE INDEX IF NOT EXISTS idx_nodes_event_parent ON nodes (kind, parent_node_id)",
     """
     CREATE TABLE IF NOT EXISTS story_semantics (
         story_id UUID PRIMARY KEY REFERENCES story_units(story_id) ON DELETE CASCADE,
@@ -249,9 +253,19 @@ class PostgresStoryRepository:
     def ensure_schema(self) -> None:
         with self._connect() as connection:
             with connection.cursor() as cursor:
-                for statement in SCHEMA_STATEMENTS:
-                    cursor.execute(statement)
-            connection.commit()
+                cursor.execute("SELECT pg_advisory_lock(hashtextextended(%s, 0))", ("kg-schema",))
+            try:
+                with connection.cursor() as cursor:
+                    for statement in SCHEMA_STATEMENTS:
+                        cursor.execute(statement)
+                connection.commit()
+            except Exception:
+                connection.rollback()
+                raise
+            finally:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT pg_advisory_unlock(hashtextextended(%s, 0))", ("kg-schema",))
+                connection.commit()
 
     def upsert_channel_profile(self, profile: ChannelProfile) -> None:
         payload = [
@@ -645,6 +659,23 @@ class PostgresStoryRepository:
                 row = cursor.fetchone()
         return _story_from_row(row) if row is not None else None
 
+    def get_story_units_by_ids(self, story_ids: Sequence[str]) -> list[StoryUnit]:
+        if not story_ids:
+            return []
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT story_id, channel_id, timestamp_start, timestamp_end, message_ids, combined_text,
+                           english_combined_text, translation_updated_at, media_refs, created_at
+                    FROM story_units
+                    WHERE story_id = ANY(%s)
+                    """,
+                    (list(story_ids),),
+                )
+                rows = cursor.fetchall()
+        return [_story_from_row(row) for row in rows]
+
     def upsert_story_semantics(self, records: Sequence[StorySemanticRecord]) -> None:
         if not records:
             return
@@ -707,6 +738,7 @@ class PostgresStoryRepository:
                 ensure_utc(node.last_updated) if node.last_updated is not None else None,
                 ensure_utc(node.event_start_at) if node.event_start_at is not None else None,
                 ensure_utc(node.event_end_at) if node.event_end_at is not None else None,
+                node.parent_node_id,
             )
             for node in nodes
         ]
@@ -760,9 +792,10 @@ class PostgresStoryRepository:
                             created_at,
                             last_updated,
                             event_start_at,
-                            event_end_at
+                            event_end_at,
+                            parent_node_id
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, NOW()), COALESCE(%s, NOW()), %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, NOW()), COALESCE(%s, NOW()), %s, %s, %s)
                         ON CONFLICT (node_id) DO UPDATE SET
                             kind = EXCLUDED.kind,
                             slug = EXCLUDED.slug,
@@ -776,7 +809,8 @@ class PostgresStoryRepository:
                             article_count = EXCLUDED.article_count,
                             last_updated = EXCLUDED.last_updated,
                             event_start_at = EXCLUDED.event_start_at,
-                            event_end_at = EXCLUDED.event_end_at
+                            event_end_at = EXCLUDED.event_end_at,
+                            parent_node_id = EXCLUDED.parent_node_id
                         """,
                         node_rows,
                     )
@@ -865,6 +899,7 @@ class PostgresStoryRepository:
                 ensure_utc(node.last_updated) if node.last_updated is not None else None,
                 ensure_utc(node.event_start_at) if node.event_start_at is not None else None,
                 ensure_utc(node.event_end_at) if node.event_end_at is not None else None,
+                node.parent_node_id,
             )
             for node in nodes
         ]
@@ -872,9 +907,9 @@ class PostgresStoryRepository:
             with connection.cursor() as cursor:
                 cursor.executemany(
                     """
-                    INSERT INTO nodes (
-                        node_id,
-                        kind,
+                        INSERT INTO nodes (
+                            node_id,
+                            kind,
                         slug,
                         display_name,
                         canonical_name,
@@ -883,13 +918,14 @@ class PostgresStoryRepository:
                         aliases,
                         status,
                         label_source,
-                        article_count,
-                        created_at,
-                        last_updated,
-                        event_start_at,
-                        event_end_at
-                    )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, NOW()), COALESCE(%s, NOW()), %s, %s)
+                            article_count,
+                            created_at,
+                            last_updated,
+                            event_start_at,
+                            event_end_at,
+                            parent_node_id
+                        )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, NOW()), COALESCE(%s, NOW()), %s, %s, %s)
                     ON CONFLICT (node_id) DO UPDATE SET
                         kind = EXCLUDED.kind,
                         slug = EXCLUDED.slug,
@@ -903,7 +939,8 @@ class PostgresStoryRepository:
                         article_count = EXCLUDED.article_count,
                         last_updated = EXCLUDED.last_updated,
                         event_start_at = EXCLUDED.event_start_at,
-                        event_end_at = EXCLUDED.event_end_at
+                        event_end_at = EXCLUDED.event_end_at,
+                        parent_node_id = EXCLUDED.parent_node_id
                     """,
                     rows,
                 )
@@ -918,7 +955,7 @@ class PostgresStoryRepository:
                     """
                     SELECT node_id, kind, slug, display_name, canonical_name, normalized_name, summary,
                            aliases, status, label_source, article_count, created_at, last_updated,
-                           event_start_at, event_end_at
+                           event_start_at, event_end_at, parent_node_id
                     FROM nodes
                     WHERE node_id = ANY(%s)
                     """,
@@ -937,7 +974,7 @@ class PostgresStoryRepository:
         query = """
             SELECT node_id, kind, slug, display_name, canonical_name, normalized_name, summary,
                    aliases, status, label_source, article_count, created_at, last_updated,
-                   event_start_at, event_end_at
+                   event_start_at, event_end_at, parent_node_id
             FROM nodes
             WHERE 1 = 1
         """
@@ -965,7 +1002,7 @@ class PostgresStoryRepository:
                     """
                     SELECT node_id, kind, slug, display_name, canonical_name, normalized_name, summary,
                            aliases, status, label_source, article_count, created_at, last_updated,
-                           event_start_at, event_end_at
+                           event_start_at, event_end_at, parent_node_id
                     FROM nodes
                     WHERE kind = %s AND slug = %s
                     """,
@@ -1093,6 +1130,31 @@ class PostgresStoryRepository:
                     """,
                     (story_id,),
                 )
+                rows = cursor.fetchall()
+        return [_story_node_assignment_from_row(row) for row in rows]
+
+    def list_story_node_assignments(
+        self,
+        *,
+        story_ids: Sequence[str] | None = None,
+        node_ids: Sequence[str] | None = None,
+    ) -> list[StoryNodeAssignment]:
+        query = """
+            SELECT story_id, node_id, confidence, assigned_at, is_primary_event
+            FROM story_nodes
+            WHERE 1 = 1
+        """
+        params: list[Any] = []
+        if story_ids:
+            query += " AND story_id = ANY(%s)"
+            params.append(list(story_ids))
+        if node_ids:
+            query += " AND node_id = ANY(%s)"
+            params.append(list(node_ids))
+        query += " ORDER BY story_id, is_primary_event DESC, confidence DESC, node_id"
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
                 rows = cursor.fetchall()
         return [_story_node_assignment_from_row(row) for row in rows]
 
@@ -1232,6 +1294,14 @@ class PostgresStoryRepository:
         with self._connect() as connection:
             with connection.cursor() as cursor:
                 cursor.execute("REFRESH MATERIALIZED VIEW theme_heat_view")
+            connection.commit()
+
+    def delete_nodes(self, node_ids: Sequence[str]) -> None:
+        if not node_ids:
+            return
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM nodes WHERE node_id = ANY(%s)", (list(node_ids),))
             connection.commit()
 
     def clear_semantic_state(self, *, channel_id: int | None = None) -> tuple[list[str], list[str], list[str]]:
@@ -1471,6 +1541,8 @@ class PostgresStoryRepository:
             display_name=node.display_name,
             summary=node.summary,
             article_count=node.article_count,
+            parent_event=None,
+            child_events=(),
             events=tuple(_sort_related(bucketed["event"])),
             people=tuple(_sort_related(bucketed["person"])),
             nations=tuple(_sort_related(bucketed["nation"])),
@@ -1584,6 +1656,7 @@ def _node_from_row(row: Sequence[Any]) -> Node:
         last_updated=ensure_utc(row[12]) if row[12] is not None else None,
         event_start_at=ensure_utc(row[13]) if row[13] is not None else None,
         event_end_at=ensure_utc(row[14]) if row[14] is not None else None,
+        parent_node_id=str(row[15]) if row[15] is not None else None,
     )
 
 
@@ -1712,12 +1785,14 @@ def _theme_history_from_row(row: Sequence[Any]) -> ThemeHistoryPoint:
 
 
 def _node_list_entry_from_row(row: Sequence[Any]) -> NodeListEntry:
-    return NodeListEntry(
-        node_id=str(row[0]),
-        kind=str(row[1]),
-        slug=str(row[2]),
-        display_name=str(row[3]),
-        summary=str(row[4]) if row[4] is not None else None,
-        article_count=int(row[5]),
-        last_updated=ensure_utc(row[6]) if row[6] is not None else None,
-    )
+        return NodeListEntry(
+            node_id=str(row[0]),
+            kind=str(row[1]),
+            slug=str(row[2]),
+            display_name=str(row[3]),
+            summary=str(row[4]) if row[4] is not None else None,
+            article_count=int(row[5]),
+            last_updated=ensure_utc(row[6]) if row[6] is not None else None,
+            child_count=0,
+            parent_event=None,
+        )

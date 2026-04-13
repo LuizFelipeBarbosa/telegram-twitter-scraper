@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
@@ -16,11 +16,20 @@ from telegram_scraper.models import ChatRecord, ChatType
 from telegram_scraper.telegram_client import TelegramAccountClient, TelegramMessageEnvelope
 
 from telegram_scraper.kg.extraction import preferred_story_text, safe_story_text
+from telegram_scraper.kg.event_hierarchy import (
+    KGEventHierarchyService,
+    _detect_generic_family,
+    _extract_label_actor,
+    _normalize_place_scope,
+    _parse_place_scope,
+    build_event_hierarchy_snapshot,
+)
 from telegram_scraper.kg.interfaces import Embedder, MessageTranslator, RawMessageStream, SemanticExtractor, StoryRepository, VectorStore
 from telegram_scraper.kg.math_utils import average_vectors, cosine_similarity
 from telegram_scraper.kg.models import (
     ChannelProfile,
     CrossChannelMatch,
+    EventChildSummary,
     ExtractedSemanticNode,
     Node,
     NodeCentroidRecord,
@@ -28,7 +37,9 @@ from telegram_scraper.kg.models import (
     NodeKind,
     NodeListEntry,
     NodeRelation,
+    NodeStory,
     RawMessage,
+    RelatedNode,
     StoryEmbeddingRecord,
     StoryNodeAssignment,
     StorySemanticExtraction,
@@ -46,7 +57,6 @@ from telegram_scraper.kg.config import KGSettings
 
 
 NODE_KINDS: tuple[NodeKind, ...] = ("event", "person", "nation", "org", "place", "theme")
-ACTOR_KINDS: tuple[NodeKind, ...] = ("person", "nation", "org")
 ProjectionPolicy = Literal["per_batch", "end_of_run", "manual"]
 REPAIR_RAW_MESSAGE_FLUSH_SIZE = 500
 
@@ -122,6 +132,193 @@ def _stable_hash(*parts: object) -> str:
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:8]
 
 
+def _channel_title_for_story(channel_id: int, profile: ChannelProfile | None) -> str:
+    if profile is not None:
+        for value in (profile.channel_title, profile.channel_slug, profile.channel_username):
+            if value:
+                return value
+    return str(channel_id)
+
+
+def _preview_text(text: str, *, limit: int = 200) -> str:
+    stripped = (text or "").strip()
+    if len(stripped) <= limit:
+        return stripped
+    return stripped[: limit - 1].rstrip() + "…"
+
+
+def _sort_related(nodes: list[RelatedNode]) -> list[RelatedNode]:
+    return sorted(
+        nodes,
+        key=lambda item: (
+            -item.score,
+            -(item.latest_story_at.timestamp() if item.latest_story_at is not None else 0.0),
+            item.display_name.lower(),
+        ),
+    )
+
+
+def _ordered_counter_labels(counter: Counter[str]) -> tuple[str, ...]:
+    return tuple(
+        label
+        for label, _count in sorted(
+            counter.items(),
+            key=lambda item: (-item[1], item[0].lower()),
+        )
+    )
+
+
+def _person_middle_initial_variants(value: str) -> set[str]:
+    normalized = _normalize_name(value)
+    if not normalized:
+        return set()
+    tokens = normalized.split()
+    if len(tokens) < 3:
+        return set()
+    middle = tokens[1:-1]
+    if not middle or all(len(token) > 1 for token in middle):
+        return set()
+    collapsed = [tokens[0], *[token for token in middle if len(token) > 1], tokens[-1]]
+    collapsed = [token for token in collapsed if token]
+    if len(collapsed) < 2:
+        return set()
+    return {" ".join(collapsed)}
+
+
+def _match_keys_for_text(kind: NodeKind, value: str) -> set[str]:
+    normalized = _normalize_name(value)
+    if not normalized:
+        return set()
+    keys = {normalized}
+    if kind == "person":
+        keys.update(_person_middle_initial_variants(normalized))
+    return keys
+
+
+def _candidate_match_keys(kind: NodeKind, candidate: ExtractedSemanticNode) -> set[str]:
+    keys: set[str] = set()
+    for value in (candidate.name, *candidate.aliases):
+        keys.update(_match_keys_for_text(kind, value))
+    return keys
+
+
+def _node_match_keys(kind: NodeKind, node: Node) -> set[str]:
+    keys = _match_keys_for_text(kind, node.normalized_name)
+    for alias in node.aliases:
+        keys.update(_match_keys_for_text(kind, alias))
+    return keys
+
+
+def _implicit_parent_actor_keys(node: Node) -> set[str]:
+    if _detect_generic_family(node.display_name) not in {"strike", "airstrike"}:
+        return set()
+    actor = _extract_label_actor(node.display_name)
+    if actor is None:
+        return set()
+    return {actor[0]}
+
+
+def _child_event_location_labels(
+    *,
+    child: Node,
+    child_story_ids: set[str],
+    assignments_by_story: dict[str, list[StoryNodeAssignment]],
+    related_nodes: dict[str, Node],
+) -> tuple[str, ...]:
+    labels: Counter[str] = Counter()
+    for story_id in child_story_ids:
+        seen_labels: set[str] = set()
+        for assignment in assignments_by_story.get(story_id, []):
+            related = related_nodes.get(assignment.node_id)
+            if related is None or related.node_id == child.node_id or related.status != "active" or related.kind != "place":
+                continue
+            normalized = _normalize_place_scope(related.display_name)
+            if normalized is None:
+                continue
+            place_label = normalized[1]
+            if place_label in seen_labels:
+                continue
+            labels[place_label] += 1
+            seen_labels.add(place_label)
+
+    parsed_place = _parse_place_scope(child.display_name)
+    if parsed_place is not None:
+        normalized = _normalize_place_scope(parsed_place)
+        if normalized is not None and normalized[1] not in labels:
+            labels[normalized[1]] = 1
+
+    return _ordered_counter_labels(labels)
+
+
+def _child_event_organization_labels(
+    *,
+    child: Node,
+    child_story_ids: set[str],
+    assignments_by_story: dict[str, list[StoryNodeAssignment]],
+    related_nodes: dict[str, Node],
+    excluded_actor_keys: set[str],
+) -> tuple[str, ...]:
+    labels: Counter[str] = Counter()
+    seen_keys_per_story: dict[str, set[str]] = defaultdict(set)
+    for story_id in child_story_ids:
+        for assignment in assignments_by_story.get(story_id, []):
+            related = related_nodes.get(assignment.node_id)
+            if (
+                related is None
+                or related.node_id == child.node_id
+                or related.status != "active"
+                or related.kind not in {"nation", "org"}
+            ):
+                continue
+            actor_key = related.normalized_name
+            if actor_key in excluded_actor_keys or actor_key in seen_keys_per_story[story_id]:
+                continue
+            labels[related.display_name] += 1
+            seen_keys_per_story[story_id].add(actor_key)
+
+    parsed_actor = _extract_label_actor(child.display_name)
+    if parsed_actor is not None and parsed_actor[0] not in excluded_actor_keys and parsed_actor[1] not in labels:
+        labels[parsed_actor[1]] = 1
+
+    return _ordered_counter_labels(labels)
+
+
+def _build_event_child_summary(
+    *,
+    child: Node,
+    child_story_ids: set[str],
+    assignments_by_story: dict[str, list[StoryNodeAssignment]],
+    related_nodes: dict[str, Node],
+    excluded_actor_keys: set[str],
+) -> EventChildSummary:
+    location_labels = _child_event_location_labels(
+        child=child,
+        child_story_ids=child_story_ids,
+        assignments_by_story=assignments_by_story,
+        related_nodes=related_nodes,
+    )
+    organization_labels = _child_event_organization_labels(
+        child=child,
+        child_story_ids=child_story_ids,
+        assignments_by_story=assignments_by_story,
+        related_nodes=related_nodes,
+        excluded_actor_keys=excluded_actor_keys,
+    )
+    return EventChildSummary(
+        node_id=child.node_id,
+        slug=child.slug,
+        display_name=child.display_name,
+        summary=child.summary,
+        article_count=len(child_story_ids),
+        child_count=0,
+        last_updated=child.last_updated,
+        event_start_at=child.event_start_at,
+        primary_location=location_labels[0] if location_labels else None,
+        location_labels=location_labels,
+        organization_labels=organization_labels,
+    )
+
+
 def _candidate_text(candidate: ExtractedSemanticNode) -> str:
     parts = [candidate.name.strip()]
     if candidate.summary:
@@ -140,14 +337,20 @@ def _kind_candidates(extraction: StorySemanticExtraction) -> dict[NodeKind, tupl
     }
 
 
-def _dedupe_candidates(candidates: Iterable[ExtractedSemanticNode]) -> tuple[ExtractedSemanticNode, ...]:
+def _dedupe_candidates(kind: NodeKind, candidates: Iterable[ExtractedSemanticNode]) -> tuple[ExtractedSemanticNode, ...]:
     seen: set[str] = set()
     ordered: list[ExtractedSemanticNode] = []
     for candidate in candidates:
-        key = _normalize_name(candidate.name)
-        if not key or key in seen:
-            continue
-        seen.add(key)
+        if kind == "person":
+            keys = _candidate_match_keys(kind, candidate)
+            if not keys or keys & seen:
+                continue
+            seen.update(keys)
+        else:
+            key = _normalize_name(candidate.name)
+            if not key or key in seen:
+                continue
+            seen.add(key)
         ordered.append(candidate)
     return tuple(ordered)
 
@@ -583,6 +786,7 @@ class KGNodeProcessingService:
         settings: KGSettings,
         *,
         projection_service: KGNodeProjectionService | None = None,
+        hierarchy_service: KGEventHierarchyService | None = None,
     ):
         self.repository = repository
         self.vector_store = vector_store
@@ -590,6 +794,7 @@ class KGNodeProcessingService:
         self.extractor = extractor
         self.settings = settings
         self.projection_service = projection_service or KGNodeProjectionService(repository=repository, vector_store=vector_store)
+        self.hierarchy_service = hierarchy_service or KGEventHierarchyService(repository)
 
     def process_unassigned(
         self,
@@ -652,6 +857,7 @@ class KGNodeProcessingService:
             state=state,
             callback=progress_callback,
         )
+        self.hierarchy_service.rebuild()
 
         projection_result = (
             self.projection_service.refresh_all(days=31)
@@ -779,7 +985,7 @@ class KGNodeProcessingService:
         primary_event_node_id: str | None = None
 
         for kind in NODE_KINDS:
-            for candidate in _dedupe_candidates(_kind_candidates(extraction)[kind]):
+            for candidate in _dedupe_candidates(kind, _kind_candidates(extraction)[kind]):
                 node, confidence, created = self._resolve_candidate(
                     story=story,
                     kind=kind,
@@ -903,6 +1109,16 @@ class KGNodeProcessingService:
     ) -> Node | None:
         normalized_name = _normalize_name(candidate.name)
         nodes = list(state.node_cache[kind].values())
+        if kind == "person":
+            candidate_keys = _candidate_match_keys(kind, candidate)
+            for node in nodes:
+                if candidate_keys & _node_match_keys(kind, node):
+                    return node
+        event_parent_ids = {
+            node.parent_node_id
+            for node in nodes
+            if kind == "event" and node.parent_node_id is not None
+        }
         for node in nodes:
             if node.normalized_name == normalized_name:
                 if kind != "event" or self._event_within_window(node=node, candidate=candidate):
@@ -922,9 +1138,14 @@ class KGNodeProcessingService:
             if matched_node is not None:
                 return matched_node
         if kind == "event" and embedding:
+            eligible_nodes = {
+                node_id: node
+                for node_id, node in state.node_cache[kind].items()
+                if node.label_source != "hierarchy_group" and node_id not in event_parent_ids
+            }
             matched_node = self._best_centroid_match(
                 state.event_centroids,
-                state.node_cache[kind],
+                eligible_nodes,
                 embedding=embedding,
                 threshold=self.settings.event_match_threshold,
                 event_candidate=candidate,
@@ -945,9 +1166,15 @@ class KGNodeProcessingService:
     def _apply_candidate(self, node: Node, *, candidate: ExtractedSemanticNode, last_updated: datetime) -> Node:
         aliases = list(node.aliases)
         existing_aliases = {_normalize_name(alias) for alias in aliases}
+        candidate_name = candidate.name.strip()
+        normalized_candidate_name = _normalize_name(candidate_name)
+        if candidate_name and normalized_candidate_name and normalized_candidate_name != node.normalized_name and normalized_candidate_name not in existing_aliases:
+            aliases.append(candidate_name)
+            existing_aliases.add(normalized_candidate_name)
         for alias in candidate.aliases:
             if _normalize_name(alias) not in existing_aliases and alias.strip():
                 aliases.append(alias.strip())
+                existing_aliases.add(_normalize_name(alias))
         event_start = node.event_start_at
         if candidate.start_at is not None:
             candidate_start = ensure_utc(candidate.start_at) or candidate.start_at
@@ -1329,6 +1556,7 @@ class KGChannelMaintenanceService:
         translator: MessageTranslator | None = None,
         segmenter: StorySegmenter | None = None,
         node_service: KGNodeProcessingService | None = None,
+        hierarchy_service: KGEventHierarchyService | None = None,
     ):
         self.repository = repository
         self.vector_store = vector_store
@@ -1337,12 +1565,14 @@ class KGChannelMaintenanceService:
         self.settings = settings
         self.translator = translator
         self.segmenter = segmenter or StorySegmenter()
+        self.hierarchy_service = hierarchy_service or KGEventHierarchyService(repository)
         self.node_service = node_service or KGNodeProcessingService(
             repository=repository,
             vector_store=vector_store,
             embedder=embedder,
             extractor=extractor,
             settings=settings,
+            hierarchy_service=self.hierarchy_service,
         )
 
     def reset_channel(self, channel_id: int) -> KGChannelResetResult:
@@ -1350,6 +1580,7 @@ class KGChannelMaintenanceService:
         story_ids, theme_ids, event_ids = self.repository.clear_semantic_state(channel_id=channel_id)
         self.vector_store.delete_theme_centroids(theme_ids)
         self.vector_store.delete_event_centroids(event_ids)
+        self.hierarchy_service.rebuild()
         return KGChannelResetResult(stories_preserved=len(story_ids), nodes_deleted=len(theme_ids) + len(event_ids))
 
     def clear_story_state(self, channel_id: int) -> KGChannelResetResult:
@@ -1358,7 +1589,12 @@ class KGChannelMaintenanceService:
         self.vector_store.delete_story_embeddings(story_ids)
         self.vector_store.delete_theme_centroids(theme_ids)
         self.vector_store.delete_event_centroids(event_ids)
+        self.hierarchy_service.rebuild()
         return KGChannelResetResult(stories_preserved=0, nodes_deleted=len(theme_ids) + len(event_ids))
+
+    def rebuild_event_hierarchy(self):
+        self.repository.ensure_schema()
+        return self.hierarchy_service.rebuild()
 
     def rebuild_story_units(self, channel_id: int) -> list[StoryUnit]:
         profile = self.repository.get_channel_profile(channel_id) or default_channel_profile(channel_id)
@@ -1617,8 +1853,232 @@ class KGQueryService:
     def theme_history(self, slug: str) -> list[ThemeHistoryPoint]:
         return self.repository.get_theme_history(slug=slug)
 
-    def list_nodes(self, *, kind: NodeKind, limit: int = 50) -> list[NodeListEntry]:
-        return self.repository.list_node_entries(kind=kind, limit=limit)
+    def list_nodes(self, *, kind: NodeKind, limit: int = 50, include_children: bool = False) -> list[NodeListEntry]:
+        if kind != "event":
+            return self.repository.list_node_entries(kind=kind, limit=limit)
+        snapshot = build_event_hierarchy_snapshot(self.repository)
+        node_ids = tuple(snapshot.nodes_by_id) if include_children else snapshot.top_level_ids()
+        rows = [snapshot.entry_for(node_id) for node_id in node_ids]
+        rows.sort(
+            key=lambda row: (
+                -row.article_count,
+                -(row.last_updated.timestamp() if row.last_updated is not None else 0.0),
+                row.display_name.lower(),
+            ),
+        )
+        return rows[:limit]
 
-    def node_show(self, *, kind: NodeKind, slug: str, story_limit: int = 20, story_offset: int = 0) -> NodeDetail | None:
-        return self.repository.get_node_detail(kind=kind, slug=slug, story_limit=story_limit, story_offset=story_offset)
+    def node_show(
+        self,
+        *,
+        kind: NodeKind,
+        slug: str,
+        story_limit: int = 20,
+        story_offset: int = 0,
+    ) -> NodeDetail | None:
+        if kind != "event":
+            return self.repository.get_node_detail(kind=kind, slug=slug, story_limit=story_limit, story_offset=story_offset)
+        snapshot = build_event_hierarchy_snapshot(self.repository)
+        node = next((item for item in snapshot.nodes_by_id.values() if item.slug == slug), None)
+        if node is None:
+            return None
+
+        node_id = node.node_id
+        relevant_story_ids = set(snapshot.rollup_story_ids_by_node.get(node_id, set()))
+        if not snapshot.is_parent(node_id):
+            relevant_story_ids = set(snapshot.direct_story_ids_by_node.get(node_id, set()))
+
+        assignments = self.repository.list_story_node_assignments(story_ids=tuple(sorted(relevant_story_ids)))
+        assignments_by_story: dict[str, list[StoryNodeAssignment]] = defaultdict(list)
+        assignment_node_ids: set[str] = set()
+        for assignment in assignments:
+            assignments_by_story[assignment.story_id].append(assignment)
+            assignment_node_ids.add(assignment.node_id)
+        related_nodes = {item.node_id: item for item in self.repository.get_nodes(sorted(assignment_node_ids))}
+        story_lookup = {
+            story.story_id: story
+            for story in self.repository.get_story_units_by_ids(sorted(relevant_story_ids))
+        }
+        descendant_ids = set(snapshot.descendant_ids(node_id))
+        excluded_event_ids = set(descendant_ids)
+        if node.parent_node_id is not None:
+            excluded_event_ids.add(node.parent_node_id)
+
+        shared_counts: dict[str, Counter[str]] = defaultdict(Counter)
+        latest_story_at: dict[str, dict[str, datetime | None]] = defaultdict(dict)
+        for story_id, story_assignments in assignments_by_story.items():
+            story = story_lookup.get(story_id)
+            seen_related_ids: set[str] = set()
+            for assignment in story_assignments:
+                related = related_nodes.get(assignment.node_id)
+                if related is None or related.status != "active":
+                    continue
+                related_id = related.node_id
+                related_node = related
+                if related.kind == "event" and snapshot.is_parent(node_id):
+                    related_id = related.parent_node_id or related_id
+                    related_node = snapshot.nodes_by_id.get(related_id, related)
+                if related.kind == "event" and related_id in excluded_event_ids:
+                    continue
+                if related.kind != "event" and related_id == node_id:
+                    continue
+                if related_id in seen_related_ids:
+                    continue
+                shared_counts[related_node.kind][related_id] += 1
+                current_latest = latest_story_at[related_node.kind].get(related_id)
+                if story is not None and (current_latest is None or story.timestamp_end > current_latest):
+                    latest_story_at[related_node.kind][related_id] = story.timestamp_end
+                seen_related_ids.add(related_id)
+
+        bucketed: dict[str, list[RelatedNode]] = defaultdict(list)
+        for bucket_kind, counts in shared_counts.items():
+            for related_id, shared_story_count in counts.items():
+                related = snapshot.nodes_by_id.get(related_id) or related_nodes.get(related_id)
+                if related is None or related.status != "active":
+                    continue
+                article_count = (
+                    len(snapshot.rollup_story_ids_by_node.get(related_id, set()))
+                    if related.kind == "event"
+                    else related.article_count
+                )
+                bucketed[bucket_kind].append(
+                    RelatedNode(
+                        node_id=related.node_id,
+                        kind=related.kind,
+                        slug=related.slug,
+                        display_name=related.display_name,
+                        summary=related.summary,
+                        article_count=article_count,
+                        score=float(shared_story_count),
+                        shared_story_count=shared_story_count,
+                        latest_story_at=latest_story_at[bucket_kind].get(related_id),
+                    )
+                )
+
+        sorted_stories = sorted(
+            story_lookup.values(),
+            key=lambda story: (story.timestamp_start, story.story_id),
+            reverse=True,
+        )
+        paged_stories = sorted_stories[story_offset : story_offset + story_limit]
+        relevant_assignment_ids = descendant_ids if snapshot.is_parent(node_id) else {node_id}
+        channel_profiles = {
+            story.channel_id: self.repository.get_channel_profile(story.channel_id)
+            for story in paged_stories
+        }
+        story_rows = tuple(
+            NodeStory(
+                story_id=story.story_id,
+                channel_id=story.channel_id,
+                channel_title=_channel_title_for_story(story.channel_id, channel_profiles.get(story.channel_id)),
+                timestamp_start=story.timestamp_start,
+                timestamp_end=story.timestamp_end,
+                confidence=max(
+                    (
+                        assignment.confidence
+                        for assignment in assignments_by_story.get(story.story_id, [])
+                        if assignment.node_id in relevant_assignment_ids
+                    ),
+                    default=0.0,
+                ),
+                preview_text=_preview_text(story.english_combined_text or story.combined_text),
+                combined_text=story.english_combined_text or story.combined_text,
+                original_preview_text=_preview_text(story.combined_text),
+                original_combined_text=story.combined_text,
+                media_refs=story.media_refs,
+            )
+            for story in paged_stories
+        )
+        child_ids = snapshot.children_by_parent.get(node_id, ())
+        excluded_actor_keys = _implicit_parent_actor_keys(node)
+        child_events = tuple(
+            _build_event_child_summary(
+                child=snapshot.node(child_id),
+                child_story_ids=set(snapshot.direct_story_ids_by_node.get(child_id, set())),
+                assignments_by_story=assignments_by_story,
+                related_nodes=related_nodes,
+                excluded_actor_keys=excluded_actor_keys,
+            )
+            for child_id in sorted(
+                child_ids,
+                key=lambda child_id: (
+                    -(snapshot.rollup_last_updated_by_node.get(child_id).timestamp() if snapshot.rollup_last_updated_by_node.get(child_id) is not None else 0.0),
+                    -(snapshot.node(child_id).event_start_at.timestamp() if snapshot.node(child_id).event_start_at is not None else 0.0),
+                    snapshot.node(child_id).display_name.lower(),
+                ),
+            )
+        )
+        return NodeDetail(
+            node_id=node.node_id,
+            kind=node.kind,
+            slug=node.slug,
+            display_name=node.display_name,
+            summary=node.summary,
+            article_count=len(snapshot.rollup_story_ids_by_node.get(node_id, set())),
+            parent_event=snapshot.ref_for(node.parent_node_id) if node.parent_node_id else None,
+            child_events=child_events,
+            events=tuple(_sort_related(bucketed["event"])),
+            people=tuple(_sort_related(bucketed["person"])),
+            nations=tuple(_sort_related(bucketed["nation"])),
+            orgs=tuple(_sort_related(bucketed["org"])),
+            places=tuple(_sort_related(bucketed["place"])),
+            themes=tuple(_sort_related(bucketed["theme"])),
+            stories=story_rows,
+        )
+
+    def snapshot_relations(self, *, nodes: Sequence[NodeListEntry]) -> list[NodeRelation]:
+        if not nodes:
+            return []
+        selected_ids = {node.node_id for node in nodes}
+        owners_by_assignment_node: dict[str, set[str]] = defaultdict(set)
+        event_snapshot = build_event_hierarchy_snapshot(self.repository) if any(node.kind == "event" for node in nodes) else None
+        bulk_node_ids: set[str] = set()
+        for node in nodes:
+            if node.kind == "event" and event_snapshot is not None:
+                descendants = event_snapshot.descendant_ids(node.node_id)
+                bulk_node_ids.update(descendants)
+                for descendant_id in descendants:
+                    owners_by_assignment_node[descendant_id].add(node.node_id)
+            else:
+                bulk_node_ids.add(node.node_id)
+                owners_by_assignment_node[node.node_id].add(node.node_id)
+
+        assignments = self.repository.list_story_node_assignments(node_ids=tuple(sorted(bulk_node_ids)))
+        selected_by_story: dict[str, set[str]] = defaultdict(set)
+        for assignment in assignments:
+            for owner_id in owners_by_assignment_node.get(assignment.node_id, ()):
+                if owner_id in selected_ids:
+                    selected_by_story[assignment.story_id].add(owner_id)
+
+        story_lookup = {
+            story.story_id: story
+            for story in self.repository.get_story_units_by_ids(sorted(selected_by_story))
+        }
+        shared_counts: Counter[tuple[str, str]] = Counter()
+        latest_story_at: dict[tuple[str, str], datetime | None] = {}
+        for story_id, owner_ids in selected_by_story.items():
+            ordered_ids = sorted(owner_ids)
+            for index, left_id in enumerate(ordered_ids):
+                for right_id in ordered_ids[index + 1 :]:
+                    pair = _canonical_pair(left_id, right_id)
+                    shared_counts[pair] += 1
+                    story = story_lookup.get(story_id)
+                    current_latest = latest_story_at.get(pair)
+                    if story is not None and (current_latest is None or story.timestamp_end > current_latest):
+                        latest_story_at[pair] = story.timestamp_end
+
+        return [
+            NodeRelation(
+                source_node_id=pair[0],
+                target_node_id=pair[1],
+                relation_type="related",
+                score=float(shared_story_count),
+                shared_story_count=shared_story_count,
+                latest_story_at=latest_story_at.get(pair),
+            )
+            for pair, shared_story_count in sorted(
+                shared_counts.items(),
+                key=lambda item: (-item[1], item[0][0], item[0][1]),
+            )
+            if shared_story_count > 0
+        ]

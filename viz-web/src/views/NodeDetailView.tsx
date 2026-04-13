@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { ConnectedNodesRail } from "../components/ConnectedNodesRail";
 import { EmptyState } from "../components/EmptyState";
+import { EventChildrenList } from "../components/EventChildrenList";
 import { LoadingState } from "../components/LoadingState";
 import { NodeHeaderBand } from "../components/NodeHeaderBand";
 import { NodeStoriesList } from "../components/NodeStoriesList";
@@ -48,7 +49,7 @@ export function NodeDetailView() {
 
   return (
     <section>
-      <Breadcrumbs kind={detail.kind} displayName={detail.display_name} />
+      <Breadcrumbs kind={detail.kind} displayName={detail.display_name} parentEvent={detail.parent_event} />
       <NodeHeaderBand detail={detail} phase={themePhase} />
 
       <div className="mx-5">
@@ -72,6 +73,9 @@ export function NodeDetailView() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] border-b border-ink">
         <div className="px-5 py-5 border-r border-ink/20 flex flex-col gap-6">
           {detail.kind === "theme" ? <ThemeHistory history={history} /> : null}
+          {detail.kind === "event" ? (
+            <EventChildrenList parentDisplayName={detail.display_name} childEvents={detail.child_events} />
+          ) : null}
           <NodeStoriesList stories={detail.stories} />
         </div>
         <div className="px-5 py-5">

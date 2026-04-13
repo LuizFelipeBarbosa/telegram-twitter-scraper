@@ -13,6 +13,8 @@ const node: GraphNodeRow = {
   article_count: 142,
   score: 84,
   phase: "emerging",
+  child_count: 0,
+  parent_event: null,
 };
 
 describe("LandscapePreviewPopover", () => {

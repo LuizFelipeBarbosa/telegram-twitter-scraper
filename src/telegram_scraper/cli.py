@@ -14,6 +14,7 @@ except ImportError:  # pragma: no cover - exercised only without runtime deps.
 from telegram_scraper.chat_discovery import filter_chats
 from telegram_scraper.config import ConfigError, Settings, parse_since_date
 from telegram_scraper.kg.config import KGSettings
+from telegram_scraper.kg.event_hierarchy import KGEventHierarchyService
 from telegram_scraper.kg.models import ChannelProfile
 from telegram_scraper.kg.runtime import (
     build_embedder,
@@ -432,7 +433,9 @@ if typer is not None:
     def _build_query_service(env_file: Path) -> KGQueryService:
         kg_settings = _load_kg_settings(env_file)
         kg_settings.require_database()
-        return KGQueryService(build_repository(kg_settings))
+        repository = build_repository(kg_settings)
+        repository.ensure_schema()
+        return KGQueryService(repository)
 
     def _build_channel_maintenance_service(env_file: Path) -> tuple[KGSettings, KGChannelMaintenanceService]:
         kg_settings = _load_kg_settings(env_file)
@@ -781,11 +784,25 @@ if typer is not None:
     @app.command("kg-events-list")
     def kg_events_list(
         limit: int = typer.Option(50, "--limit", min=1, max=500, help="Maximum number of rows to return."),
+        include_children: bool = typer.Option(False, "--include-children", help="Include child events in addition to top-level parent events."),
         env_file: Path = typer.Option(Path(".env"), help="Path to environment file."),
     ) -> None:
         """List canonical event nodes."""
         try:
-            _echo_json(_build_query_service(env_file).list_nodes(kind="event", limit=limit))
+            _echo_json(_build_query_service(env_file).list_nodes(kind="event", limit=limit, include_children=include_children))
+        except (ConfigError, RuntimeError) as exc:
+            raise _exit_with_error(str(exc))
+
+    @app.command("kg-rebuild-event-hierarchy")
+    def kg_rebuild_event_hierarchy(
+        env_file: Path = typer.Option(Path(".env"), help="Path to environment file."),
+    ) -> None:
+        """Recompute parent-child event hierarchy links and synthetic parent events."""
+        try:
+            kg_settings = _load_kg_settings(env_file)
+            kg_settings.require_database()
+            service = KGEventHierarchyService(build_repository(kg_settings))
+            _echo_json(service.rebuild())
         except (ConfigError, RuntimeError) as exc:
             raise _exit_with_error(str(exc))
 

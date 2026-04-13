@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta, timezone
 from telegram_scraper.config import Settings
 from telegram_scraper.kg.config import KGSettings
 from telegram_scraper.kg.math_utils import cosine_similarity
+from telegram_scraper.kg.event_hierarchy import KGEventHierarchyService
 from telegram_scraper.kg.models import (
     ChannelProfile,
     ChannelSummary,
@@ -389,6 +390,9 @@ class FakeRepository:
     def get_story_unit(self, story_id):
         return self.stories.get(story_id)
 
+    def get_story_units_by_ids(self, story_ids):
+        return [self.stories[story_id] for story_id in story_ids if story_id in self.stories]
+
     def upsert_story_semantics(self, records):
         for record in records:
             self.story_semantics[record.story_id] = record
@@ -456,6 +460,19 @@ class FakeRepository:
         rows.sort(key=lambda assignment: (not assignment.is_primary_event, -assignment.confidence, assignment.node_id))
         return rows
 
+    def list_story_node_assignments(self, *, story_ids=None, node_ids=None):
+        story_id_filter = set(story_ids or [])
+        node_id_filter = set(node_ids or [])
+        rows = []
+        for (_story_id, _node_id), assignment in self.story_nodes.items():
+            if story_id_filter and assignment.story_id not in story_id_filter:
+                continue
+            if node_id_filter and assignment.node_id not in node_id_filter:
+                continue
+            rows.append(assignment)
+        rows.sort(key=lambda assignment: (assignment.story_id, not assignment.is_primary_event, -assignment.confidence, assignment.node_id))
+        return rows
+
     def list_story_node_ids(self, story_id):
         return [assignment.node_id for assignment in self.get_story_node_assignments(story_id)]
 
@@ -513,6 +530,10 @@ class FakeRepository:
                 )
             )
         self.theme_heat_rows = rows
+
+    def delete_nodes(self, node_ids):
+        for node_id in node_ids:
+            self.nodes.pop(node_id, None)
 
     def clear_semantic_state(self, *, channel_id=None):
         story_ids = [story.story_id for story in self.list_story_units(channel_id=channel_id)]
@@ -762,6 +783,442 @@ class KGNodeServiceTests(unittest.TestCase):
         self.assertEqual(detail.themes[0].slug, "ceasefire-peace-negotiations")
         actors_count = len(detail.people) + len(detail.nations) + len(detail.orgs)
         self.assertEqual(actors_count, 3)
+
+    def test_node_processing_merges_person_middle_initial_variants(self):
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+
+        story_a = build_story("story-a", channel_id=100, minute=0, combined_text="Trump speaks")
+        story_b = build_story("story-b", channel_id=100, minute=1, combined_text="Trump responds")
+        repository.save_story_units([story_a, story_b])
+        vector_store.upsert_story_embeddings(
+            [
+                StoryEmbeddingRecord(story_a.story_id, [0.7, 0.2, 0.0], 100, story_a.timestamp_start),
+                StoryEmbeddingRecord(story_b.story_id, [0.7, 0.2, 0.0], 100, story_b.timestamp_start),
+            ]
+        )
+
+        extractor = FakeExtractor(
+            {
+                "story-a": StorySemanticExtraction(
+                    story_id="story-a",
+                    people=(ExtractedSemanticNode(name="Donald Trump"),),
+                ),
+                "story-b": StorySemanticExtraction(
+                    story_id="story-b",
+                    people=(
+                        ExtractedSemanticNode(name="Donald J. Trump"),
+                        ExtractedSemanticNode(name="Donald J Trump"),
+                    ),
+                ),
+            }
+        )
+
+        result = KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        ).process_stories([story_a, story_b])
+
+        self.assertEqual(result.nodes_created, 1)
+        self.assertEqual(result.assignments_created, 2)
+        people = [node for node in repository.nodes.values() if node.kind == "person"]
+        self.assertEqual(len(people), 1)
+        self.assertEqual(people[0].display_name, "Donald Trump")
+        self.assertIn("Donald J. Trump", people[0].aliases)
+        assignment_node_ids = {
+            assignment.node_id
+            for assignment in repository.story_nodes.values()
+            if repository.nodes[assignment.node_id].kind == "person"
+        }
+        self.assertEqual(assignment_node_ids, {people[0].node_id})
+
+    def test_event_hierarchy_service_groups_named_operations_and_scoped_airstrike_families(self):
+        repository = FakeRepository()
+
+        story_operation = build_story("story-operation", channel_id=100, minute=0, combined_text="Operation direct mention")
+        story_wave = build_story("story-wave", channel_id=100, minute=1, combined_text="Wave update")
+        story_air_one = build_story("story-air-one", channel_id=100, minute=2, combined_text="Airstrike one")
+        story_air_two = build_story("story-air-two", channel_id=100, minute=3, combined_text="Airstrike two")
+        repository.save_story_units([story_operation, story_wave, story_air_one, story_air_two])
+
+        operation = Node(
+            node_id="event-operation",
+            kind="event",
+            slug="operation-true-promise-4",
+            display_name="Operation True Promise 4",
+            canonical_name="Operation True Promise 4",
+            normalized_name="operation true promise 4",
+            article_count=1,
+            created_at=story_operation.timestamp_start,
+            last_updated=story_operation.timestamp_end,
+        )
+        wave = Node(
+            node_id="event-wave",
+            kind="event",
+            slug="16th-wave-operation-true-promise-4",
+            display_name="16th wave of Operation True Promise 4 retaliatory strikes",
+            canonical_name="16th wave of Operation True Promise 4 retaliatory strikes",
+            normalized_name="16th wave of operation true promise 4 retaliatory strikes",
+            article_count=1,
+            created_at=story_wave.timestamp_start,
+            last_updated=story_wave.timestamp_end,
+        )
+        air_one = Node(
+            node_id="event-air-one",
+            kind="event",
+            slug="israeli-airstrike-on-southern-suburb-of-beirut",
+            display_name="Israeli airstrike on southern suburb of Beirut",
+            canonical_name="Israeli airstrike on southern suburb of Beirut",
+            normalized_name="israeli airstrike on southern suburb of beirut",
+            article_count=1,
+            created_at=story_air_one.timestamp_start,
+            last_updated=story_air_one.timestamp_end,
+        )
+        air_two = Node(
+            node_id="event-air-two",
+            kind="event",
+            slug="israeli-airstrike-on-residential-building-in-southern-lebanon",
+            display_name="Israeli airstrike on residential building in southern Lebanon",
+            canonical_name="Israeli airstrike on residential building in southern Lebanon",
+            normalized_name="israeli airstrike on residential building in southern lebanon",
+            article_count=1,
+            created_at=story_air_two.timestamp_start,
+            last_updated=story_air_two.timestamp_end,
+        )
+        israel = Node(
+            node_id="nation-israel",
+            kind="nation",
+            slug="israel",
+            display_name="Israel",
+            canonical_name="Israel",
+            normalized_name="israel",
+            article_count=2,
+        )
+        south_lebanon = Node(
+            node_id="place-south-lebanon",
+            kind="place",
+            slug="southern-lebanon",
+            display_name="Southern Lebanon",
+            canonical_name="Southern Lebanon",
+            normalized_name="southern lebanon",
+            article_count=2,
+        )
+        repository.save_nodes([operation, wave, air_one, air_two, israel, south_lebanon])
+        repository.save_story_node_assignments(
+            [
+                StoryNodeAssignment(story_operation.story_id, operation.node_id, 1.0, is_primary_event=True),
+                StoryNodeAssignment(story_wave.story_id, wave.node_id, 1.0, is_primary_event=True),
+                StoryNodeAssignment(story_air_one.story_id, air_one.node_id, 1.0, is_primary_event=True),
+                StoryNodeAssignment(story_air_two.story_id, air_two.node_id, 1.0, is_primary_event=True),
+                StoryNodeAssignment(story_air_one.story_id, israel.node_id, 0.8),
+                StoryNodeAssignment(story_air_two.story_id, israel.node_id, 0.8),
+                StoryNodeAssignment(story_air_one.story_id, south_lebanon.node_id, 0.8),
+                StoryNodeAssignment(story_air_two.story_id, south_lebanon.node_id, 0.8),
+            ]
+        )
+
+        result = KGEventHierarchyService(repository).rebuild()
+
+        self.assertEqual(result.parents_created, 1)
+        self.assertEqual(repository.nodes[wave.node_id].parent_node_id, operation.node_id)
+        synthetic_parents = [node for node in repository.nodes.values() if node.label_source == "hierarchy_group"]
+        self.assertEqual(len(synthetic_parents), 1)
+        self.assertEqual(synthetic_parents[0].display_name, "Israeli airstrikes")
+        self.assertEqual(repository.nodes[air_one.node_id].parent_node_id, synthetic_parents[0].node_id)
+        self.assertEqual(repository.nodes[air_two.node_id].parent_node_id, synthetic_parents[0].node_id)
+
+    def test_event_hierarchy_prefers_label_scope_over_noisy_story_entities(self):
+        repository = FakeRepository()
+
+        story_air_one = build_story("story-air-one", channel_id=100, minute=0, combined_text="Airstrike one")
+        story_air_two = build_story("story-air-two", channel_id=100, minute=1, combined_text="Airstrike two")
+        repository.save_story_units([story_air_one, story_air_two])
+
+        air_one = Node(
+            node_id="event-air-one",
+            kind="event",
+            slug="israeli-airstrike-on-residential-building-in-southern-lebanon",
+            display_name="Israeli airstrike on residential building in southern Lebanon",
+            canonical_name="Israeli airstrike on residential building in southern Lebanon",
+            normalized_name="israeli airstrike on residential building in southern lebanon",
+            article_count=1,
+            created_at=story_air_one.timestamp_start,
+            last_updated=story_air_one.timestamp_end,
+        )
+        air_two = Node(
+            node_id="event-air-two",
+            kind="event",
+            slug="israeli-airstrike-on-town-square-in-southern-lebanon",
+            display_name="Israeli airstrike on town square in southern Lebanon",
+            canonical_name="Israeli airstrike on town square in southern Lebanon",
+            normalized_name="israeli airstrike on town square in southern lebanon",
+            article_count=1,
+            created_at=story_air_two.timestamp_start,
+            last_updated=story_air_two.timestamp_end,
+        )
+        noisy_person = Node(
+            node_id="person-noisy",
+            kind="person",
+            slug="johnny-james-miller",
+            display_name="Johnny James Miller",
+            canonical_name="Johnny James Miller",
+            normalized_name="johnny james miller",
+            article_count=2,
+        )
+        noisy_org = Node(
+            node_id="org-noisy",
+            kind="org",
+            slug="irna",
+            display_name="IRNA",
+            canonical_name="IRNA",
+            normalized_name="irna",
+            article_count=2,
+        )
+        noisy_place = Node(
+            node_id="place-noisy",
+            kind="place",
+            slug="tehran",
+            display_name="Tehran",
+            canonical_name="Tehran",
+            normalized_name="tehran",
+            article_count=2,
+        )
+        repository.save_nodes([air_one, air_two, noisy_person, noisy_org, noisy_place])
+        repository.save_story_node_assignments(
+            [
+                StoryNodeAssignment(story_air_one.story_id, air_one.node_id, 1.0, is_primary_event=True),
+                StoryNodeAssignment(story_air_two.story_id, air_two.node_id, 1.0, is_primary_event=True),
+                StoryNodeAssignment(story_air_one.story_id, noisy_person.node_id, 0.8),
+                StoryNodeAssignment(story_air_two.story_id, noisy_person.node_id, 0.8),
+                StoryNodeAssignment(story_air_one.story_id, noisy_org.node_id, 0.8),
+                StoryNodeAssignment(story_air_two.story_id, noisy_org.node_id, 0.8),
+                StoryNodeAssignment(story_air_one.story_id, noisy_place.node_id, 0.8),
+                StoryNodeAssignment(story_air_two.story_id, noisy_place.node_id, 0.8),
+            ]
+        )
+
+        result = KGEventHierarchyService(repository).rebuild()
+
+        self.assertEqual(result.parents_created, 1)
+        synthetic_parents = [node for node in repository.nodes.values() if node.label_source == "hierarchy_group"]
+        self.assertEqual(len(synthetic_parents), 1)
+        self.assertEqual(synthetic_parents[0].display_name, "Israeli airstrikes")
+        self.assertEqual(repository.nodes[air_one.node_id].parent_node_id, synthetic_parents[0].node_id)
+        self.assertEqual(repository.nodes[air_two.node_id].parent_node_id, synthetic_parents[0].node_id)
+
+    def test_event_hierarchy_replaces_location_scoped_strike_parents_with_actor_parent(self):
+        repository = FakeRepository()
+
+        story_tel_aviv = build_story("story-tel-aviv", channel_id=100, minute=0, combined_text="Strike in Tel Aviv")
+        story_haifa = build_story("story-haifa", channel_id=100, minute=1, combined_text="Strike in Haifa")
+        repository.save_story_units([story_tel_aviv, story_haifa])
+
+        old_tel_aviv_parent = Node(
+            node_id="event-old-parent-tel-aviv",
+            kind="event",
+            slug="iranian-strikes-in-tel-aviv",
+            display_name="Iranian strikes in Tel Aviv",
+            canonical_name="Iranian strikes in Tel Aviv",
+            normalized_name="iranian strikes in tel aviv",
+            article_count=1,
+            label_source="hierarchy_group",
+            created_at=story_tel_aviv.timestamp_start,
+            last_updated=story_tel_aviv.timestamp_end,
+        )
+        old_haifa_parent = Node(
+            node_id="event-old-parent-haifa",
+            kind="event",
+            slug="iranian-strikes-in-haifa",
+            display_name="Iranian strikes in Haifa",
+            canonical_name="Iranian strikes in Haifa",
+            normalized_name="iranian strikes in haifa",
+            article_count=1,
+            label_source="hierarchy_group",
+            created_at=story_haifa.timestamp_start,
+            last_updated=story_haifa.timestamp_end,
+        )
+        tel_aviv_strike = Node(
+            node_id="event-tel-aviv",
+            kind="event",
+            slug="iranian-strike-on-tel-aviv",
+            display_name="Iranian strike on Tel Aviv",
+            canonical_name="Iranian strike on Tel Aviv",
+            normalized_name="iranian strike on tel aviv",
+            article_count=1,
+            created_at=story_tel_aviv.timestamp_start,
+            last_updated=story_tel_aviv.timestamp_end,
+            parent_node_id=old_tel_aviv_parent.node_id,
+        )
+        haifa_strike = Node(
+            node_id="event-haifa",
+            kind="event",
+            slug="iranian-strike-on-haifa-port",
+            display_name="Iranian strike on Haifa Port",
+            canonical_name="Iranian strike on Haifa Port",
+            normalized_name="iranian strike on haifa port",
+            article_count=1,
+            created_at=story_haifa.timestamp_start,
+            last_updated=story_haifa.timestamp_end,
+            parent_node_id=old_haifa_parent.node_id,
+        )
+        iran = Node(
+            node_id="nation-iran",
+            kind="nation",
+            slug="iran",
+            display_name="Iran",
+            canonical_name="Iran",
+            normalized_name="iran",
+            article_count=2,
+        )
+        tel_aviv = Node(
+            node_id="place-tel-aviv",
+            kind="place",
+            slug="tel-aviv",
+            display_name="Tel Aviv",
+            canonical_name="Tel Aviv",
+            normalized_name="tel aviv",
+            article_count=1,
+        )
+        haifa = Node(
+            node_id="place-haifa",
+            kind="place",
+            slug="haifa",
+            display_name="Haifa",
+            canonical_name="Haifa",
+            normalized_name="haifa",
+            article_count=1,
+        )
+        repository.save_nodes([old_tel_aviv_parent, old_haifa_parent, tel_aviv_strike, haifa_strike, iran, tel_aviv, haifa])
+        repository.save_story_node_assignments(
+            [
+                StoryNodeAssignment(story_tel_aviv.story_id, tel_aviv_strike.node_id, 1.0, is_primary_event=True),
+                StoryNodeAssignment(story_haifa.story_id, haifa_strike.node_id, 1.0, is_primary_event=True),
+                StoryNodeAssignment(story_tel_aviv.story_id, iran.node_id, 0.8),
+                StoryNodeAssignment(story_haifa.story_id, iran.node_id, 0.8),
+                StoryNodeAssignment(story_tel_aviv.story_id, tel_aviv.node_id, 0.8),
+                StoryNodeAssignment(story_haifa.story_id, haifa.node_id, 0.8),
+            ]
+        )
+
+        result = KGEventHierarchyService(repository).rebuild()
+
+        self.assertEqual(result.parents_deleted, 2)
+        self.assertNotIn(old_tel_aviv_parent.node_id, repository.nodes)
+        self.assertNotIn(old_haifa_parent.node_id, repository.nodes)
+        synthetic_parents = [node for node in repository.nodes.values() if node.label_source == "hierarchy_group"]
+        self.assertEqual(len(synthetic_parents), 1)
+        self.assertEqual(synthetic_parents[0].display_name, "Iranian strikes")
+        self.assertEqual(repository.nodes[tel_aviv_strike.node_id].parent_node_id, synthetic_parents[0].node_id)
+        self.assertEqual(repository.nodes[haifa_strike.node_id].parent_node_id, synthetic_parents[0].node_id)
+
+    def test_query_service_rolls_parent_events_and_exposes_child_parent_links(self):
+        repository = FakeRepository()
+        parent_story = build_story("story-parent", channel_id=100, minute=0, combined_text="Operation overview")
+        child_story = build_story("story-child", channel_id=100, minute=1, combined_text="Wave action")
+        theme_story = build_story("story-theme", channel_id=100, minute=2, combined_text="Wave action theme")
+        repository.save_story_units([parent_story, child_story, theme_story])
+
+        parent = Node(
+            node_id="event-parent",
+            kind="event",
+            slug="operation-roaring-lion",
+            display_name="Operation Roaring Lion",
+            canonical_name="Operation Roaring Lion",
+            normalized_name="operation roaring lion",
+            article_count=1,
+            created_at=parent_story.timestamp_start,
+            last_updated=parent_story.timestamp_end,
+        )
+        child = Node(
+            node_id="event-child",
+            kind="event",
+            slug="day-2-of-operation-roaring-lion",
+            display_name="Day 2 of Operation Roaring Lion",
+            canonical_name="Day 2 of Operation Roaring Lion",
+            normalized_name="day 2 of operation roaring lion",
+            article_count=2,
+            created_at=child_story.timestamp_start,
+            last_updated=theme_story.timestamp_end,
+            event_start_at=child_story.timestamp_start,
+        )
+        theme = Node(
+            node_id="theme-1",
+            kind="theme",
+            slug="regional-escalation",
+            display_name="Regional Escalation",
+            canonical_name="Regional Escalation",
+            normalized_name="regional escalation",
+            article_count=1,
+            last_updated=theme_story.timestamp_end,
+        )
+        org = Node(
+            node_id="org-1",
+            kind="org",
+            slug="idf",
+            display_name="IDF",
+            canonical_name="IDF",
+            normalized_name="idf",
+            article_count=2,
+            last_updated=theme_story.timestamp_end,
+        )
+        place = Node(
+            node_id="place-1",
+            kind="place",
+            slug="northern-strip",
+            display_name="Northern Strip",
+            canonical_name="Northern Strip",
+            normalized_name="northern strip",
+            article_count=2,
+            last_updated=theme_story.timestamp_end,
+        )
+        repository.save_nodes([parent, child, theme, org, place])
+        repository.save_story_node_assignments(
+            [
+                StoryNodeAssignment(parent_story.story_id, parent.node_id, 1.0, is_primary_event=True),
+                StoryNodeAssignment(child_story.story_id, child.node_id, 1.0, is_primary_event=True),
+                StoryNodeAssignment(theme_story.story_id, child.node_id, 1.0, is_primary_event=True),
+                StoryNodeAssignment(theme_story.story_id, theme.node_id, 0.7),
+                StoryNodeAssignment(child_story.story_id, org.node_id, 0.8),
+                StoryNodeAssignment(theme_story.story_id, org.node_id, 0.8),
+                StoryNodeAssignment(child_story.story_id, place.node_id, 0.8),
+                StoryNodeAssignment(theme_story.story_id, place.node_id, 0.8),
+            ]
+        )
+
+        KGEventHierarchyService(repository).rebuild()
+        service = KGQueryService(repository)
+
+        event_rows = service.list_nodes(kind="event")
+        self.assertEqual([row.slug for row in event_rows], ["operation-roaring-lion"])
+        self.assertEqual(event_rows[0].article_count, 3)
+        self.assertEqual(event_rows[0].child_count, 1)
+
+        parent_detail = service.node_show(kind="event", slug="operation-roaring-lion")
+        assert parent_detail is not None
+        self.assertEqual(parent_detail.article_count, 3)
+        self.assertEqual([child_ref.slug for child_ref in parent_detail.child_events], ["day-2-of-operation-roaring-lion"])
+        self.assertEqual(parent_detail.child_events[0].primary_location, "Northern Strip")
+        self.assertEqual(parent_detail.child_events[0].location_labels, ("Northern Strip",))
+        self.assertEqual(parent_detail.child_events[0].organization_labels, ("IDF",))
+        self.assertEqual(parent_detail.child_events[0].event_start_at, child.event_start_at)
+        self.assertEqual(len(parent_detail.stories), 3)
+        self.assertEqual([related.slug for related in parent_detail.themes], ["regional-escalation"])
+
+        child_detail = service.node_show(kind="event", slug="day-2-of-operation-roaring-lion")
+        assert child_detail is not None
+        self.assertEqual(child_detail.parent_event.slug, "operation-roaring-lion")
+        self.assertEqual(child_detail.article_count, 2)
+        self.assertEqual(len(child_detail.stories), 2)
+
+        relations = service.snapshot_relations(nodes=event_rows + service.list_nodes(kind="theme"))
+        self.assertEqual(len(relations), 1)
+        self.assertEqual({relations[0].source_node_id, relations[0].target_node_id}, {parent.node_id, theme.node_id})
+        self.assertEqual(relations[0].shared_story_count, 1)
 
     def test_processing_handles_oversized_or_malformed_extraction_without_crashing(self):
         repository = FakeRepository()

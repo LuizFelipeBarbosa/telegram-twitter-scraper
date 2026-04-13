@@ -20,6 +20,8 @@ export interface GraphNodeRow {
   score: number;
   heat?: number | null;
   phase?: PhaseKey | string | null;
+  child_count: number;
+  parent_event?: EventHierarchyRef | null;
 }
 
 export interface SnapshotRelation {
@@ -64,6 +66,23 @@ export interface RelatedNodeRow {
   latest_story_at?: string | null;
 }
 
+export interface EventHierarchyRef {
+  node_id: string;
+  slug: string;
+  display_name: string;
+  summary?: string | null;
+  article_count: number;
+  child_count: number;
+  last_updated?: string | null;
+}
+
+export interface EventChildSummary extends EventHierarchyRef {
+  event_start_at?: string | null;
+  primary_location?: string | null;
+  location_labels: string[];
+  organization_labels: string[];
+}
+
 export interface NodeDetail {
   node_id: string;
   kind: NodeKind;
@@ -71,6 +90,8 @@ export interface NodeDetail {
   display_name: string;
   summary?: string | null;
   article_count: number;
+  parent_event?: EventHierarchyRef | null;
+  child_events: EventChildSummary[];
   events: RelatedNodeRow[];
   people: RelatedNodeRow[];
   nations: RelatedNodeRow[];
@@ -88,4 +109,6 @@ export interface NodeListRow {
   summary?: string | null;
   article_count: number;
   last_updated?: string | null;
+  child_count: number;
+  parent_event?: EventHierarchyRef | null;
 }
