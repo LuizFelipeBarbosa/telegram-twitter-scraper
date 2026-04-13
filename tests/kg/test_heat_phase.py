@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 
 from telegram_scraper.kg.heat_phase import (
     DEFAULT_THEME_HEAT_THRESHOLDS,
@@ -69,6 +70,24 @@ class ClassifyPhaseTests(unittest.TestCase):
     def test_cascade_order_emerging_before_sustained(self):
         snap = _snap(heat_1d=0.15, heat_31d=0.015)
         self.assertEqual(classify_phase(snap, DEFAULT_THEME_HEAT_THRESHOLDS), "emerging")
+
+
+class NonPhaseKindTests(unittest.TestCase):
+    def test_person_returns_none_phase(self):
+        snap = replace(_snap(heat_1d=0.15, heat_31d=0.01), kind="person")
+        self.assertIsNone(classify_phase(snap, None))
+
+    def test_nation_returns_none_phase(self):
+        snap = replace(_snap(heat_1d=0.15, heat_31d=0.01), kind="nation")
+        self.assertIsNone(classify_phase(snap, None))
+
+    def test_org_returns_none_phase(self):
+        snap = replace(_snap(heat_1d=0.15, heat_31d=0.01), kind="org")
+        self.assertIsNone(classify_phase(snap, None))
+
+    def test_place_returns_none_phase(self):
+        snap = replace(_snap(heat_1d=0.15, heat_31d=0.01), kind="place")
+        self.assertIsNone(classify_phase(snap, None))
 
 
 if __name__ == "__main__":
