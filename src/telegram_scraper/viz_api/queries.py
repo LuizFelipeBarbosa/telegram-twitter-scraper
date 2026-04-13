@@ -78,6 +78,51 @@ class VisualizationQueries:
             "topics": themes,
         }
 
+    def list_node_heat(
+        self,
+        *,
+        kind: str,
+        window: Window,
+        phase: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, object]:
+        from dataclasses import replace
+        from telegram_scraper.kg.heat_phase import PhaseNotSupported, classify_phase
+
+        field_name = WINDOW_FIELD_MAP[window]
+        rows = self.repository.list_node_heat_rows(kind=kind)
+        thresholds = self.thresholds_for(kind)
+        classified = [
+            replace(row, phase=classify_phase(row, thresholds))
+            for row in rows
+        ]
+        if phase is not None:
+            if thresholds is None:
+                raise PhaseNotSupported(kind)
+            classified = [r for r in classified if r.phase == phase]
+        classified.sort(key=lambda r: (-r.heat_1d, -r.heat_3d, r.display_name))
+        total = len(classified)
+        paged = classified[offset : offset + limit]
+        nodes = [
+            {
+                "node_id": row.node_id,
+                "kind": row.kind,
+                "slug": row.slug,
+                "display_name": row.display_name,
+                "article_count": row.article_count,
+                "heat": getattr(row, field_name),
+                "phase": row.phase,
+            }
+            for row in paged
+        ]
+        return {
+            "window": window,
+            "kind": kind,
+            "total": total,
+            "nodes": nodes,
+        }
+
     def get_graph_snapshot(
         self,
         *,
