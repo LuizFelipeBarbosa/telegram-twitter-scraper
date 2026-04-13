@@ -1,11 +1,33 @@
 from __future__ import annotations
 
+import json as _json
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
 from telegram_scraper.config import ConfigError, load_dotenv
+from telegram_scraper.kg.heat_phase import (
+    DEFAULT_EVENT_HEAT_THRESHOLDS,
+    DEFAULT_THEME_HEAT_THRESHOLDS,
+    HeatPhaseThresholds,
+)
+
+
+def _parse_heat_thresholds(
+    values: Mapping[str, str],
+    kind_prefix: str,
+    defaults: HeatPhaseThresholds,
+) -> HeatPhaseThresholds | None:
+    enabled_key = f"KG_{kind_prefix}_HEAT_PHASE_ENABLED"
+    if values.get(enabled_key, "1").strip() == "0":
+        return None
+    json_key = f"KG_{kind_prefix}_HEAT_THRESHOLDS_JSON"
+    raw_json = values.get(json_key, "").strip()
+    if not raw_json:
+        return defaults
+    parsed = _json.loads(raw_json)
+    return HeatPhaseThresholds(**parsed)
 
 
 @dataclass(frozen=True)
@@ -32,6 +54,8 @@ class KGSettings:
     theme_match_threshold: float
     event_match_threshold: float
     event_match_window_days: int
+    theme_heat_thresholds: HeatPhaseThresholds | None
+    event_heat_thresholds: HeatPhaseThresholds | None
 
     @classmethod
     def load(cls, env_file: str | Path = ".env") -> "KGSettings":
@@ -65,6 +89,8 @@ class KGSettings:
             theme_match_threshold=float(values.get("KG_THEME_MATCH_THRESHOLD", "0.78")),
             event_match_threshold=float(values.get("KG_EVENT_MATCH_THRESHOLD", "0.80")),
             event_match_window_days=int(values.get("KG_EVENT_MATCH_WINDOW_DAYS", "14")),
+            theme_heat_thresholds=_parse_heat_thresholds(values, "THEME", DEFAULT_THEME_HEAT_THRESHOLDS),
+            event_heat_thresholds=_parse_heat_thresholds(values, "EVENT", DEFAULT_EVENT_HEAT_THRESHOLDS),
         )
 
     def require_database(self) -> None:
