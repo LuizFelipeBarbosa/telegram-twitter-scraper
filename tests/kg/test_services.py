@@ -500,6 +500,7 @@ class FakeRepository:
             rows.append(
                 ThemeHeatSnapshot(
                     node_id=theme.node_id,
+                    kind="theme",
                     slug=theme.slug,
                     display_name=theme.display_name,
                     article_count=article_count,

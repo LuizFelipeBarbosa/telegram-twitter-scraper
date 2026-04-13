@@ -1687,6 +1687,7 @@ def _cross_channel_match_from_row(row: Sequence[Any]) -> CrossChannelMatch:
 def _theme_heat_from_row(row: Sequence[Any]) -> ThemeHeatSnapshot:
     return ThemeHeatSnapshot(
         node_id=str(row[0]),
+        kind="theme",
         slug=str(row[1]),
         display_name=str(row[2]),
         article_count=int(row[3]),

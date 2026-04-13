@@ -169,8 +169,9 @@ class ThemeDailyStat:
 
 
 @dataclass(frozen=True)
-class ThemeHeatSnapshot:
+class NodeHeatSnapshot:
     node_id: str
+    kind: str
     slug: str
     display_name: str
     article_count: int
@@ -180,7 +181,10 @@ class ThemeHeatSnapshot:
     heat_7d: float
     heat_14d: float
     heat_31d: float
-    phase: ThemePhase
+    phase: str | None = None
+
+
+ThemeHeatSnapshot = NodeHeatSnapshot
 
 
 @dataclass(frozen=True)
