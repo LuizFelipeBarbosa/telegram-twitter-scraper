@@ -571,6 +571,15 @@ class FakeRepository:
         callback()
         return True
 
+    def refresh_node_heat_view(self):
+        self.refresh_theme_heat_view()
+
+    def list_node_heat_rows(self, *, kind):
+        from dataclasses import replace
+        if kind != "theme":
+            return []
+        return [replace(row, phase=None) for row in self.theme_heat_rows]
+
     def list_theme_heat(self, *, phase=None, limit=None):
         rows = [row for row in self.theme_heat_rows if phase is None or row.phase == phase]
         rows.sort(key=lambda row: (-row.heat_1d, row.slug))

@@ -564,7 +564,7 @@ class KGNodeProjectionService:
                 )
 
         self.repository.save_theme_daily_stats(stats)
-        self.repository.refresh_theme_heat_view()
+        self.repository.refresh_node_heat_view()
         return len(stats)
 
     def refresh_all(self, *, days: int = 31) -> KGProjectionRefreshResult:
