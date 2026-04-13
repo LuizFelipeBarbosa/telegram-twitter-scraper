@@ -28,7 +28,7 @@ from telegram_scraper.kg.models import (
     StorySemanticRecord,
     StoryUnit,
     ThemeDailyStat,
-    ThemeHeatSnapshot,
+    NodeHeatSnapshot,
     ThemeHistoryPoint,
 )
 from telegram_scraper.kg.services import KGChannelMaintenanceService, KGChannelRepairService, KGNodeProcessingService, KGQueryService
@@ -292,7 +292,7 @@ class FakeRepository:
         self.node_relations: dict[tuple[str, str, str], NodeRelation] = {}
         self.cross_channel_matches: list[CrossChannelMatch] = []
         self.theme_daily_stats: dict[tuple[str, date], ThemeDailyStat] = {}
-        self.theme_heat_rows: list[ThemeHeatSnapshot] = []
+        self.theme_heat_rows: list[NodeHeatSnapshot] = []
         self.schema_ensured = False
 
     def ensure_schema(self):
@@ -492,13 +492,13 @@ class FakeRepository:
             self.theme_daily_stats[(stat.node_id, stat.date)] = stat
 
     def refresh_theme_heat_view(self):
-        rows: list[ThemeHeatSnapshot] = []
+        rows: list[NodeHeatSnapshot] = []
         total_recent = max(len(self.stories), 1)
         for theme in self.list_nodes(kind="theme"):
             article_count = len(self.list_story_ids_for_node(theme.node_id))
             heat = article_count / total_recent
             rows.append(
-                ThemeHeatSnapshot(
+                NodeHeatSnapshot(
                     node_id=theme.node_id,
                     kind="theme",
                     slug=theme.slug,

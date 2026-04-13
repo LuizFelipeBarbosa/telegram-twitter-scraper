@@ -23,7 +23,7 @@ from telegram_scraper.kg.models import (
     StorySemanticRecord,
     StoryUnit,
     ThemeDailyStat,
-    ThemeHeatSnapshot,
+    NodeHeatSnapshot,
     ThemeHistoryPoint,
 )
 
@@ -142,7 +142,7 @@ class StoryRepository(Protocol):
 
     def run_with_advisory_lock(self, lock_name: str, callback: Callable[[], None]) -> bool: ...
 
-    def list_theme_heat(self, *, phase: str | None = None, limit: int | None = None) -> list[ThemeHeatSnapshot]: ...
+    def list_theme_heat(self, *, phase: str | None = None, limit: int | None = None) -> list[NodeHeatSnapshot]: ...
 
     def get_theme_history(self, *, slug: str) -> list[ThemeHistoryPoint]: ...
 

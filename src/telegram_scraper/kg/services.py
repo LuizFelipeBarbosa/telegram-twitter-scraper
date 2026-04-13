@@ -35,7 +35,7 @@ from telegram_scraper.kg.models import (
     StorySemanticRecord,
     StoryUnit,
     ThemeDailyStat,
-    ThemeHeatSnapshot,
+    NodeHeatSnapshot,
     ThemeHistoryPoint,
 )
 from telegram_scraper.kg.normalization import normalize_message_record
@@ -1605,13 +1605,13 @@ class KGQueryService:
     def channels(self):
         return self.repository.list_channels()
 
-    def themes_now(self, *, limit: int = 20) -> list[ThemeHeatSnapshot]:
+    def themes_now(self, *, limit: int = 20) -> list[NodeHeatSnapshot]:
         return self.repository.list_theme_heat(limit=limit)
 
-    def themes_emerging(self, *, limit: int = 20) -> list[ThemeHeatSnapshot]:
+    def themes_emerging(self, *, limit: int = 20) -> list[NodeHeatSnapshot]:
         return self.repository.list_theme_heat(phase="emerging", limit=limit)
 
-    def themes_fading(self, *, limit: int = 20) -> list[ThemeHeatSnapshot]:
+    def themes_fading(self, *, limit: int = 20) -> list[NodeHeatSnapshot]:
         return self.repository.list_theme_heat(phase="fading", limit=limit)
 
     def theme_history(self, slug: str) -> list[ThemeHistoryPoint]:
