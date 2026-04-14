@@ -154,6 +154,7 @@ class _NodeSupportState:
     channel_ids: set[int] = field(default_factory=set)
     has_cross_channel_match: bool = False
     pending_story_ids: set[str] = field(default_factory=set)
+    pending_message_keys: set[tuple[int, int]] = field(default_factory=set)
 
     @classmethod
     def from_node(cls, node: Node, record: NodeSupportRecord | None) -> "_NodeSupportState":
@@ -176,6 +177,21 @@ class _NodeSupportState:
             self.story_count += 1
         self.channel_ids.add(channel_id)
         return is_new_story
+
+    def register_message(self, *, message_key: tuple[int, int], channel_id: int) -> bool:
+        """Register a single message as a support unit for this node.
+
+        message_key = (channel_id, message_id).
+        Returns True if this is a new message for this node (bumps story_count),
+        False if the message_key was already seen (idempotent within a batch).
+        Adds channel_id to self.channel_ids regardless.
+        """
+        is_new_message = message_key not in self.pending_message_keys
+        if is_new_message:
+            self.pending_message_keys.add(message_key)
+            self.story_count += 1
+        self.channel_ids.add(channel_id)
+        return is_new_message
 
 
 class NodeResolver:
@@ -250,11 +266,69 @@ class NodeResolver:
         self._upsert_centroid(created, embedding=embedding, previous_count=0)
         return ResolvedNode(node=created, confidence=1.0, created=True)
 
+    def resolve_message(
+        self,
+        *,
+        kind: NodeKind,
+        candidate: ExtractedSemanticNode,
+        embedding: list[float],
+        channel_id: int,
+        message_id: int,
+        message_timestamp: datetime,
+        activate_immediately: bool,
+    ) -> ResolvedNode:
+        """Resolve a single-message entity candidate to a Node.
+
+        Mirrors resolve() exactly, but uses per-message support tracking:
+        register_message((channel_id, message_id), channel_id) instead of
+        register_story(story_id, channel_id), and message_timestamp instead of
+        story_timestamp.  Everything else — matching, candidate application,
+        centroid update, and promotion — is identical.
+        """
+        message_key = (channel_id, message_id)
+        existing = self._match_existing_node(kind=kind, candidate=candidate, embedding=embedding)
+        if existing is not None:
+            support = self._support_state(existing)
+            previous_story_count = support.story_count
+            is_new_message = support.register_message(message_key=message_key, channel_id=channel_id)
+            updated = self._apply_candidate(
+                existing,
+                candidate=candidate,
+                last_updated=message_timestamp,
+                article_count=support.story_count if is_new_message else existing.article_count,
+            )
+            updated = self._maybe_promote(updated, support=support, activate_immediately=activate_immediately)
+            self._store_node(updated)
+            if is_new_message:
+                self._upsert_centroid(updated, embedding=embedding, previous_count=max(previous_story_count, 0))
+            confidence = 0.99 if existing.normalized_name == _normalize_name(candidate.name) else 0.95
+            if kind in {"theme", "event"} and embedding:
+                confidence = max(confidence, self._similarity_for_node(updated, embedding=embedding))
+            return ResolvedNode(node=updated, confidence=confidence, created=False)
+
+        created = self._create_node(
+            kind=kind,
+            candidate=candidate,
+            story_timestamp=message_timestamp,
+            activate_immediately=activate_immediately,
+        )
+        support = self._support_state(created)
+        support.register_message(message_key=message_key, channel_id=channel_id)
+        created = replace(created, article_count=support.story_count)
+        created = self._maybe_promote(created, support=support, activate_immediately=activate_immediately)
+        self._store_node(created)
+        self._upsert_centroid(created, embedding=embedding, previous_count=0)
+        return ResolvedNode(node=created, confidence=1.0, created=True)
+
     def register_cross_channel_support(
         self,
         *,
         node_ids: Sequence[str],
     ) -> list[Node]:
+        """Flag nodes as having cross-channel support and promote them if eligible.
+
+        Works for both story- and message-based cross-channel matches (flagged by caller).
+        """
         updated_nodes: list[Node] = []
         for node_id in dict.fromkeys(node_ids):
             node = self.nodes_by_id.get(node_id)
