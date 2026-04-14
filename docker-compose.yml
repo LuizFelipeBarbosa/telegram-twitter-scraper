@@ -30,10 +30,10 @@ services:
       timeout: 5s
       retries: 5
 
-  kg-segment-worker:
+  kg-process-worker:
     build:
       context: .
-    container_name: telegram-kg-worker
+    container_name: telegram-kg-process-worker
     working_dir: /app
     env_file:
       - .env
@@ -49,7 +49,7 @@ services:
       - uv
       - run
       - telegram-scraper
-      - kg-segment-worker
+      - kg-process-worker
       - --consumer
       - compose-worker
       - --batch-size

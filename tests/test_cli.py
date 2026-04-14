@@ -13,16 +13,18 @@ class CliTests(unittest.TestCase):
         self.assertEqual(root_result.exit_code, 0)
         self.assertNotIn("kg-cluster-topics", root_result.output)
         self.assertNotIn("kg-merge-topics", root_result.output)
+        # Removed segment-based commands must not appear.
+        self.assertNotIn("kg-segment-preview", root_result.output)
+        self.assertNotIn("kg-segment-worker", root_result.output)
+        self.assertNotIn("kg-resegment-channel", root_result.output)
+        self.assertNotIn("kg-resegment-channels", root_result.output)
         for command in (
             "kg-profile-upsert",
             "kg-profile-show",
-            "kg-segment-preview",
-            "kg-segment-worker",
+            "kg-process-worker",
             "kg-reset-channel",
             "kg-repair-channels",
             "kg-rebuild-event-hierarchy",
-            "kg-resegment-channel",
-            "kg-resegment-channels",
             "kg-sync-status",
             "kg-themes-now",
             "kg-themes-emerging",
@@ -42,14 +44,25 @@ class CliTests(unittest.TestCase):
         ):
             self.assertIn(command, root_result.output)
 
-    def test_segment_worker_help_exposes_loop_options(self):
+    def test_process_worker_help_exposes_loop_options(self):
         runner = CliRunner()
 
-        result = runner.invoke(app, ["kg-segment-worker", "--help"])
+        result = runner.invoke(app, ["kg-process-worker", "--help"])
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("--loop", result.output)
         self.assertIn("Idle poll interval.", result.output)
+
+    def test_process_worker_help_exposes_all_flags(self):
+        runner = CliRunner()
+
+        result = runner.invoke(app, ["kg-process-worker", "--help"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("--consumer", result.output)
+        self.assertIn("--batch-size", result.output)
+        self.assertIn("--loop", result.output)
+        self.assertIn("--poll-interval-secon", result.output)  # may be truncated in narrow help output
 
     def test_node_show_help_exposes_kind_and_slug(self):
         runner = CliRunner()
@@ -67,15 +80,6 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("--include-children", result.output)
-
-    def test_resegment_channels_help_exposes_repeatable_channel_and_workers(self):
-        runner = CliRunner()
-
-        result = runner.invoke(app, ["kg-resegment-channels", "--help"])
-
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("--channel", result.output)
-        self.assertIn("--workers", result.output)
 
     def test_repair_channels_help_exposes_since_and_workers(self):
         runner = CliRunner()

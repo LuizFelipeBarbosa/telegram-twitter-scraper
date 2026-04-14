@@ -30,10 +30,9 @@ from telegram_scraper.kg.services import (
     KGChannelMaintenanceService,
     KGChannelRepairService,
     KGListenerService,
+    KGProcessingWorker,
     KGProfileService,
     KGQueryService,
-    KGSegmentationPreviewService,
-    KGSegmentWorker,
 )
 from telegram_scraper.markdown_writer import MarkdownWriter
 from telegram_scraper.state_store import StateStore
@@ -337,29 +336,6 @@ if typer is not None:
         except RuntimeError as exc:
             raise _exit_with_error(str(exc))
 
-    @app.command("kg-segment-preview")
-    def kg_segment_preview(
-        channel: int = typer.Option(..., "--channel", help="Telegram channel ID."),
-        limit: int = typer.Option(50, "--limit", min=1, max=500, help="Number of recent raw messages to inspect."),
-        env_file: Path = typer.Option(Path(".env"), help="Path to environment file."),
-    ) -> None:
-        """Preview profile-driven segmentation for recent raw messages without writing results."""
-        try:
-            kg_settings = _load_kg_settings(env_file)
-            kg_settings.require_database()
-            kg_settings.require_embeddings()
-        except ConfigError as exc:
-            raise _exit_with_error(str(exc))
-
-        service = KGSegmentationPreviewService(
-            repository=build_repository(kg_settings),
-            embedder=build_embedder(kg_settings),
-        )
-        try:
-            _echo_json(service.preview_channel(channel_id=channel, limit=limit))
-        except RuntimeError as exc:
-            raise _exit_with_error(str(exc))
-
     @app.command("kg-backfill")
     def kg_backfill(
         limit_per_chat: int = typer.Option(
@@ -495,51 +471,15 @@ if typer is not None:
             ),
         )
 
-    def _run_resegment_channels(
-        *,
-        channels: list[int],
-        workers: Optional[int],
-        env_file: Path,
-        command_name: str,
-    ) -> None:
-        try:
-            _kg_settings, service = _build_channel_maintenance_service(env_file)
-        except ConfigError as exc:
-            raise _exit_with_error(str(exc))
-
-        def _echo_progress(progress) -> None:
-            typer.echo(
-                f"progress {command_name}: "
-                f"channel={progress.channel_id} "
-                f"processed={progress.channel_story_processed}/{progress.channel_story_total} "
-                f"assignments={progress.assignments_created} "
-                f"nodes_created={progress.nodes_created} "
-                f"failures={progress.failures} "
-                f"rate={progress.rate_per_sec:.2f}/s"
-            )
-
-        try:
-            result = service.rebuild_channels(channels, workers=workers, progress_callback=_echo_progress)
-            typer.echo(
-                f"ok {command_name}: "
-                f"channels={result.channels_processed}, "
-                f"stories={result.stories_processed}, "
-                f"assignments={result.assignments_created}, "
-                f"nodes_created={result.nodes_created}, "
-                f"relations={result.relations_created}"
-            )
-        except RuntimeError as exc:
-            raise _exit_with_error(str(exc))
-
-    @app.command("kg-segment-worker")
-    def kg_segment_worker(
-        consumer: str = typer.Option("local-segmenter", "--consumer", help="Redis stream consumer name."),
+    @app.command("kg-process-worker")
+    def kg_process_worker(
+        consumer: str = typer.Option("local-worker", "--consumer", help="Redis stream consumer name."),
         batch_size: int = typer.Option(25, "--batch-size", min=1, max=500, help="Redis batch size."),
         loop: bool = typer.Option(False, "--loop", help="Keep polling Redis and process batches continuously."),
         poll_interval_seconds: float = typer.Option(5.0, "--poll-interval-seconds", min=0.1, help="Idle poll interval."),
         env_file: Path = typer.Option(Path(".env"), help="Path to environment file."),
     ) -> None:
-        """Persist raw messages, segment stories, and assign typed semantic nodes."""
+        """Persist raw messages, embed, and assign typed semantic nodes (message-atomic pipeline)."""
         try:
             kg_settings = _load_kg_settings(env_file)
             kg_settings.require_database()
@@ -551,7 +491,7 @@ if typer is not None:
         except ConfigError as exc:
             raise _exit_with_error(str(exc))
 
-        worker = KGSegmentWorker(
+        worker = KGProcessingWorker(
             repository=build_repository(kg_settings),
             stream=build_stream(kg_settings),
             embedder=build_embedder(kg_settings),
@@ -571,9 +511,9 @@ if typer is not None:
             else:
                 result = worker.process_batch(consumer_name=consumer, batch_size=batch_size)
             typer.echo(
-                "ok kg-segment-worker: "
+                "ok kg-process-worker: "
                 f"messages={result.messages_processed}, "
-                f"stories={result.stories_saved}, "
+                f"embedded={result.messages_embedded}, "
                 f"assignments={result.assignments_created}, "
                 f"nodes_created={result.nodes_created}, "
                 f"cross_channel_matches={result.cross_channel_matches}"
@@ -604,34 +544,6 @@ if typer is not None:
             )
         except RuntimeError as exc:
             raise _exit_with_error(str(exc))
-
-    @app.command("kg-resegment-channel")
-    def kg_resegment_channel(
-        channel: int = typer.Option(..., "--channel", help="Telegram channel ID to rebuild semantic state for."),
-        workers: Optional[int] = typer.Option(None, "--workers", min=1, help="Optional extractor worker count."),
-        env_file: Path = typer.Option(Path(".env"), help="Path to environment file."),
-    ) -> None:
-        """Rebuild typed semantic nodes from preserved story units for a channel."""
-        _run_resegment_channels(
-            channels=[channel],
-            workers=workers,
-            env_file=env_file,
-            command_name="kg-resegment-channel",
-        )
-
-    @app.command("kg-resegment-channels")
-    def kg_resegment_channels(
-        channel: list[int] = typer.Option(..., "--channel", help="Telegram channel ID to rebuild semantic state for."),
-        workers: Optional[int] = typer.Option(None, "--workers", min=1, help="Optional extractor worker count."),
-        env_file: Path = typer.Option(Path(".env"), help="Path to environment file."),
-    ) -> None:
-        """Rebuild typed semantic nodes from preserved story units for multiple channels."""
-        _run_resegment_channels(
-            channels=channel,
-            workers=workers,
-            env_file=env_file,
-            command_name="kg-resegment-channels",
-        )
 
     @app.command("kg-repair-channels")
     def kg_repair_channels(
@@ -856,11 +768,11 @@ if typer is not None:
         slug: str = typer.Option(..., "--slug", help="Stable node slug."),
         env_file: Path = typer.Option(Path(".env"), help="Path to environment file."),
     ) -> None:
-        """Show a sectioned node detail payload by kind and slug."""
+        """Show a sectioned node detail payload by kind and slug (message-atomic pipeline)."""
         if kind not in {"person", "nation", "org", "place", "event", "theme"}:
             raise _exit_with_error("kg-node-show requires --kind to be one of person, nation, org, place, event, theme")
         try:
-            detail = _build_query_service(env_file).node_show(kind=kind, slug=slug)
+            detail = _build_query_service(env_file).node_show_messages(kind=kind, slug=slug)
         except (ConfigError, RuntimeError) as exc:
             raise _exit_with_error(str(exc))
         if detail is None:
