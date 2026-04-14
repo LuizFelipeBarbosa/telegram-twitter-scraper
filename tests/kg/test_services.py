@@ -1653,12 +1653,7 @@ class KGNodeServiceTests(unittest.TestCase):
     def test_event_hierarchy_service_groups_named_operations_and_scoped_airstrike_families(self):
         repository = FakeRepository()
 
-        story_operation = build_story("story-operation", channel_id=100, minute=0, combined_text="Operation direct mention")
-        story_wave = build_story("story-wave", channel_id=100, minute=1, combined_text="Wave update")
-        story_air_one = build_story("story-air-one", channel_id=100, minute=2, combined_text="Airstrike one")
-        story_air_two = build_story("story-air-two", channel_id=100, minute=3, combined_text="Airstrike two")
-        repository.save_story_units([story_operation, story_wave, story_air_one, story_air_two])
-
+        _t = datetime(2026, 4, 1, tzinfo=timezone.utc)
         operation = Node(
             node_id="event-operation",
             kind="event",
@@ -1667,8 +1662,8 @@ class KGNodeServiceTests(unittest.TestCase):
             canonical_name="Operation True Promise 4",
             normalized_name="operation true promise 4",
             article_count=1,
-            created_at=story_operation.timestamp_start,
-            last_updated=story_operation.timestamp_end,
+            created_at=_t,
+            last_updated=_t,
         )
         wave = Node(
             node_id="event-wave",
@@ -1678,8 +1673,8 @@ class KGNodeServiceTests(unittest.TestCase):
             canonical_name="16th wave of Operation True Promise 4 retaliatory strikes",
             normalized_name="16th wave of operation true promise 4 retaliatory strikes",
             article_count=1,
-            created_at=story_wave.timestamp_start,
-            last_updated=story_wave.timestamp_end,
+            created_at=_t,
+            last_updated=_t,
         )
         air_one = Node(
             node_id="event-air-one",
@@ -1689,8 +1684,8 @@ class KGNodeServiceTests(unittest.TestCase):
             canonical_name="Israeli airstrike on southern suburb of Beirut",
             normalized_name="israeli airstrike on southern suburb of beirut",
             article_count=1,
-            created_at=story_air_one.timestamp_start,
-            last_updated=story_air_one.timestamp_end,
+            created_at=_t,
+            last_updated=_t,
         )
         air_two = Node(
             node_id="event-air-two",
@@ -1700,8 +1695,8 @@ class KGNodeServiceTests(unittest.TestCase):
             canonical_name="Israeli airstrike on residential building in southern Lebanon",
             normalized_name="israeli airstrike on residential building in southern lebanon",
             article_count=1,
-            created_at=story_air_two.timestamp_start,
-            last_updated=story_air_two.timestamp_end,
+            created_at=_t,
+            last_updated=_t,
         )
         israel = Node(
             node_id="nation-israel",
@@ -1722,18 +1717,19 @@ class KGNodeServiceTests(unittest.TestCase):
             article_count=2,
         )
         repository.save_nodes([operation, wave, air_one, air_two, israel, south_lebanon])
-        repository.save_story_node_assignments(
-            [
-                StoryNodeAssignment(story_operation.story_id, operation.node_id, 1.0, is_primary_event=True),
-                StoryNodeAssignment(story_wave.story_id, wave.node_id, 1.0, is_primary_event=True),
-                StoryNodeAssignment(story_air_one.story_id, air_one.node_id, 1.0, is_primary_event=True),
-                StoryNodeAssignment(story_air_two.story_id, air_two.node_id, 1.0, is_primary_event=True),
-                StoryNodeAssignment(story_air_one.story_id, israel.node_id, 0.8),
-                StoryNodeAssignment(story_air_two.story_id, israel.node_id, 0.8),
-                StoryNodeAssignment(story_air_one.story_id, south_lebanon.node_id, 0.8),
-                StoryNodeAssignment(story_air_two.story_id, south_lebanon.node_id, 0.8),
-            ]
-        )
+        # Use message-based assignments (message-atomic pipeline).
+        # msg_1 → operation; msg_2 → wave; msg_3 → air_one + israel + south_lebanon;
+        # msg_4 → air_two + israel + south_lebanon.
+        repository.save_message_node_assignments([
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id=operation.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id=wave.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=3, node_id=air_one.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=4, node_id=air_two.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=3, node_id=israel.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=4, node_id=israel.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=3, node_id=south_lebanon.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=4, node_id=south_lebanon.node_id, confidence=0.8),
+        ])
 
         result = KGEventHierarchyService(repository).rebuild()
 
@@ -1748,10 +1744,7 @@ class KGNodeServiceTests(unittest.TestCase):
     def test_event_hierarchy_prefers_label_scope_over_noisy_story_entities(self):
         repository = FakeRepository()
 
-        story_air_one = build_story("story-air-one", channel_id=100, minute=0, combined_text="Airstrike one")
-        story_air_two = build_story("story-air-two", channel_id=100, minute=1, combined_text="Airstrike two")
-        repository.save_story_units([story_air_one, story_air_two])
-
+        _t = datetime(2026, 4, 1, tzinfo=timezone.utc)
         air_one = Node(
             node_id="event-air-one",
             kind="event",
@@ -1760,8 +1753,8 @@ class KGNodeServiceTests(unittest.TestCase):
             canonical_name="Israeli airstrike on residential building in southern Lebanon",
             normalized_name="israeli airstrike on residential building in southern lebanon",
             article_count=1,
-            created_at=story_air_one.timestamp_start,
-            last_updated=story_air_one.timestamp_end,
+            created_at=_t,
+            last_updated=_t,
         )
         air_two = Node(
             node_id="event-air-two",
@@ -1771,8 +1764,8 @@ class KGNodeServiceTests(unittest.TestCase):
             canonical_name="Israeli airstrike on town square in southern Lebanon",
             normalized_name="israeli airstrike on town square in southern lebanon",
             article_count=1,
-            created_at=story_air_two.timestamp_start,
-            last_updated=story_air_two.timestamp_end,
+            created_at=_t,
+            last_updated=_t,
         )
         noisy_person = Node(
             node_id="person-noisy",
@@ -1802,18 +1795,18 @@ class KGNodeServiceTests(unittest.TestCase):
             article_count=2,
         )
         repository.save_nodes([air_one, air_two, noisy_person, noisy_org, noisy_place])
-        repository.save_story_node_assignments(
-            [
-                StoryNodeAssignment(story_air_one.story_id, air_one.node_id, 1.0, is_primary_event=True),
-                StoryNodeAssignment(story_air_two.story_id, air_two.node_id, 1.0, is_primary_event=True),
-                StoryNodeAssignment(story_air_one.story_id, noisy_person.node_id, 0.8),
-                StoryNodeAssignment(story_air_two.story_id, noisy_person.node_id, 0.8),
-                StoryNodeAssignment(story_air_one.story_id, noisy_org.node_id, 0.8),
-                StoryNodeAssignment(story_air_two.story_id, noisy_org.node_id, 0.8),
-                StoryNodeAssignment(story_air_one.story_id, noisy_place.node_id, 0.8),
-                StoryNodeAssignment(story_air_two.story_id, noisy_place.node_id, 0.8),
-            ]
-        )
+        # msg_1 → air_one + noisy entities; msg_2 → air_two + noisy entities.
+        # The test verifies that label-derived actor ("Israeli") wins over noisy co-occurrences.
+        repository.save_message_node_assignments([
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id=air_one.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id=air_two.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id=noisy_person.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id=noisy_person.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id=noisy_org.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id=noisy_org.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id=noisy_place.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id=noisy_place.node_id, confidence=0.8),
+        ])
 
         result = KGEventHierarchyService(repository).rebuild()
 
@@ -1827,10 +1820,7 @@ class KGNodeServiceTests(unittest.TestCase):
     def test_event_hierarchy_replaces_location_scoped_strike_parents_with_actor_parent(self):
         repository = FakeRepository()
 
-        story_tel_aviv = build_story("story-tel-aviv", channel_id=100, minute=0, combined_text="Strike in Tel Aviv")
-        story_haifa = build_story("story-haifa", channel_id=100, minute=1, combined_text="Strike in Haifa")
-        repository.save_story_units([story_tel_aviv, story_haifa])
-
+        _t = datetime(2026, 4, 1, tzinfo=timezone.utc)
         old_tel_aviv_parent = Node(
             node_id="event-old-parent-tel-aviv",
             kind="event",
@@ -1840,8 +1830,8 @@ class KGNodeServiceTests(unittest.TestCase):
             normalized_name="iranian strikes in tel aviv",
             article_count=1,
             label_source="hierarchy_group",
-            created_at=story_tel_aviv.timestamp_start,
-            last_updated=story_tel_aviv.timestamp_end,
+            created_at=_t,
+            last_updated=_t,
         )
         old_haifa_parent = Node(
             node_id="event-old-parent-haifa",
@@ -1852,8 +1842,8 @@ class KGNodeServiceTests(unittest.TestCase):
             normalized_name="iranian strikes in haifa",
             article_count=1,
             label_source="hierarchy_group",
-            created_at=story_haifa.timestamp_start,
-            last_updated=story_haifa.timestamp_end,
+            created_at=_t,
+            last_updated=_t,
         )
         tel_aviv_strike = Node(
             node_id="event-tel-aviv",
@@ -1863,8 +1853,8 @@ class KGNodeServiceTests(unittest.TestCase):
             canonical_name="Iranian strike on Tel Aviv",
             normalized_name="iranian strike on tel aviv",
             article_count=1,
-            created_at=story_tel_aviv.timestamp_start,
-            last_updated=story_tel_aviv.timestamp_end,
+            created_at=_t,
+            last_updated=_t,
             parent_node_id=old_tel_aviv_parent.node_id,
         )
         haifa_strike = Node(
@@ -1875,8 +1865,8 @@ class KGNodeServiceTests(unittest.TestCase):
             canonical_name="Iranian strike on Haifa Port",
             normalized_name="iranian strike on haifa port",
             article_count=1,
-            created_at=story_haifa.timestamp_start,
-            last_updated=story_haifa.timestamp_end,
+            created_at=_t,
+            last_updated=_t,
             parent_node_id=old_haifa_parent.node_id,
         )
         iran = Node(
@@ -1907,16 +1897,15 @@ class KGNodeServiceTests(unittest.TestCase):
             article_count=1,
         )
         repository.save_nodes([old_tel_aviv_parent, old_haifa_parent, tel_aviv_strike, haifa_strike, iran, tel_aviv, haifa])
-        repository.save_story_node_assignments(
-            [
-                StoryNodeAssignment(story_tel_aviv.story_id, tel_aviv_strike.node_id, 1.0, is_primary_event=True),
-                StoryNodeAssignment(story_haifa.story_id, haifa_strike.node_id, 1.0, is_primary_event=True),
-                StoryNodeAssignment(story_tel_aviv.story_id, iran.node_id, 0.8),
-                StoryNodeAssignment(story_haifa.story_id, iran.node_id, 0.8),
-                StoryNodeAssignment(story_tel_aviv.story_id, tel_aviv.node_id, 0.8),
-                StoryNodeAssignment(story_haifa.story_id, haifa.node_id, 0.8),
-            ]
-        )
+        # msg_1 → tel_aviv_strike + iran + tel_aviv; msg_2 → haifa_strike + iran + haifa.
+        repository.save_message_node_assignments([
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id=tel_aviv_strike.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id=haifa_strike.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id=iran.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id=iran.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id=tel_aviv.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id=haifa.node_id, confidence=0.8),
+        ])
 
         result = KGEventHierarchyService(repository).rebuild()
 
@@ -1990,6 +1979,7 @@ class KGNodeServiceTests(unittest.TestCase):
             last_updated=theme_story.timestamp_end,
         )
         repository.save_nodes([parent, child, theme, org, place])
+        # Keep story assignments for the legacy node_show() path (stories display + relations).
         repository.save_story_node_assignments(
             [
                 StoryNodeAssignment(parent_story.story_id, parent.node_id, 1.0, is_primary_event=True),
@@ -2002,29 +1992,44 @@ class KGNodeServiceTests(unittest.TestCase):
                 StoryNodeAssignment(theme_story.story_id, place.node_id, 0.8),
             ]
         )
+        # Message assignments drive hierarchy rebuild() and article_count in snapshot.
+        # msg_1 → parent event; msg_2, msg_3 → child event (giving child 2 keys, parent rollup = 3).
+        repository.save_message_node_assignments([
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id=parent.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id=child.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=3, node_id=child.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id=org.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=3, node_id=org.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id=place.node_id, confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=3, node_id=place.node_id, confidence=0.8),
+        ])
 
         KGEventHierarchyService(repository).rebuild()
         service = KGQueryService(repository)
 
         event_rows = service.list_nodes(kind="event")
         self.assertEqual([row.slug for row in event_rows], ["operation-roaring-lion"])
+        # Rollup from snapshot: parent has 1 direct msg + 2 child msgs = 3.
         self.assertEqual(event_rows[0].article_count, 3)
         self.assertEqual(event_rows[0].child_count, 1)
 
         parent_detail = service.node_show(kind="event", slug="operation-roaring-lion")
         assert parent_detail is not None
+        # article_count from message-based snapshot rollup.
         self.assertEqual(parent_detail.article_count, 3)
         self.assertEqual([child_ref.slug for child_ref in parent_detail.child_events], ["day-2-of-operation-roaring-lion"])
         self.assertEqual(parent_detail.child_events[0].primary_location, "Northern Strip")
         self.assertEqual(parent_detail.child_events[0].location_labels, ("Northern Strip",))
         self.assertEqual(parent_detail.child_events[0].organization_labels, ("IDF",))
         self.assertEqual(parent_detail.child_events[0].event_start_at, child.event_start_at)
+        # Story display still works via legacy story assignments.
         self.assertEqual(len(parent_detail.stories), 3)
         self.assertEqual([related.slug for related in parent_detail.themes], ["regional-escalation"])
 
         child_detail = service.node_show(kind="event", slug="day-2-of-operation-roaring-lion")
         assert child_detail is not None
         self.assertEqual(child_detail.parent_event.slug, "operation-roaring-lion")
+        # article_count from message-based snapshot: child has 2 direct message keys.
         self.assertEqual(child_detail.article_count, 2)
         self.assertEqual(len(child_detail.stories), 2)
 

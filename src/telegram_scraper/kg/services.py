@@ -1499,6 +1499,7 @@ class KGNodeProcessingService:
             state=state,
             callback=progress_callback,
         )
+        self.hierarchy_service.rebuild()
 
         projection_result = (
             self.projection_service.refresh_all(days=31)
@@ -2465,6 +2466,11 @@ class KGQueryService:
         story_limit: int = 20,
         story_offset: int = 0,
     ) -> NodeDetail | None:
+        # DEPRECATED: story-based query path. Will be replaced in Phase 4/5.
+        # The event hierarchy snapshot now aggregates over message_node_assignments
+        # instead of story_node_assignments. story_ids below are derived from
+        # story-scoped assignments looked up separately, while article_count now
+        # reflects message counts.
         if kind != "event":
             return self.repository.get_node_detail(kind=kind, slug=slug, story_limit=story_limit, story_offset=story_offset)
         snapshot = build_event_hierarchy_snapshot(self.repository)
@@ -2473,9 +2479,12 @@ class KGQueryService:
             return None
 
         node_id = node.node_id
-        relevant_story_ids = set(snapshot.rollup_story_ids_by_node.get(node_id, set()))
-        if not snapshot.is_parent(node_id):
-            relevant_story_ids = set(snapshot.direct_story_ids_by_node.get(node_id, set()))
+        # For story-based display, fall back to listing stories via the story
+        # assignment table directly (not through the snapshot which is now message-based).
+        relevant_story_ids = set(
+            a.story_id
+            for a in self.repository.list_story_node_assignments(node_ids=tuple(snapshot.descendant_ids(node_id)))
+        )
 
         assignments = self.repository.list_story_node_assignments(story_ids=tuple(sorted(relevant_story_ids)))
         assignments_by_story: dict[str, list[StoryNodeAssignment]] = defaultdict(list)
@@ -2526,7 +2535,7 @@ class KGQueryService:
                 if related is None or related.status != "active":
                     continue
                 article_count = (
-                    len(snapshot.rollup_story_ids_by_node.get(related_id, set()))
+                    len(snapshot.rollup_message_keys_by_node.get(related_id, set()))
                     if related.kind == "event"
                     else related.article_count
                 )
@@ -2578,12 +2587,18 @@ class KGQueryService:
             )
             for story in paged_stories
         )
+        # Compute child story IDs from the existing story assignments (legacy story path).
+        story_ids_by_child_node: dict[str, set[str]] = defaultdict(set)
+        for story_id, story_assignments in assignments_by_story.items():
+            for assignment in story_assignments:
+                story_ids_by_child_node[assignment.node_id].add(story_id)
+
         child_ids = snapshot.children_by_parent.get(node_id, ())
         excluded_actor_keys = _implicit_parent_actor_keys(node)
         child_events = tuple(
             _build_event_child_summary(
                 child=snapshot.node(child_id),
-                child_story_ids=set(snapshot.direct_story_ids_by_node.get(child_id, set())),
+                child_story_ids=story_ids_by_child_node.get(child_id, set()),
                 assignments_by_story=assignments_by_story,
                 related_nodes=related_nodes,
                 excluded_actor_keys=excluded_actor_keys,
@@ -2603,7 +2618,7 @@ class KGQueryService:
             slug=node.slug,
             display_name=node.display_name,
             summary=node.summary,
-            article_count=len(snapshot.rollup_story_ids_by_node.get(node_id, set())),
+            article_count=len(snapshot.rollup_message_keys_by_node.get(node_id, set())),
             parent_event=snapshot.ref_for(node.parent_node_id) if node.parent_node_id else None,
             child_events=child_events,
             events=tuple(_sort_related(bucketed["event"])),
@@ -2793,12 +2808,11 @@ class KGQueryService:
                 parent_event = snapshot.ref_for(snap_node.parent_node_id) if snap_node.parent_node_id else None
                 child_ids = snapshot.children_by_parent.get(node_id, ())
                 excluded_actor_keys = _implicit_parent_actor_keys(snap_node)
-                all_msg_assignments_by_story: dict[str, list] = {}  # not used in message path
                 child_events = tuple(
                     _build_event_child_summary(
                         child=snapshot.node(child_id),
-                        child_story_ids=set(snapshot.direct_story_ids_by_node.get(child_id, set())),
-                        assignments_by_story=all_msg_assignments_by_story,
+                        child_story_ids=set(),  # message path: no story assignments
+                        assignments_by_story={},
                         related_nodes={},
                         excluded_actor_keys=excluded_actor_keys,
                     )

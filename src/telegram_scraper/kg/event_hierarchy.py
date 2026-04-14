@@ -9,7 +9,15 @@ from typing import Iterable, Sequence
 from uuid import uuid4
 
 from telegram_scraper.kg.interfaces import StoryRepository
-from telegram_scraper.kg.models import EventHierarchyRef, Node, NodeKind, NodeListEntry, StoryNodeAssignment
+from telegram_scraper.kg.models import EventHierarchyRef, MessageNodeAssignment, Node, NodeKind, NodeListEntry
+
+# NOTE (post-S2 refactor): rebuild() and build_event_hierarchy_snapshot() now
+# aggregate over message_node_assignments, not story_node_assignments. The
+# message-atomic pipeline in KGNodeProcessingService.process_messages() writes
+# message_nodes rows; this module reads those to maintain the event hierarchy.
+# Story-based pipelines (deprecated) can still co-exist in the codebase but
+# their hierarchy will only update when rebuild() is called alongside a run
+# of process_messages().
 
 
 SCOPING_ACTOR_KINDS: tuple[NodeKind, ...] = ("nation", "org")
@@ -202,19 +210,19 @@ def _normalize_place_scope(text: str) -> tuple[str, str] | None:
     return (normalized, _titleish(text))
 
 
-def _extract_story_scoping_actor(
+def _extract_message_scoping_actor(
     *,
     node: Node,
-    story_ids: set[str],
-    story_assignments: dict[str, list[StoryNodeAssignment]],
+    message_keys: set[tuple[int, int]],
+    message_assignments: dict[tuple[int, int], list[MessageNodeAssignment]],
     nodes_by_id: dict[str, Node],
 ) -> tuple[str, str] | None:
     actor_counts: Counter[str] = Counter()
     actor_labels: dict[str, str] = {}
     normalized_label = node.normalized_name
 
-    for story_id in story_ids:
-        for assignment in story_assignments.get(story_id, []):
+    for message_key in message_keys:
+        for assignment in message_assignments.get(message_key, []):
             related = nodes_by_id.get(assignment.node_id)
             if related is None or related.node_id == node.node_id or related.kind not in SCOPING_ACTOR_KINDS:
                 continue
@@ -230,19 +238,19 @@ def _extract_story_scoping_actor(
     return actor_key, actor_labels[actor_key]
 
 
-def _extract_story_scoping_place(
+def _extract_message_scoping_place(
     *,
     node: Node,
-    story_ids: set[str],
-    story_assignments: dict[str, list[StoryNodeAssignment]],
+    message_keys: set[tuple[int, int]],
+    message_assignments: dict[tuple[int, int], list[MessageNodeAssignment]],
     nodes_by_id: dict[str, Node],
 ) -> tuple[str, str] | None:
     place_counts: Counter[str] = Counter()
     place_labels: dict[str, str] = {}
     normalized_label = node.normalized_name
 
-    for story_id in story_ids:
-        for assignment in story_assignments.get(story_id, []):
+    for message_key in message_keys:
+        for assignment in message_assignments.get(message_key, []):
             related = nodes_by_id.get(assignment.node_id)
             if related is None or related.node_id == node.node_id or related.kind != "place":
                 continue
@@ -312,8 +320,8 @@ def _family_display(
 def _generic_group(
     *,
     node: Node,
-    story_ids: set[str],
-    story_assignments: dict[str, list[StoryNodeAssignment]],
+    message_keys: set[tuple[int, int]],
+    message_assignments: dict[tuple[int, int], list[MessageNodeAssignment]],
     nodes_by_id: dict[str, Node],
 ) -> GenericGroupMatch | None:
     family = _detect_generic_family(node.display_name)
@@ -326,14 +334,14 @@ def _generic_group(
     if parsed_actor is not None:
         actor_key, actor_label = parsed_actor
     else:
-        story_actor = _extract_story_scoping_actor(
+        message_actor = _extract_message_scoping_actor(
             node=node,
-            story_ids=story_ids,
-            story_assignments=story_assignments,
+            message_keys=message_keys,
+            message_assignments=message_assignments,
             nodes_by_id=nodes_by_id,
         )
-        if story_actor is not None:
-            actor_key, actor_label = story_actor
+        if message_actor is not None:
+            actor_key, actor_label = message_actor
 
     if family in {"airstrike", "strike"}:
         if actor_key is None or actor_label is None:
@@ -368,14 +376,14 @@ def _generic_group(
             if normalized_place is not None:
                 place_key, place_label = normalized_place
     if place_key is None:
-        story_place = _extract_story_scoping_place(
+        message_place = _extract_message_scoping_place(
             node=node,
-            story_ids=story_ids,
-            story_assignments=story_assignments,
+            message_keys=message_keys,
+            message_assignments=message_assignments,
             nodes_by_id=nodes_by_id,
         )
-        if story_place is not None:
-            place_key, place_label = story_place
+        if message_place is not None:
+            place_key, place_label = message_place
 
     display_name = _family_display(
         family=family,
@@ -416,9 +424,9 @@ class EventHierarchyRebuildResult:
 @dataclass(frozen=True)
 class EventHierarchySnapshot:
     nodes_by_id: dict[str, Node]
-    direct_story_ids_by_node: dict[str, set[str]]
+    direct_message_keys_by_node: dict[str, set[tuple[int, int]]]
     children_by_parent: dict[str, tuple[str, ...]]
-    rollup_story_ids_by_node: dict[str, set[str]]
+    rollup_message_keys_by_node: dict[str, set[tuple[int, int]]]
     rollup_last_updated_by_node: dict[str, datetime | None]
 
     def node(self, node_id: str) -> Node:
@@ -443,7 +451,7 @@ class EventHierarchySnapshot:
             slug=node.slug,
             display_name=node.display_name,
             summary=node.summary,
-            article_count=len(self.rollup_story_ids_by_node.get(node_id, set())),
+            article_count=len(self.rollup_message_keys_by_node.get(node_id, set())),
             child_count=len(self.children_by_parent.get(node_id, ())),
             last_updated=self.rollup_last_updated_by_node.get(node_id),
         )
@@ -457,7 +465,7 @@ class EventHierarchySnapshot:
             slug=node.slug,
             display_name=node.display_name,
             summary=node.summary,
-            article_count=len(self.rollup_story_ids_by_node.get(node_id, set())),
+            article_count=len(self.rollup_message_keys_by_node.get(node_id, set())),
             last_updated=self.rollup_last_updated_by_node.get(node_id),
             child_count=len(self.children_by_parent.get(node_id, ())),
             parent_event=parent_ref,
@@ -466,10 +474,10 @@ class EventHierarchySnapshot:
 
 def build_event_hierarchy_snapshot(repository: StoryRepository) -> EventHierarchySnapshot:
     nodes = {node.node_id: node for node in repository.list_nodes(kind="event")}
-    assignments = repository.list_story_node_assignments(node_ids=tuple(nodes))
-    direct_story_ids_by_node: dict[str, set[str]] = defaultdict(set)
+    assignments = repository.list_message_node_assignments(node_ids=tuple(nodes))
+    direct_message_keys_by_node: dict[str, set[tuple[int, int]]] = defaultdict(set)
     for assignment in assignments:
-        direct_story_ids_by_node[assignment.node_id].add(assignment.story_id)
+        direct_message_keys_by_node[assignment.node_id].add((assignment.channel_id, assignment.message_id))
 
     children_by_parent: dict[str, list[str]] = defaultdict(list)
     for node in nodes.values():
@@ -477,23 +485,23 @@ def build_event_hierarchy_snapshot(repository: StoryRepository) -> EventHierarch
             children_by_parent[node.parent_node_id].append(node.node_id)
 
     child_map = {parent_id: tuple(sorted(child_ids)) for parent_id, child_ids in children_by_parent.items()}
-    rollup_story_ids_by_node: dict[str, set[str]] = {}
+    rollup_message_keys_by_node: dict[str, set[tuple[int, int]]] = {}
     rollup_last_updated_by_node: dict[str, datetime | None] = {}
     for node_id, node in nodes.items():
-        story_ids = set(direct_story_ids_by_node.get(node_id, set()))
+        message_keys = set(direct_message_keys_by_node.get(node_id, set()))
         children = child_map.get(node_id, ())
         for child_id in children:
-            story_ids.update(direct_story_ids_by_node.get(child_id, set()))
-        rollup_story_ids_by_node[node_id] = story_ids
+            message_keys.update(direct_message_keys_by_node.get(child_id, set()))
+        rollup_message_keys_by_node[node_id] = message_keys
         rollup_last_updated_by_node[node_id] = _pick_latest(
             [node.last_updated] + [nodes[child_id].last_updated for child_id in children]
         )
 
     return EventHierarchySnapshot(
         nodes_by_id=nodes,
-        direct_story_ids_by_node={node_id: set(story_ids) for node_id, story_ids in direct_story_ids_by_node.items()},
+        direct_message_keys_by_node={node_id: set(keys) for node_id, keys in direct_message_keys_by_node.items()},
         children_by_parent=child_map,
-        rollup_story_ids_by_node=rollup_story_ids_by_node,
+        rollup_message_keys_by_node=rollup_message_keys_by_node,
         rollup_last_updated_by_node=rollup_last_updated_by_node,
     )
 
@@ -508,13 +516,14 @@ class KGEventHierarchyService:
         real_events = {node_id: node for node_id, node in event_nodes.items() if node.label_source != "hierarchy_group"}
         synthetic_events = {node_id: node for node_id, node in event_nodes.items() if node.label_source == "hierarchy_group"}
 
-        assignments = self.repository.list_story_node_assignments()
-        story_assignments: dict[str, list[StoryNodeAssignment]] = defaultdict(list)
-        direct_story_ids_by_event: dict[str, set[str]] = defaultdict(set)
+        assignments = self.repository.list_message_node_assignments()
+        message_assignments: dict[tuple[int, int], list[MessageNodeAssignment]] = defaultdict(list)
+        direct_message_keys_by_event: dict[str, set[tuple[int, int]]] = defaultdict(set)
         for assignment in assignments:
-            story_assignments[assignment.story_id].append(assignment)
+            message_key = (assignment.channel_id, assignment.message_id)
+            message_assignments[message_key].append(assignment)
             if assignment.node_id in real_events:
-                direct_story_ids_by_event[assignment.node_id].add(assignment.story_id)
+                direct_message_keys_by_event[assignment.node_id].add(message_key)
 
         desired_parent_key_by_child: dict[str, str] = {}
         desired_parent_display_by_key: dict[str, str] = {}
@@ -536,8 +545,8 @@ class KGEventHierarchyService:
 
             generic_group = _generic_group(
                 node=node,
-                story_ids=direct_story_ids_by_event.get(node_id, set()),
-                story_assignments=story_assignments,
+                message_keys=direct_message_keys_by_event.get(node_id, set()),
+                message_assignments=message_assignments,
                 nodes_by_id=all_nodes,
             )
             if generic_group is None:
