@@ -13,7 +13,7 @@ from telegram_scraper.config import Settings
 from telegram_scraper.models import ChatRecord, ChatType
 from telegram_scraper.telegram_client import TelegramAccountClient, TelegramMessageEnvelope
 
-from telegram_scraper.kg.extraction import preferred_story_text, safe_story_text
+from telegram_scraper.kg.extraction import preferred_message_text, preferred_story_text, safe_message_text, safe_story_text
 from telegram_scraper.kg.event_hierarchy import (
     ACTOR_ADJECTIVES,
     KGEventHierarchyService,
@@ -32,8 +32,13 @@ from telegram_scraper.kg.math_utils import average_vectors, cosine_similarity
 from telegram_scraper.kg.models import (
     ChannelProfile,
     CrossChannelMatch,
+    CrossChannelMessageMatch,
     EventChildSummary,
     ExtractedSemanticNode,
+    MessageEmbeddingRecord,
+    MessageNodeAssignment,
+    MessageSemanticExtraction,
+    MessageSemanticRecord,
     Node,
     NodeCentroidRecord,
     NodeDetail,
@@ -548,6 +553,17 @@ class KGChannelSyncStatus:
     story_count: int
 
 
+@dataclass(frozen=True)
+class KGProcessingResult:
+    messages_processed: int
+    messages_embedded: int
+    assignments_created: int
+    nodes_created: int
+    cross_channel_matches: int
+    relations_created: int
+    theme_stats_written: int
+
+
 @dataclass
 class _ProcessingState:
     story_embeddings: dict[str, list[float]]
@@ -560,6 +576,28 @@ class _ProcessingState:
     pending_semantics: list[StorySemanticRecord]
     pending_cross_channel_matches: list[CrossChannelMatch]
     pending_story_embeddings: dict[str, StoryEmbeddingRecord]
+    pending_theme_centroids: dict[str, NodeCentroidRecord]
+    pending_event_centroids: dict[str, NodeCentroidRecord]
+    assignments_created: int = 0
+    nodes_created: int = 0
+    cross_channel_matches: int = 0
+    relations_created: int = 0
+    theme_stats_written: int = 0
+
+
+@dataclass
+class _MessageProcessingState:
+    """Per-batch state for the message-atomic processing pipeline."""
+    message_embeddings: dict[tuple[int, int], list[float]]
+    node_cache: dict[NodeKind, dict[str, Node]]
+    theme_centroids: dict[str, list[float]]
+    event_centroids: dict[str, list[float]]
+    support_records: dict[str, NodeSupportRecord]
+    pending_nodes: dict[str, Node]
+    pending_assignments: list[MessageNodeAssignment]
+    pending_semantics: list[MessageSemanticRecord]
+    pending_cross_channel_matches: list[CrossChannelMessageMatch]
+    pending_message_embeddings: dict[tuple[int, int], MessageEmbeddingRecord]
     pending_theme_centroids: dict[str, NodeCentroidRecord]
     pending_event_centroids: dict[str, NodeCentroidRecord]
     assignments_created: int = 0
@@ -1249,6 +1287,392 @@ class KGNodeProcessingService:
         )
 
 
+    # ── Message-atomic pipeline ──────────────────────────────────────────────
+
+    def process_messages(
+        self,
+        messages: Sequence[RawMessage],
+        *,
+        options: KGProcessingOptions | None = None,
+        progress_callback: Callable[[KGProcessingProgress], None] | None = None,
+    ) -> KGNodeProcessResult:
+        """Run extraction + node resolution + assignment on a batch of messages.
+
+        Skips messages that already have a MessageSemanticRecord (idempotent).
+        For each new message: extracts via extractor.extract_message(), iterates
+        candidates, embeds event/theme candidates, calls resolver.resolve_message(),
+        and writes a MessageNodeAssignment.  Cross-channel matching queries
+        vector_store.query_message_embeddings to find similar messages from other
+        channels and creates CrossChannelMessageMatch records.
+        """
+        if not messages:
+            return KGNodeProcessResult(0, 0, 0, 0, 0)
+
+        options = options or self.default_processing_options()
+        # Filter to messages that don't already have semantics (idempotent).
+        new_messages = [
+            msg for msg in messages
+            if self.repository.get_message_semantic_record(channel_id=msg.channel_id, message_id=msg.message_id) is None
+        ]
+        if not new_messages:
+            return KGNodeProcessResult(0, 0, 0, 0, 0)
+
+        started_at = time.monotonic()
+        failures = 0
+        processed = 0
+        state = self._initialize_message_processing_state(new_messages)
+        resolver = NodeResolver(
+            settings=self.settings,
+            node_cache=state.node_cache,
+            support_records=state.support_records,
+            theme_centroids=state.theme_centroids,
+            event_centroids=state.event_centroids,
+            pending_theme_centroids=state.pending_theme_centroids,
+            pending_event_centroids=state.pending_event_centroids,
+            utc_now=_utc_now,
+        )
+
+        for msg in new_messages:
+            try:
+                extraction = self.extractor.extract_message(msg)
+            except Exception:
+                extraction = MessageSemanticExtraction(
+                    channel_id=msg.channel_id,
+                    message_id=msg.message_id,
+                )
+                failures += 1
+            self._process_message(
+                message=msg,
+                extraction=extraction,
+                state=state,
+                resolver=resolver,
+                enable_cross_channel_matching=options.enable_cross_channel_matching,
+            )
+            processed += 1
+            if len(state.pending_semantics) >= options.flush_size:
+                self._flush_message_processing_state(state)
+                self._emit_message_progress(
+                    processed=processed,
+                    total=len(new_messages),
+                    failures=failures,
+                    started_at=started_at,
+                    state=state,
+                    callback=progress_callback,
+                )
+
+        self._flush_message_processing_state(state)
+        self._emit_message_progress(
+            processed=processed,
+            total=len(new_messages),
+            failures=failures,
+            started_at=started_at,
+            state=state,
+            callback=progress_callback,
+        )
+
+        projection_result = (
+            self.projection_service.refresh_all(days=31)
+            if options.projection_policy == "per_batch"
+            else KGProjectionRefreshResult(relations_created=0, theme_stats_written=0)
+        )
+        return KGNodeProcessResult(
+            assignments_created=state.assignments_created,
+            nodes_created=state.nodes_created,
+            cross_channel_matches=state.cross_channel_matches,
+            relations_created=projection_result.relations_created,
+            theme_stats_written=projection_result.theme_stats_written,
+        )
+
+    def _initialize_message_processing_state(self, messages: Sequence[RawMessage]) -> _MessageProcessingState:
+        msg_keys = [(msg.channel_id, msg.message_id) for msg in messages]
+        message_embeddings = self.vector_store.fetch_message_embeddings(msg_keys)
+
+        node_cache = self._load_node_cache()
+        theme_ids = tuple(node.node_id for node in node_cache["theme"].values())
+        event_ids = tuple(node.node_id for node in node_cache["event"].values())
+        support_records = {
+            record.node_id: record
+            for record in self.repository.get_node_support_records(theme_ids + event_ids)
+        }
+        return _MessageProcessingState(
+            message_embeddings=message_embeddings,
+            node_cache=node_cache,
+            theme_centroids=self.vector_store.fetch_theme_centroids(theme_ids),
+            event_centroids=self.vector_store.fetch_event_centroids(event_ids),
+            support_records=support_records,
+            pending_nodes={},
+            pending_assignments=[],
+            pending_semantics=[],
+            pending_cross_channel_matches=[],
+            pending_message_embeddings={},
+            pending_theme_centroids={},
+            pending_event_centroids={},
+        )
+
+    def _prepare_message_candidates(
+        self,
+        *,
+        message: RawMessage,
+        extraction: MessageSemanticExtraction,
+    ) -> list[_PreparedCandidate]:
+        prepared: list[_PreparedCandidate] = []
+        embedding_texts: list[str] = []
+        embedding_indexes: list[int] = []
+
+        for kind, source_candidate in iter_extraction_candidates(extraction):  # type: ignore[arg-type]
+            candidate = _clean_candidate(source_candidate)
+            activate_immediately = kind not in {"event", "theme"}
+            if kind == "event":
+                candidate, activate_immediately = _canonicalize_event_candidate(candidate, extraction=extraction)  # type: ignore[arg-type]
+            elif kind == "theme":
+                activate_immediately = False
+
+            prepared.append(
+                _PreparedCandidate(
+                    kind=kind,
+                    source_name=source_candidate.name,
+                    candidate=candidate,
+                    embedding=[],
+                    activate_immediately=activate_immediately,
+                )
+            )
+            if kind in {"event", "theme"}:
+                embedding_indexes.append(len(prepared) - 1)
+                embedding_texts.append(
+                    self._message_candidate_embedding_text(
+                        candidate,
+                        message=message,
+                    )
+                )
+
+        embeddings = _safe_embed_texts(self.embedder, embedding_texts)
+        for index, embedding in zip(embedding_indexes, embeddings):
+            prepared[index] = replace(prepared[index], embedding=embedding)
+        return prepared
+
+    def _message_candidate_embedding_text(
+        self,
+        candidate: ExtractedSemanticNode,
+        *,
+        message: RawMessage,
+    ) -> str:
+        context = preferred_message_text(message).strip()
+        if len(context) > 800:
+            context = context[-800:]
+        parts = [candidate.name.strip()]
+        if candidate.summary:
+            parts.append(candidate.summary.strip())
+        if context:
+            parts.append(f"Context: {context}")
+        return _embedding_text("\n".join(part for part in parts if part), max_chars=self.settings.semantic_max_chars)
+
+    def _process_message(
+        self,
+        *,
+        message: RawMessage,
+        extraction: MessageSemanticExtraction,
+        state: _MessageProcessingState,
+        resolver: NodeResolver,
+        enable_cross_channel_matching: bool,
+    ) -> None:
+        msg_key = (message.channel_id, message.message_id)
+        embedding = state.message_embeddings.get(msg_key, [])
+        primary_event_key = _normalize_name(extraction.primary_event or "")
+        if extraction.events and not primary_event_key:
+            primary_event_key = _normalize_name(extraction.events[0].name)
+        prepared_candidates = self._prepare_message_candidates(message=message, extraction=extraction)
+
+        assigned_node_ids: set[str] = set()
+        assignments: list[MessageNodeAssignment] = []
+        updated_nodes: list[Node] = []
+        primary_event_node_id: str | None = None
+
+        for prepared in prepared_candidates:
+            kind = prepared.kind
+            candidate = prepared.candidate
+            resolved = resolver.resolve_message(
+                kind=kind,
+                candidate=candidate,
+                embedding=prepared.embedding,
+                channel_id=message.channel_id,
+                message_id=message.message_id,
+                message_timestamp=message.timestamp,
+                activate_immediately=prepared.activate_immediately,
+            )
+            node = resolved.node
+            if node.node_id in assigned_node_ids:
+                if kind == "event" and _normalize_name(prepared.source_name) == primary_event_key:
+                    primary_event_node_id = node.node_id
+                continue
+            assigned_node_ids.add(node.node_id)
+            updated_nodes.append(node)
+            is_primary_event = kind == "event" and _normalize_name(prepared.source_name) == primary_event_key
+            if is_primary_event:
+                primary_event_node_id = node.node_id
+            assignments.append(
+                MessageNodeAssignment(
+                    channel_id=message.channel_id,
+                    message_id=message.message_id,
+                    node_id=node.node_id,
+                    confidence=resolved.confidence,
+                    assigned_at=_utc_now(),
+                    is_primary_event=is_primary_event,
+                )
+            )
+            if resolved.created:
+                state.nodes_created += 1
+
+        if not primary_event_node_id and extraction.events and assignments:
+            node_lookup = {node.node_id: node for node in updated_nodes}
+            for index, assignment in enumerate(assignments):
+                node = node_lookup.get(assignment.node_id)
+                if node is not None and node.kind == "event":
+                    assignments[index] = replace(assignment, is_primary_event=True)
+                    primary_event_node_id = assignment.node_id
+                    break
+
+        for node in updated_nodes:
+            state.pending_nodes[node.node_id] = node
+        state.pending_assignments.extend(assignments)
+        state.pending_semantics.append(
+            MessageSemanticRecord(
+                channel_id=message.channel_id,
+                message_id=message.message_id,
+                extraction_payload=serialize_extraction(extraction),  # type: ignore[arg-type]
+                primary_event_node_id=primary_event_node_id,
+                extracted_at=_utc_now(),
+                updated_at=_utc_now(),
+            )
+        )
+        state.assignments_created += len(assignments)
+
+        # Embed the message if we don't already have an embedding for it.
+        if not embedding:
+            msg_text = preferred_message_text(message)
+            emb_texts = _safe_embed_texts(
+                self.embedder,
+                [safe_message_text(msg_text or "(media only telegram message)", max_chars=self.settings.semantic_max_chars)]
+            )
+            embedding = emb_texts[0] if emb_texts else []
+            if embedding:
+                state.message_embeddings[msg_key] = embedding
+
+        if embedding:
+            state.pending_message_embeddings[msg_key] = MessageEmbeddingRecord(
+                channel_id=message.channel_id,
+                message_id=message.message_id,
+                embedding=embedding,
+                timestamp=message.timestamp,
+                node_ids=tuple(sorted(assigned_node_ids)),
+            )
+            if enable_cross_channel_matching:
+                matches = self._build_cross_channel_message_matches(message=message, embedding=embedding)
+                state.pending_cross_channel_matches.extend(matches)
+                state.cross_channel_matches += len(matches)
+                if matches:
+                    support_node_ids = set(assigned_node_ids)
+                    for match in matches:
+                        match_key = (match.matched_channel_id, match.matched_message_id)
+                        matched_assignments = self.repository.list_message_node_assignments(
+                            message_keys=[match_key]
+                        )
+                        for ma in matched_assignments:
+                            support_node_ids.add(ma.node_id)
+                        # Also check pending assignments for the matched message.
+                        for pa in state.pending_assignments:
+                            if pa.channel_id == match.matched_channel_id and pa.message_id == match.matched_message_id:
+                                support_node_ids.add(pa.node_id)
+                    for node in resolver.register_cross_channel_support(node_ids=sorted(support_node_ids)):
+                        state.pending_nodes[node.node_id] = node
+
+    def _build_cross_channel_message_matches(
+        self,
+        *,
+        message: RawMessage,
+        embedding: list[float],
+    ) -> list[CrossChannelMessageMatch]:
+        matches = self.vector_store.query_message_embeddings(
+            embedding,
+            top_k=5,
+            exclude_channel_id=message.channel_id,
+            timestamp_gte=message.timestamp - timedelta(days=self.settings.event_match_window_days),
+        )
+        accepted: list[CrossChannelMessageMatch] = []
+        for match in matches:
+            if match.similarity_score <= self.settings.cross_channel_threshold:
+                continue
+            timestamp_delta_seconds = None
+            # `match` is a MessageMatch with channel_id, message_id, similarity_score
+            # Look up the matched message timestamp if possible.
+            accepted.append(
+                CrossChannelMessageMatch(
+                    channel_id=message.channel_id,
+                    message_id=message.message_id,
+                    matched_channel_id=match.channel_id,
+                    matched_message_id=match.message_id,
+                    similarity_score=match.similarity_score,
+                    timestamp_delta_seconds=timestamp_delta_seconds,
+                    created_at=_utc_now(),
+                )
+            )
+        return accepted
+
+    def _flush_message_processing_state(self, state: _MessageProcessingState) -> None:
+        if not (
+            state.pending_nodes
+            or state.pending_assignments
+            or state.pending_semantics
+            or state.pending_cross_channel_matches
+            or state.pending_message_embeddings
+            or state.pending_theme_centroids
+            or state.pending_event_centroids
+        ):
+            return
+        self.repository.save_nodes(list(state.pending_nodes.values()))
+        self.repository.save_message_node_assignments(state.pending_assignments)
+        self.repository.upsert_message_semantics(state.pending_semantics)
+        if state.pending_cross_channel_matches:
+            self.repository.save_cross_channel_message_matches(state.pending_cross_channel_matches)
+        if state.pending_message_embeddings:
+            self.vector_store.upsert_message_embeddings(list(state.pending_message_embeddings.values()))
+        if state.pending_theme_centroids:
+            self.vector_store.upsert_theme_centroids(list(state.pending_theme_centroids.values()))
+        if state.pending_event_centroids:
+            self.vector_store.upsert_event_centroids(list(state.pending_event_centroids.values()))
+        state.pending_nodes.clear()
+        state.pending_assignments.clear()
+        state.pending_semantics.clear()
+        state.pending_cross_channel_matches.clear()
+        state.pending_message_embeddings.clear()
+        state.pending_theme_centroids.clear()
+        state.pending_event_centroids.clear()
+
+    def _emit_message_progress(
+        self,
+        *,
+        processed: int,
+        total: int,
+        failures: int,
+        started_at: float,
+        state: _MessageProcessingState,
+        callback: Callable[[KGProcessingProgress], None] | None,
+    ) -> None:
+        if callback is None:
+            return
+        elapsed = max(time.monotonic() - started_at, 0.001)
+        callback(
+            KGProcessingProgress(
+                stories_processed=processed,
+                stories_total=total,
+                assignments_created=state.assignments_created,
+                nodes_created=state.nodes_created,
+                cross_channel_matches=state.cross_channel_matches,
+                failures=failures,
+                rate_per_sec=processed / elapsed,
+            )
+        )
+
+
 class KGSegmentWorker:
     def __init__(
         self,
@@ -1426,6 +1850,157 @@ class KGSegmentWorker:
 
         stories.extend(self.segmenter.create_story(group, profile=profile) for group in merged_groups)
         return stories
+
+
+class KGProcessingWorker:
+    """Consumer-loop worker for the message-atomic pipeline.
+
+    Replaces KGSegmentWorker once the CLI/docker switches over (S2-T5).
+    Flow per batch:
+    1. stream.read(consumer_name, count=batch_size)
+    2. upsert_raw_messages
+    3. translate any non-English messages
+    4. embed each message that isn't already embedded; upsert to vector_store
+    5. node_service.process_messages(translated_messages)
+    6. stream.ack(entry_ids)
+    """
+
+    def __init__(
+        self,
+        repository: StoryRepository,
+        stream: RawMessageStream,
+        embedder: Embedder,
+        vector_store: VectorStore,
+        settings: KGSettings,
+        *,
+        extractor: SemanticExtractor,
+        translator: MessageTranslator | None = None,
+        node_service: KGNodeProcessingService | None = None,
+    ):
+        self.repository = repository
+        self.stream = stream
+        self.embedder = embedder
+        self.vector_store = vector_store
+        self.settings = settings
+        self.translator = translator
+        self.node_service = node_service or KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        )
+
+    def process_batch(self, *, consumer_name: str, batch_size: int) -> KGProcessingResult:
+        self.repository.ensure_schema()
+        self.stream.ensure_group()
+        entries = self.stream.read(consumer_name=consumer_name, count=batch_size)
+        if not entries:
+            return KGProcessingResult(0, 0, 0, 0, 0, 0, 0)
+
+        raw_messages = [entry.payload for entry in entries]
+        self.repository.upsert_raw_messages(raw_messages)
+
+        # Translate messages that aren't already in English.
+        if self.translator is not None:
+            translated_messages = list(self.translator.translate_messages(raw_messages))
+            self.repository.save_raw_message_translations(translated_messages)
+        else:
+            translated_messages = raw_messages
+
+        # Embed messages that aren't already embedded.
+        messages_embedded = 0
+        already_embedded_keys = set(
+            self.vector_store.fetch_message_embeddings(
+                [(msg.channel_id, msg.message_id) for msg in translated_messages]
+            ).keys()
+        )
+        for msg in translated_messages:
+            msg_key = (msg.channel_id, msg.message_id)
+            if msg_key in already_embedded_keys:
+                continue
+            msg_text = preferred_message_text(msg)
+            emb_texts = _safe_embed_texts(
+                self.embedder,
+                [safe_message_text(msg_text or "(media only telegram message)", max_chars=self.settings.semantic_max_chars)],
+            )
+            embedding = emb_texts[0] if emb_texts else []
+            if embedding:
+                self.vector_store.upsert_message_embeddings(
+                    [
+                        MessageEmbeddingRecord(
+                            channel_id=msg.channel_id,
+                            message_id=msg.message_id,
+                            embedding=embedding,
+                            timestamp=msg.timestamp,
+                        )
+                    ]
+                )
+                self.repository.mark_message_embedded(
+                    channel_id=msg.channel_id,
+                    message_id=msg.message_id,
+                    version=self.settings.embedding_model,
+                )
+                messages_embedded += 1
+
+        process_result = self.node_service.process_messages(translated_messages)
+        self.stream.ack([entry.entry_id for entry in entries])
+        return KGProcessingResult(
+            messages_processed=len(raw_messages),
+            messages_embedded=messages_embedded,
+            assignments_created=process_result.assignments_created,
+            nodes_created=process_result.nodes_created,
+            cross_channel_matches=process_result.cross_channel_matches,
+            relations_created=process_result.relations_created,
+            theme_stats_written=process_result.theme_stats_written,
+        )
+
+    def run_loop(
+        self,
+        *,
+        consumer_name: str,
+        batch_size: int,
+        poll_interval_seconds: float,
+        sleep_fn: Callable[[float], None] = time.sleep,
+        stop_after_idle_cycles: int | None = None,
+    ) -> KGProcessingResult:
+        total_messages = 0
+        total_embedded = 0
+        total_assignments = 0
+        total_nodes = 0
+        total_matches = 0
+        total_relations = 0
+        total_stats = 0
+        idle_cycles = 0
+
+        while True:
+            result = self.process_batch(consumer_name=consumer_name, batch_size=batch_size)
+            total_messages += result.messages_processed
+            total_embedded += result.messages_embedded
+            total_assignments += result.assignments_created
+            total_nodes += result.nodes_created
+            total_matches += result.cross_channel_matches
+            total_relations += result.relations_created
+            total_stats += result.theme_stats_written
+
+            if result.messages_processed > 0:
+                idle_cycles = 0
+                continue
+
+            idle_cycles += 1
+            sleep_fn(max(poll_interval_seconds, 0.0))
+            if stop_after_idle_cycles is not None and idle_cycles >= stop_after_idle_cycles:
+                break
+
+        return KGProcessingResult(
+            messages_processed=total_messages,
+            messages_embedded=total_embedded,
+            assignments_created=total_assignments,
+            nodes_created=total_nodes,
+            cross_channel_matches=total_matches,
+            relations_created=total_relations,
+            theme_stats_written=total_stats,
+        )
 
 
 class KGChannelMaintenanceService:

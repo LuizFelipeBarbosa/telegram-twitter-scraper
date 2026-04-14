@@ -13,8 +13,14 @@ from telegram_scraper.kg.models import (
     ChannelProfile,
     ChannelSummary,
     CrossChannelMatch,
+    CrossChannelMessageMatch,
     ExtractedSemanticNode,
     MediaRef,
+    MessageEmbeddingRecord,
+    MessageMatch,
+    MessageNodeAssignment,
+    MessageSemanticExtraction,
+    MessageSemanticRecord,
     Node,
     NodeCentroidRecord,
     NodeDetail,
@@ -33,7 +39,7 @@ from telegram_scraper.kg.models import (
     NodeHeatSnapshot,
     ThemeHistoryPoint,
 )
-from telegram_scraper.kg.services import KGChannelMaintenanceService, KGChannelRepairService, KGNodeProcessingService, KGQueryService
+from telegram_scraper.kg.services import KGChannelMaintenanceService, KGChannelRepairService, KGNodeProcessingService, KGProcessingResult, KGProcessingWorker, KGQueryService
 from telegram_scraper.models import ChatRecord, ChatType
 
 
@@ -87,9 +93,18 @@ class FakeEmbedder:
 
 
 class FakeExtractor:
-    def __init__(self, payloads: dict[str, StorySemanticExtraction] | None = None, *, failing_story_ids: set[str] | None = None):
+    def __init__(
+        self,
+        payloads: dict[str, StorySemanticExtraction] | None = None,
+        *,
+        failing_story_ids: set[str] | None = None,
+        message_payloads: dict[tuple[int, int], MessageSemanticExtraction] | None = None,
+        failing_message_keys: set[tuple[int, int]] | None = None,
+    ):
         self.payloads = payloads or {}
         self.failing_story_ids = failing_story_ids or set()
+        self.message_payloads = message_payloads or {}
+        self.failing_message_keys = failing_message_keys or set()
 
     def extract_story(self, story: StoryUnit) -> StorySemanticExtraction:
         if story.story_id in self.failing_story_ids:
@@ -98,6 +113,18 @@ class FakeExtractor:
 
     def extract_stories(self, stories):
         return [self.extract_story(story) for story in stories]
+
+    def extract_message(self, message: RawMessage) -> MessageSemanticExtraction:
+        key = (message.channel_id, message.message_id)
+        if key in self.failing_message_keys:
+            raise ValueError("malformed response")
+        return self.message_payloads.get(
+            key,
+            MessageSemanticExtraction(channel_id=message.channel_id, message_id=message.message_id),
+        )
+
+    def extract_messages(self, messages, *, max_workers=None):
+        return [self.extract_message(msg) for msg in messages]
 
 
 class RecordingExtractor(FakeExtractor):
@@ -185,6 +212,7 @@ class FakeVectorStore:
         self.event_centroids: dict[str, NodeCentroidRecord] = {}
         self.deleted_theme_centroids: list[str] = []
         self.deleted_event_centroids: list[str] = []
+        self.message_embeddings: dict[tuple[int, int], MessageEmbeddingRecord] = {}
 
     def upsert_story_embeddings(self, records):
         for record in records:
@@ -282,6 +310,46 @@ class FakeVectorStore:
         rows.sort(key=lambda row: row.similarity_score, reverse=True)
         return rows[:top_k]
 
+    def upsert_message_embeddings(self, records):
+        for record in records:
+            self.message_embeddings[(record.channel_id, record.message_id)] = record
+
+    def fetch_message_embeddings(self, keys):
+        return {
+            key: list(self.message_embeddings[key].embedding)
+            for key in keys
+            if key in self.message_embeddings
+        }
+
+    def query_message_embeddings(self, embedding, *, top_k, exclude_channel_id=None, timestamp_gte=None):
+        rows = []
+        for record in self.message_embeddings.values():
+            if exclude_channel_id is not None and record.channel_id == exclude_channel_id:
+                continue
+            if timestamp_gte is not None and record.timestamp < timestamp_gte:
+                continue
+            rows.append(
+                MessageMatch(
+                    channel_id=record.channel_id,
+                    message_id=record.message_id,
+                    similarity_score=cosine_similarity(embedding, record.embedding),
+                    metadata={},
+                )
+            )
+        rows.sort(key=lambda row: row.similarity_score, reverse=True)
+        return rows[:top_k]
+
+    def delete_message_embeddings(self, keys):
+        for key in keys:
+            self.message_embeddings.pop(key, None)
+
+    def update_message_node_ids(self, *, channel_id, message_id, node_ids):
+        key = (channel_id, message_id)
+        if key not in self.message_embeddings:
+            return
+        old = self.message_embeddings[key]
+        self.message_embeddings[key] = replace(old, node_ids=tuple(node_ids))
+
 
 class FakeRepository:
     def __init__(self) -> None:
@@ -296,6 +364,12 @@ class FakeRepository:
         self.theme_daily_stats: dict[tuple[str, date], ThemeDailyStat] = {}
         self.theme_heat_rows: list[NodeHeatSnapshot] = []
         self.schema_ensured = False
+        # Message-atomic pipeline stores
+        self.message_semantics: dict[tuple[int, int], MessageSemanticRecord] = {}
+        self.message_nodes: dict[tuple[int, int, str], MessageNodeAssignment] = {}
+        self.cross_channel_message_matches: list[CrossChannelMessageMatch] = []
+        self.embedded_messages: set[tuple[int, int]] = set()
+        self.extracted_messages: set[tuple[int, int]] = set()
 
     def ensure_schema(self):
         self.schema_ensured = True
@@ -530,6 +604,80 @@ class FakeRepository:
     def list_cross_channel_matches(self):
         return list(self.cross_channel_matches)
 
+    # ── Message-atomic pipeline methods ──────────────────────────────────────
+
+    def upsert_message_semantics(self, records):
+        for record in records:
+            self.message_semantics[(record.channel_id, record.message_id)] = record
+
+    def get_message_semantic_record(self, *, channel_id, message_id):
+        return self.message_semantics.get((channel_id, message_id))
+
+    def save_message_node_assignments(self, assignments):
+        for assignment in assignments:
+            self.message_nodes[(assignment.channel_id, assignment.message_id, assignment.node_id)] = assignment
+
+    def list_message_node_assignments(self, *, message_keys=None, node_ids=None):
+        key_filter = set(tuple(k) for k in (message_keys or []))
+        node_filter = set(node_ids or [])
+        rows = []
+        for (ch_id, msg_id, node_id), assignment in self.message_nodes.items():
+            if key_filter and (ch_id, msg_id) not in key_filter:
+                continue
+            if node_filter and node_id not in node_filter:
+                continue
+            rows.append(assignment)
+        return rows
+
+    def list_message_keys_for_node(self, node_id):
+        return [(ch_id, msg_id) for (ch_id, msg_id, nid) in self.message_nodes if nid == node_id]
+
+    def save_cross_channel_message_matches(self, matches):
+        self.cross_channel_message_matches.extend(matches)
+
+    def list_cross_channel_message_matches(self, *, channel_id=None, message_id=None):
+        rows = list(self.cross_channel_message_matches)
+        if channel_id is not None:
+            rows = [m for m in rows if m.channel_id == channel_id or m.matched_channel_id == channel_id]
+        if message_id is not None:
+            rows = [m for m in rows if m.message_id == message_id or m.matched_message_id == message_id]
+        return rows
+
+    def mark_message_embedded(self, *, channel_id, message_id, version):
+        self.embedded_messages.add((channel_id, message_id))
+
+    def mark_messages_extracted(self, keys):
+        for key in keys:
+            self.extracted_messages.add(tuple(key))
+
+    def list_messages_without_embeddings(self, *, channel_id=None, limit=None):
+        rows = [
+            msg for key, msg in self.raw_messages.items()
+            if key not in self.embedded_messages and (channel_id is None or msg.channel_id == channel_id)
+        ]
+        rows.sort(key=lambda m: m.timestamp)
+        return rows[:limit] if limit is not None else rows
+
+    def list_messages_without_semantics(self, *, channel_id=None, limit=None):
+        rows = [
+            msg for key, msg in self.raw_messages.items()
+            if key not in self.message_semantics and (channel_id is None or msg.channel_id == channel_id)
+        ]
+        rows.sort(key=lambda m: m.timestamp)
+        return rows[:limit] if limit is not None else rows
+
+    def refresh_message_heat_view(self):
+        pass
+
+    def list_message_heat_rows(self, *, kind):
+        return []
+
+    def list_candidate_channel_ids(self):
+        return list({msg.channel_id for msg in self.raw_messages.values()})
+
+    def list_node_ids_for_channels(self, *, channel_ids, status="active"):
+        return []
+
     def save_theme_daily_stats(self, stats):
         for stat in stats:
             self.theme_daily_stats[(stat.node_id, stat.date)] = stat
@@ -742,6 +890,396 @@ class FakeProjectionService:
                 "theme_stats_written": 7,
             },
         )()
+
+
+class FakeStreamEntry:
+    def __init__(self, entry_id: str, payload: RawMessage) -> None:
+        self.entry_id = entry_id
+        self.payload = payload
+
+
+class FakeStream:
+    def __init__(self, entries: list[FakeStreamEntry] | None = None) -> None:
+        self._entries: list[FakeStreamEntry] = list(entries or [])
+        self._acked: list[str] = []
+        self.group_ensured = False
+
+    def ensure_group(self) -> None:
+        self.group_ensured = True
+
+    def add(self, message: RawMessage) -> str:
+        entry_id = f"entry-{message.channel_id}-{message.message_id}"
+        self._entries.append(FakeStreamEntry(entry_id, message))
+        return entry_id
+
+    def read(self, *, consumer_name: str, count: int) -> list[FakeStreamEntry]:
+        batch = self._entries[:count]
+        self._entries = self._entries[count:]
+        return batch
+
+    def ack(self, entry_ids) -> None:
+        self._acked.extend(entry_ids)
+
+
+def build_message(
+    channel_id: int,
+    message_id: int,
+    *,
+    minute: int = 0,
+    text: str = "test message",
+    english_text: str | None = None,
+) -> RawMessage:
+    timestamp = datetime(2026, 4, 9, 12, minute, 0, tzinfo=timezone.utc)
+    return RawMessage(
+        channel_id=channel_id,
+        message_id=message_id,
+        timestamp=timestamp,
+        sender_id=None,
+        sender_name=None,
+        text=text,
+        english_text=english_text,
+    )
+
+
+class KGProcessMessagesTests(unittest.TestCase):
+    """Tests for KGNodeProcessingService.process_messages()."""
+
+    def test_process_single_message_creates_node_assignment_and_semantic_record(self):
+        """process_messages([msg]) with one theme candidate → 1 assignment, 1 node, semantic record saved."""
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+
+        msg = build_message(100, 1, text="Ceasefire negotiations advance")
+        repository.upsert_raw_messages([msg])
+
+        extractor = FakeExtractor(
+            message_payloads={
+                (100, 1): MessageSemanticExtraction(
+                    channel_id=100,
+                    message_id=1,
+                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
+                )
+            }
+        )
+
+        result = KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        ).process_messages([msg])
+
+        self.assertEqual(result.assignments_created, 1)
+        self.assertEqual(result.nodes_created, 1)
+        self.assertIsNotNone(repository.get_message_semantic_record(channel_id=100, message_id=1))
+        self.assertEqual(len(repository.message_nodes), 1)
+        theme_node = repository.get_node_by_slug(kind="theme", slug="ceasefire-peace-negotiations", status=None)
+        self.assertIsNotNone(theme_node)
+
+    def test_process_two_messages_with_same_theme_creates_one_node_with_count_two(self):
+        """Two messages from same channel extracting the same theme → 1 node article_count=2, 2 assignments."""
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+
+        msg1 = build_message(100, 1, minute=0, text="Ceasefire update one")
+        msg2 = build_message(100, 2, minute=1, text="Ceasefire update two")
+        repository.upsert_raw_messages([msg1, msg2])
+
+        extractor = FakeExtractor(
+            message_payloads={
+                (100, 1): MessageSemanticExtraction(
+                    channel_id=100, message_id=1,
+                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
+                ),
+                (100, 2): MessageSemanticExtraction(
+                    channel_id=100, message_id=2,
+                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
+                ),
+            }
+        )
+
+        result = KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        ).process_messages([msg1, msg2])
+
+        self.assertEqual(result.assignments_created, 2)
+        self.assertEqual(result.nodes_created, 1)
+        theme = repository.get_node_by_slug(kind="theme", slug="ceasefire-peace-negotiations")
+        self.assertIsNotNone(theme)
+        self.assertEqual(theme.article_count, 2)
+        self.assertEqual(len(repository.message_nodes), 2)
+
+    def test_process_messages_is_idempotent(self):
+        """Running process_messages again on the same messages doesn't create duplicate assignments."""
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+
+        msg = build_message(100, 1, text="Ceasefire negotiations advance")
+        repository.upsert_raw_messages([msg])
+
+        extractor = FakeExtractor(
+            message_payloads={
+                (100, 1): MessageSemanticExtraction(
+                    channel_id=100, message_id=1,
+                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
+                )
+            }
+        )
+
+        service = KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        )
+        result1 = service.process_messages([msg])
+        result2 = service.process_messages([msg])  # same message again
+
+        self.assertEqual(result1.assignments_created, 1)
+        self.assertEqual(result2.assignments_created, 0)  # skipped — already has semantics
+        self.assertEqual(len(repository.message_nodes), 1)
+
+    def test_cross_channel_message_match_creates_match_record_and_promotes_node(self):
+        """Two messages from different channels with same event and high embedding similarity
+        → CrossChannelMessageMatch saved, cross-channel support registered."""
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+
+        # Pre-seed msg2's embedding in the vector store so msg1's query finds it.
+        msg1 = build_message(100, 1, minute=0, text="Hormuz closure event")
+        msg2 = build_message(200, 2, minute=1, text="Hormuz closure event")
+        repository.upsert_raw_messages([msg1, msg2])
+
+        # Seed msg2's embedding so the cross-channel query can find it.
+        vector_store.upsert_message_embeddings([
+            MessageEmbeddingRecord(
+                channel_id=200,
+                message_id=2,
+                embedding=[1.0, 0.0, 0.0],
+                timestamp=msg2.timestamp,
+            )
+        ])
+
+        extractor = FakeExtractor(
+            message_payloads={
+                (100, 1): MessageSemanticExtraction(
+                    channel_id=100, message_id=1,
+                    events=(ExtractedSemanticNode(
+                        name="April 8 Hormuz Reclosure",
+                        start_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
+                    ),),
+                    primary_event="April 8 Hormuz Reclosure",
+                ),
+                (200, 2): MessageSemanticExtraction(
+                    channel_id=200, message_id=2,
+                    events=(ExtractedSemanticNode(
+                        name="April 8 Hormuz Reclosure",
+                        start_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
+                    ),),
+                    primary_event="April 8 Hormuz Reclosure",
+                ),
+            }
+        )
+
+        # Process msg1 first (msg2 embedding is already in store, so cross-channel query will find it).
+        result = KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        ).process_messages([msg1])
+
+        self.assertGreater(result.cross_channel_matches, 0)
+        self.assertGreater(len(repository.cross_channel_message_matches), 0)
+        match = repository.cross_channel_message_matches[0]
+        self.assertEqual(match.channel_id, 100)
+        self.assertEqual(match.message_id, 1)
+        self.assertEqual(match.matched_channel_id, 200)
+
+    def test_process_messages_sets_primary_event_flag(self):
+        """The primary_event from extraction gets is_primary_event=True on its assignment."""
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+
+        msg = build_message(100, 1, text="Hormuz closure event and peace talks")
+        repository.upsert_raw_messages([msg])
+
+        extractor = FakeExtractor(
+            message_payloads={
+                (100, 1): MessageSemanticExtraction(
+                    channel_id=100, message_id=1,
+                    events=(
+                        ExtractedSemanticNode(name="April 8 Hormuz Reclosure", start_at=datetime(2026, 4, 8, tzinfo=timezone.utc)),
+                        ExtractedSemanticNode(name="April 9 Peace Talks", start_at=datetime(2026, 4, 9, tzinfo=timezone.utc)),
+                    ),
+                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
+                    primary_event="April 8 Hormuz Reclosure",
+                )
+            }
+        )
+
+        KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        ).process_messages([msg])
+
+        assignments = list(repository.message_nodes.values())
+        primary_events = [a for a in assignments if a.is_primary_event]
+        self.assertEqual(len(primary_events), 1)
+        primary_node = repository.nodes[primary_events[0].node_id]
+        self.assertEqual(primary_node.kind, "event")
+
+
+class KGProcessingWorkerTests(unittest.TestCase):
+    """Tests for KGProcessingWorker.process_batch() and run_loop()."""
+
+    def _make_worker(
+        self,
+        *,
+        stream: FakeStream,
+        repository: FakeRepository | None = None,
+        vector_store: FakeVectorStore | None = None,
+        embedder: FakeEmbedder | None = None,
+        extractor: FakeExtractor | None = None,
+        translator: FakeTranslator | None = None,
+    ) -> KGProcessingWorker:
+        repo = repository or FakeRepository()
+        vs = vector_store or FakeVectorStore()
+        emb = embedder or FakeEmbedder()
+        ext = extractor or FakeExtractor()
+        settings = build_settings()
+        return KGProcessingWorker(
+            repository=repo,
+            stream=stream,
+            embedder=emb,
+            vector_store=vs,
+            settings=settings,
+            extractor=ext,
+            translator=translator,
+        )
+
+    def test_process_batch_empty_stream_returns_zero_result(self):
+        stream = FakeStream()
+        worker = self._make_worker(stream=stream)
+        result = worker.process_batch(consumer_name="w1", batch_size=10)
+        self.assertIsInstance(result, KGProcessingResult)
+        self.assertEqual(result.messages_processed, 0)
+        self.assertEqual(result.messages_embedded, 0)
+
+    def test_process_batch_full_pipeline_upserts_translates_embeds_processes_and_acks(self):
+        """End-to-end: stream → upsert → translate → embed → process_messages → ack."""
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+
+        msg = build_message(100, 1, text="Ceasefire negotiations advance", minute=0)
+        stream = FakeStream([FakeStreamEntry("entry-100-1", msg)])
+
+        extractor = FakeExtractor(
+            message_payloads={
+                (100, 1): MessageSemanticExtraction(
+                    channel_id=100, message_id=1,
+                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
+                )
+            }
+        )
+        translator = FakeTranslator({(100, 1): ("Ceasefire negotiations advance", "en")})
+
+        worker = KGProcessingWorker(
+            repository=repository,
+            stream=stream,
+            embedder=embedder,
+            vector_store=vector_store,
+            settings=settings,
+            extractor=extractor,
+            translator=translator,
+        )
+        result = worker.process_batch(consumer_name="w1", batch_size=10)
+
+        # Message was upserted.
+        self.assertIn((100, 1), repository.raw_messages)
+        # Schema was ensured.
+        self.assertTrue(repository.schema_ensured)
+        # Stream entry was acked.
+        self.assertIn("entry-100-1", stream._acked)
+        # Results look correct.
+        self.assertEqual(result.messages_processed, 1)
+        self.assertGreaterEqual(result.messages_embedded, 1)
+        self.assertEqual(result.assignments_created, 1)
+        self.assertEqual(result.nodes_created, 1)
+        # Semantic record was saved.
+        self.assertIsNotNone(repository.get_message_semantic_record(channel_id=100, message_id=1))
+
+    def test_process_batch_acks_entries_even_on_empty_extraction(self):
+        """Even when extraction produces nothing, entries are still acked."""
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+
+        msg = build_message(100, 5, text="Some message")
+        stream = FakeStream([FakeStreamEntry("entry-100-5", msg)])
+        extractor = FakeExtractor()  # returns empty extraction for every message
+
+        worker = self._make_worker(
+            stream=stream,
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+        )
+        result = worker.process_batch(consumer_name="w1", batch_size=10)
+        self.assertIn("entry-100-5", stream._acked)
+        self.assertEqual(result.messages_processed, 1)
+
+    def test_run_loop_stops_after_idle_cycles(self):
+        """run_loop with stop_after_idle_cycles=1 processes all entries then stops."""
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+
+        msg = build_message(100, 1, text="Test message")
+        stream = FakeStream([FakeStreamEntry("entry-100-1", msg)])
+
+        extractor = FakeExtractor()
+        slept: list[float] = []
+
+        worker = self._make_worker(
+            stream=stream,
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+        )
+        result = worker.run_loop(
+            consumer_name="w1",
+            batch_size=10,
+            poll_interval_seconds=0.0,
+            sleep_fn=slept.append,
+            stop_after_idle_cycles=1,
+        )
+        self.assertEqual(result.messages_processed, 1)
+        self.assertEqual(len(slept), 1)  # slept once on the idle cycle
 
 
 class KGNodeServiceTests(unittest.TestCase):
