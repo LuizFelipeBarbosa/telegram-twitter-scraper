@@ -1840,6 +1840,10 @@ class PostgresStoryRepository:
     ) -> list[MessageNodeAssignment]:
         if message_keys is None and node_ids is None:
             return []
+        if message_keys is not None and len(message_keys) == 0:
+            return []
+        if node_ids is not None and len(node_ids) == 0:
+            return []
         query = """
             SELECT channel_id, message_id, node_id, confidence, assigned_at, is_primary_event
             FROM message_nodes
@@ -2025,11 +2029,17 @@ class PostgresStoryRepository:
         return [_raw_message_from_row(row) for row in rows]
 
     def refresh_message_heat_view(self) -> None:
+        import psycopg
+
+        # ObjectNotInPrerequisiteState is raised when CONCURRENTLY is used on a
+        # view that has never been populated (no unique index exists yet). In that
+        # case we fall back to a non-concurrent refresh. Any other error (e.g.,
+        # connection failure, bad view name) is re-raised so it is not silently lost.
         with self._connect() as connection:
             with connection.cursor() as cursor:
                 try:
                     cursor.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY message_heat_view")
-                except Exception:
+                except psycopg.errors.ObjectNotInPrerequisiteState:
                     connection.rollback()
                     cursor.execute("REFRESH MATERIALIZED VIEW message_heat_view")
             connection.commit()

@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import MagicMock, call, patch
 
+import psycopg
+
 from telegram_scraper.kg.models import (
     CrossChannelMessageMatch,
     MessageEmbeddingRecord,
@@ -207,6 +209,22 @@ class ListMessageNodeAssignmentsTests(unittest.TestCase):
         self.assertEqual(result, [])
         mock_connect.assert_not_called()
 
+    def test_returns_empty_for_empty_message_keys_list(self):
+        # Empty non-None message_keys must short-circuit to [] without a DB call.
+        repo = _make_repo()
+        with patch.object(repo, "_connect") as mock_connect:
+            result = repo.list_message_node_assignments(message_keys=[])
+        self.assertEqual(result, [])
+        mock_connect.assert_not_called()
+
+    def test_returns_empty_for_empty_node_ids_list(self):
+        # Empty non-None node_ids must short-circuit to [] without a DB call.
+        repo = _make_repo()
+        with patch.object(repo, "_connect") as mock_connect:
+            result = repo.list_message_node_assignments(node_ids=[])
+        self.assertEqual(result, [])
+        mock_connect.assert_not_called()
+
     def test_filters_by_node_ids(self):
         repo = _make_repo()
         row = (1, 10, "n1", 0.9, _NOW, False)
@@ -379,12 +397,15 @@ class RefreshMessageHeatViewTests(unittest.TestCase):
         self.assertIn("message_heat_view", sql)
         conn.commit.assert_called_once()
 
-    def test_falls_back_to_non_concurrent_on_error(self):
+    def test_falls_back_to_non_concurrent_on_object_not_in_prerequisite_state(self):
         repo = _make_repo()
         cursor = _make_cursor()
         conn = _make_connection(cursor)
-        # First execute raises (simulating view not yet populated), second succeeds.
-        cursor.execute.side_effect = [Exception("not populated"), None]
+        # Simulate psycopg raising ObjectNotInPrerequisiteState (view not yet populated).
+        not_ready_error = psycopg.errors.ObjectNotInPrerequisiteState(
+            "cannot refresh materialized view concurrently"
+        )
+        cursor.execute.side_effect = [not_ready_error, None]
         with patch.object(repo, "_connect", return_value=conn):
             repo.refresh_message_heat_view()
         # Should have called execute twice (CONCURRENTLY then without)
@@ -393,6 +414,20 @@ class RefreshMessageHeatViewTests(unittest.TestCase):
         self.assertIn("REFRESH MATERIALIZED VIEW", fallback_sql)
         self.assertNotIn("CONCURRENTLY", fallback_sql)
         conn.commit.assert_called_once()
+
+    def test_unrelated_exception_propagates_and_is_not_swallowed(self):
+        repo = _make_repo()
+        cursor = _make_cursor()
+        conn = _make_connection(cursor)
+        # A generic OperationalError (e.g., connection lost) must NOT be caught.
+        unrelated_error = psycopg.OperationalError("server closed the connection unexpectedly")
+        cursor.execute.side_effect = unrelated_error
+        with patch.object(repo, "_connect", return_value=conn):
+            with self.assertRaises(psycopg.OperationalError):
+                repo.refresh_message_heat_view()
+        # Only the first (failing) execute should have been called.
+        self.assertEqual(cursor.execute.call_count, 1)
+        conn.commit.assert_not_called()
 
 
 class ListMessageHeatRowsTests(unittest.TestCase):
