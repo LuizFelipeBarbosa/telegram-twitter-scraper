@@ -10,9 +10,12 @@ from telegram_scraper.kg.models import (
     ChannelProfile,
     ChannelSummary,
     CrossChannelMatch,
+    CrossChannelMessageMatch,
     DelimiterPattern,
     EventHierarchyRef,
     MediaRef,
+    MessageNodeAssignment,
+    MessageSemanticRecord,
     Node,
     NodeDetail,
     NodeHeatSnapshot,
@@ -1741,6 +1744,312 @@ class PostgresStoryRepository:
                 rows = cursor.fetchall()
         return [_node_list_entry_from_row(row) for row in rows]
 
+    # ============================================================
+    # Message-atomic pipeline methods (Session 2 of refactor).
+    # ============================================================
+
+    def upsert_message_semantics(self, records: Sequence[MessageSemanticRecord]) -> None:
+        if not records:
+            return
+        rows = [
+            (
+                record.channel_id,
+                record.message_id,
+                self._jsonb(record.extraction_payload),
+                record.primary_event_node_id,
+                ensure_utc(record.extracted_at) if record.extracted_at is not None else None,
+                ensure_utc(record.updated_at) if record.updated_at is not None else None,
+            )
+            for record in records
+        ]
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    """
+                    INSERT INTO message_semantics (
+                        channel_id,
+                        message_id,
+                        extraction_payload,
+                        primary_event_node_id,
+                        extracted_at,
+                        updated_at
+                    )
+                    VALUES (%s, %s, %s, %s, COALESCE(%s, NOW()), COALESCE(%s, NOW()))
+                    ON CONFLICT (channel_id, message_id) DO UPDATE SET
+                        extraction_payload = EXCLUDED.extraction_payload,
+                        primary_event_node_id = EXCLUDED.primary_event_node_id,
+                        extracted_at = EXCLUDED.extracted_at,
+                        updated_at = EXCLUDED.updated_at
+                    """,
+                    rows,
+                )
+            connection.commit()
+
+    def get_message_semantic_record(
+        self, *, channel_id: int, message_id: int
+    ) -> MessageSemanticRecord | None:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT channel_id, message_id, extraction_payload,
+                           primary_event_node_id, extracted_at, updated_at
+                    FROM message_semantics
+                    WHERE channel_id = %s AND message_id = %s
+                    """,
+                    (channel_id, message_id),
+                )
+                row = cursor.fetchone()
+        return _message_semantic_from_row(row) if row is not None else None
+
+    def save_message_node_assignments(
+        self, assignments: Sequence[MessageNodeAssignment]
+    ) -> None:
+        if not assignments:
+            return
+        rows = [
+            (
+                assignment.channel_id,
+                assignment.message_id,
+                assignment.node_id,
+                assignment.confidence,
+                ensure_utc(assignment.assigned_at) if assignment.assigned_at is not None else None,
+                assignment.is_primary_event,
+            )
+            for assignment in assignments
+        ]
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    """
+                    INSERT INTO message_nodes (channel_id, message_id, node_id, confidence, assigned_at, is_primary_event)
+                    VALUES (%s, %s, %s, %s, COALESCE(%s, NOW()), %s)
+                    ON CONFLICT (channel_id, message_id, node_id) DO UPDATE SET
+                        confidence = EXCLUDED.confidence,
+                        is_primary_event = EXCLUDED.is_primary_event
+                    """,
+                    rows,
+                )
+            connection.commit()
+
+    def list_message_node_assignments(
+        self,
+        *,
+        message_keys: Sequence[tuple[int, int]] | None = None,
+        node_ids: Sequence[str] | None = None,
+    ) -> list[MessageNodeAssignment]:
+        if message_keys is None and node_ids is None:
+            return []
+        query = """
+            SELECT channel_id, message_id, node_id, confidence, assigned_at, is_primary_event
+            FROM message_nodes
+            WHERE 1 = 1
+        """
+        params: list[Any] = []
+        if message_keys:
+            query += " AND (channel_id, message_id) = ANY(%s)"
+            params.append(list(message_keys))
+        if node_ids:
+            query += " AND node_id = ANY(%s)"
+            params.append(list(node_ids))
+        query += " ORDER BY channel_id, message_id, is_primary_event DESC, confidence DESC, node_id"
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+        return [_message_node_assignment_from_row(row) for row in rows]
+
+    def list_message_keys_for_node(
+        self, node_id: str
+    ) -> list[tuple[int, int]]:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT channel_id, message_id
+                    FROM message_nodes
+                    WHERE node_id = %s
+                    ORDER BY channel_id, message_id
+                    """,
+                    (node_id,),
+                )
+                rows = cursor.fetchall()
+        return [(int(row[0]), int(row[1])) for row in rows]
+
+    def save_cross_channel_message_matches(
+        self, matches: Sequence[CrossChannelMessageMatch]
+    ) -> None:
+        if not matches:
+            return
+        rows = [
+            (
+                match.channel_id,
+                match.message_id,
+                match.matched_channel_id,
+                match.matched_message_id,
+                match.similarity_score,
+                match.timestamp_delta_seconds,
+                ensure_utc(match.created_at) if match.created_at is not None else None,
+            )
+            for match in matches
+        ]
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    """
+                    INSERT INTO message_matches (
+                        channel_id,
+                        message_id,
+                        matched_channel_id,
+                        matched_message_id,
+                        similarity_score,
+                        timestamp_delta_seconds,
+                        created_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, COALESCE(%s, NOW()))
+                    ON CONFLICT (channel_id, message_id, matched_channel_id, matched_message_id) DO UPDATE SET
+                        similarity_score = EXCLUDED.similarity_score,
+                        timestamp_delta_seconds = EXCLUDED.timestamp_delta_seconds,
+                        created_at = EXCLUDED.created_at
+                    """,
+                    rows,
+                )
+            connection.commit()
+
+    def list_cross_channel_message_matches(
+        self, *, channel_id: int | None = None, message_id: int | None = None
+    ) -> list[CrossChannelMessageMatch]:
+        query = """
+            SELECT channel_id, message_id, matched_channel_id, matched_message_id,
+                   similarity_score, timestamp_delta_seconds, created_at
+            FROM message_matches
+            WHERE 1 = 1
+        """
+        params: list[Any] = []
+        if channel_id is not None:
+            query += " AND channel_id = %s"
+            params.append(channel_id)
+        if message_id is not None:
+            query += " AND message_id = %s"
+            params.append(message_id)
+        query += " ORDER BY similarity_score DESC, created_at DESC"
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+        return [_cross_channel_message_match_from_row(row) for row in rows]
+
+    def mark_message_embedded(self, *, channel_id: int, message_id: int, version: str) -> None:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE raw_messages
+                    SET is_embedded = TRUE
+                    WHERE channel_id = %s AND message_id = %s
+                    """,
+                    (channel_id, message_id),
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO message_embeddings (channel_id, message_id, embedding_version)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (channel_id, message_id) DO UPDATE SET
+                        embedding_version = EXCLUDED.embedding_version
+                    """,
+                    (channel_id, message_id, version),
+                )
+            connection.commit()
+
+    def mark_messages_extracted(self, keys: Sequence[tuple[int, int]]) -> None:
+        if not keys:
+            return
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE raw_messages
+                    SET is_extracted = TRUE
+                    WHERE (channel_id, message_id) = ANY(%s)
+                    """,
+                    (list(keys),),
+                )
+            connection.commit()
+
+    def list_messages_without_embeddings(
+        self, *, channel_id: int | None = None, limit: int | None = None
+    ) -> list[RawMessage]:
+        query = """
+            SELECT channel_id, message_id, timestamp, sender_id, sender_name,
+                   text, english_text, source_language, translated_at,
+                   media_refs, forwarded_from, reply_to_message_id, raw_json
+            FROM raw_messages
+            WHERE is_embedded = FALSE
+        """
+        params: list[Any] = []
+        if channel_id is not None:
+            query += " AND channel_id = %s"
+            params.append(channel_id)
+        query += " ORDER BY timestamp ASC, message_id ASC"
+        if limit is not None:
+            query += " LIMIT %s"
+            params.append(limit)
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+        return [_raw_message_from_row(row) for row in rows]
+
+    def list_messages_without_semantics(
+        self, *, channel_id: int | None = None, limit: int | None = None
+    ) -> list[RawMessage]:
+        query = """
+            SELECT channel_id, message_id, timestamp, sender_id, sender_name,
+                   text, english_text, source_language, translated_at,
+                   media_refs, forwarded_from, reply_to_message_id, raw_json
+            FROM raw_messages
+            WHERE is_extracted = FALSE
+        """
+        params: list[Any] = []
+        if channel_id is not None:
+            query += " AND channel_id = %s"
+            params.append(channel_id)
+        query += " ORDER BY timestamp ASC, message_id ASC"
+        if limit is not None:
+            query += " LIMIT %s"
+            params.append(limit)
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+        return [_raw_message_from_row(row) for row in rows]
+
+    def refresh_message_heat_view(self) -> None:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                try:
+                    cursor.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY message_heat_view")
+                except Exception:
+                    connection.rollback()
+                    cursor.execute("REFRESH MATERIALIZED VIEW message_heat_view")
+            connection.commit()
+
+    def list_message_heat_rows(self, *, kind: str) -> list[NodeHeatSnapshot]:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT node_id, kind, slug, display_name, article_count,
+                           heat_1d, heat_3d, heat_5d, heat_7d, heat_14d, heat_31d
+                    FROM message_heat_view
+                    WHERE kind = %s
+                    ORDER BY heat_1d DESC, heat_3d DESC, display_name ASC
+                    """,
+                    (kind,),
+                )
+                rows = cursor.fetchall()
+        return [_node_heat_from_row(row) for row in rows]
+
     def get_node_detail(self, *, kind: NodeKind, slug: str, story_limit: int = 20, story_offset: int = 0) -> NodeDetail | None:
         node = self.get_node_by_slug(kind=kind, slug=slug)
         if node is None:
@@ -2062,3 +2371,37 @@ def _node_list_entry_from_row(row: Sequence[Any]) -> NodeListEntry:
             child_count=0,
             parent_event=None,
         )
+
+
+def _message_semantic_from_row(row: Sequence[Any]) -> MessageSemanticRecord:
+    return MessageSemanticRecord(
+        channel_id=int(row[0]),
+        message_id=int(row[1]),
+        extraction_payload=dict(row[2] or {}),
+        primary_event_node_id=str(row[3]) if row[3] is not None else None,
+        extracted_at=ensure_utc(row[4]) if row[4] is not None else None,
+        updated_at=ensure_utc(row[5]) if row[5] is not None else None,
+    )
+
+
+def _message_node_assignment_from_row(row: Sequence[Any]) -> MessageNodeAssignment:
+    return MessageNodeAssignment(
+        channel_id=int(row[0]),
+        message_id=int(row[1]),
+        node_id=str(row[2]),
+        confidence=float(row[3]),
+        assigned_at=ensure_utc(row[4]) if row[4] is not None else None,
+        is_primary_event=bool(row[5]),
+    )
+
+
+def _cross_channel_message_match_from_row(row: Sequence[Any]) -> CrossChannelMessageMatch:
+    return CrossChannelMessageMatch(
+        channel_id=int(row[0]),
+        message_id=int(row[1]),
+        matched_channel_id=int(row[2]),
+        matched_message_id=int(row[3]),
+        similarity_score=float(row[4]),
+        timestamp_delta_seconds=int(row[5]) if row[5] is not None else None,
+        created_at=ensure_utc(row[6]) if row[6] is not None else None,
+    )

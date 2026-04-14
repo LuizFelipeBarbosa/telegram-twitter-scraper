@@ -4,7 +4,14 @@ from datetime import datetime
 import json
 from typing import Any, Sequence
 
-from telegram_scraper.kg.models import NodeCentroidRecord, NodeMatch, StoryEmbeddingRecord, StoryMatch
+from telegram_scraper.kg.models import (
+    MessageEmbeddingRecord,
+    MessageMatch,
+    NodeCentroidRecord,
+    NodeMatch,
+    StoryEmbeddingRecord,
+    StoryMatch,
+)
 
 
 _FETCH_BATCH_SIZE = 200
@@ -187,6 +194,102 @@ class PineconeVectorStore:
             return
         for batch in _chunked(_stringify_ids(node_ids), _FETCH_BATCH_SIZE):
             index.delete(ids=list(batch))
+
+    # ── Message-atomic pipeline methods ──────────────────────────────────────
+
+    def upsert_message_embeddings(self, records: Sequence[MessageEmbeddingRecord]) -> None:
+        if not records:
+            return
+        vectors = [
+            {
+                "id": f"{record.channel_id}:{record.message_id}",
+                "values": record.embedding,
+                "metadata": {
+                    "channel_id": record.channel_id,
+                    "message_id": record.message_id,
+                    "timestamp": int(record.timestamp.timestamp()),
+                    "node_ids": _stringify_ids(record.node_ids),
+                },
+            }
+            for record in records
+        ]
+        index = self._story_index()
+        for batch in _chunk_vectors_by_bytes(vectors, max_bytes=_UPSERT_MAX_BYTES):
+            index.upsert(vectors=batch)
+
+    def fetch_message_embeddings(
+        self, keys: Sequence[tuple[int, int]]
+    ) -> dict[tuple[int, int], list[float]]:
+        if not keys:
+            return {}
+        ids = [f"{channel_id}:{message_id}" for channel_id, message_id in keys]
+        vectors: dict[tuple[int, int], list[float]] = {}
+        index = self._story_index()
+        for batch in _chunked(ids, _FETCH_BATCH_SIZE):
+            response = index.fetch(ids=list(batch))
+            payload = _field(response, "vectors", {})
+            for vector_id, vector in payload.items():
+                parts = str(vector_id).split(":", 1)
+                if len(parts) == 2:
+                    key = (int(parts[0]), int(parts[1]))
+                    vectors[key] = list(_field(vector, "values", []))
+        return vectors
+
+    def query_message_embeddings(
+        self,
+        embedding: list[float],
+        *,
+        top_k: int,
+        exclude_channel_id: int | None = None,
+        timestamp_gte: datetime | None = None,
+    ) -> list[MessageMatch]:
+        filters: dict[str, Any] = {}
+        if exclude_channel_id is not None:
+            filters["channel_id"] = {"$ne": exclude_channel_id}
+        if timestamp_gte is not None:
+            filters["timestamp"] = {"$gte": int(timestamp_gte.timestamp())}
+        response = self._story_index().query(
+            vector=embedding,
+            top_k=top_k,
+            filter=filters or None,
+            include_metadata=True,
+        )
+        matches = _field(response, "matches", [])
+        results: list[MessageMatch] = []
+        for match in matches:
+            vector_id = str(_field(match, "id", ""))
+            parts = vector_id.split(":", 1)
+            if len(parts) != 2:
+                continue
+            try:
+                channel_id = int(parts[0])
+                message_id = int(parts[1])
+            except ValueError:
+                continue
+            results.append(
+                MessageMatch(
+                    channel_id=channel_id,
+                    message_id=message_id,
+                    similarity_score=float(_field(match, "score", 0.0)),
+                    metadata=dict(_field(match, "metadata", {}) or {}),
+                )
+            )
+        return results
+
+    def delete_message_embeddings(self, keys: Sequence[tuple[int, int]]) -> None:
+        if not keys:
+            return
+        ids = [f"{channel_id}:{message_id}" for channel_id, message_id in keys]
+        for batch in _chunked(ids, _FETCH_BATCH_SIZE):
+            self._story_index().delete(ids=list(batch))
+
+    def update_message_node_ids(
+        self, *, channel_id: int, message_id: int, node_ids: Sequence[str]
+    ) -> None:
+        self._story_index().update(
+            id=f"{channel_id}:{message_id}",
+            set_metadata={"node_ids": _stringify_ids(node_ids)},
+        )
 
 
 def _field(value: Any, name: str, default: Any) -> Any:

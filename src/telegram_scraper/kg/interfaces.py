@@ -7,7 +7,12 @@ from telegram_scraper.kg.models import (
     ChannelProfile,
     ChannelSummary,
     CrossChannelMatch,
+    CrossChannelMessageMatch,
+    MessageEmbeddingRecord,
+    MessageMatch,
+    MessageNodeAssignment,
     MessageSemanticExtraction,
+    MessageSemanticRecord,
     Node,
     NodeCentroidRecord,
     NodeDetail,
@@ -178,6 +183,51 @@ class StoryRepository(Protocol):
 
     def get_node_detail(self, *, kind: NodeKind, slug: str, story_limit: int = 20, story_offset: int = 0) -> NodeDetail | None: ...
 
+    # ── Message-atomic pipeline methods ──────────────────────────────────────
+
+    def upsert_message_semantics(self, records: Sequence[MessageSemanticRecord]) -> None: ...
+
+    def get_message_semantic_record(
+        self, *, channel_id: int, message_id: int
+    ) -> MessageSemanticRecord | None: ...
+
+    def save_message_node_assignments(
+        self, assignments: Sequence[MessageNodeAssignment]
+    ) -> None: ...
+
+    def list_message_node_assignments(
+        self,
+        *,
+        message_keys: Sequence[tuple[int, int]] | None = None,
+        node_ids: Sequence[str] | None = None,
+    ) -> list[MessageNodeAssignment]: ...
+
+    def list_message_keys_for_node(self, node_id: str) -> list[tuple[int, int]]: ...
+
+    def save_cross_channel_message_matches(
+        self, matches: Sequence[CrossChannelMessageMatch]
+    ) -> None: ...
+
+    def list_cross_channel_message_matches(
+        self, *, channel_id: int | None = None, message_id: int | None = None
+    ) -> list[CrossChannelMessageMatch]: ...
+
+    def mark_message_embedded(self, *, channel_id: int, message_id: int, version: str) -> None: ...
+
+    def mark_messages_extracted(self, keys: Sequence[tuple[int, int]]) -> None: ...
+
+    def list_messages_without_embeddings(
+        self, *, channel_id: int | None = None, limit: int | None = None
+    ) -> list[RawMessage]: ...
+
+    def list_messages_without_semantics(
+        self, *, channel_id: int | None = None, limit: int | None = None
+    ) -> list[RawMessage]: ...
+
+    def refresh_message_heat_view(self) -> None: ...
+
+    def list_message_heat_rows(self, *, kind: str) -> list[NodeHeatSnapshot]: ...
+
 
 class StreamEntry(Protocol):
     entry_id: str
@@ -252,3 +302,26 @@ class VectorStore(Protocol):
     def delete_theme_centroids(self, node_ids: Sequence[str]) -> None: ...
 
     def delete_event_centroids(self, node_ids: Sequence[str]) -> None: ...
+
+    # ── Message-atomic pipeline methods ──────────────────────────────────────
+
+    def upsert_message_embeddings(self, records: Sequence[MessageEmbeddingRecord]) -> None: ...
+
+    def fetch_message_embeddings(
+        self, keys: Sequence[tuple[int, int]]
+    ) -> dict[tuple[int, int], list[float]]: ...
+
+    def query_message_embeddings(
+        self,
+        embedding: list[float],
+        *,
+        top_k: int,
+        exclude_channel_id: int | None = None,
+        timestamp_gte: datetime | None = None,
+    ) -> list[MessageMatch]: ...
+
+    def delete_message_embeddings(self, keys: Sequence[tuple[int, int]]) -> None: ...
+
+    def update_message_node_ids(
+        self, *, channel_id: int, message_id: int, node_ids: Sequence[str]
+    ) -> None: ...
