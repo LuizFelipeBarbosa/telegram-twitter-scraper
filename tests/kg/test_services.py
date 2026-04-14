@@ -672,6 +672,27 @@ class FakeRepository:
     def list_message_heat_rows(self, *, kind):
         return []
 
+    def list_message_keys_for_node_on_date(self, node_id, day):
+        return [
+            (ch_id, msg_id)
+            for (ch_id, msg_id, nid) in self.message_nodes
+            if nid == node_id
+            and (ch_id, msg_id) in self.raw_messages
+            and self.raw_messages[(ch_id, msg_id)].timestamp.date() == day
+        ]
+
+    def get_raw_message(self, *, channel_id, message_id):
+        return self.raw_messages.get((channel_id, message_id))
+
+    def list_raw_messages_by_keys(self, keys):
+        result = []
+        for key in keys:
+            msg = self.raw_messages.get(tuple(key))
+            if msg is not None:
+                result.append(msg)
+        result.sort(key=lambda m: m.timestamp)
+        return result
+
     def list_candidate_channel_ids(self):
         return list({msg.channel_id for msg in self.raw_messages.values()})
 
@@ -2298,6 +2319,470 @@ class KGNodeServiceTests(unittest.TestCase):
         self.assertEqual(status.story_count, 1)
         self.assertEqual(status.ingested_latest_at, raw_message.timestamp)
         self.assertEqual(status.telegram_latest_at, latest_visible.timestamp)
+
+
+class RebuildNodeRelationsFromMessagesTests(unittest.TestCase):
+    """Tests for KGNodeProjectionService.rebuild_node_relations_from_messages()."""
+
+    def _make_node(self, node_id: str, kind: str = "theme") -> "Node":
+        from telegram_scraper.kg.models import Node
+        return Node(
+            node_id=node_id,
+            kind=kind,
+            slug=node_id,
+            display_name=node_id,
+            canonical_name=node_id,
+            normalized_name=node_id,
+            summary=None,
+            aliases=(),
+            status="active",
+            label_source="test",
+            article_count=0,
+        )
+
+    def test_two_messages_with_two_shared_nodes_produces_one_relation(self):
+        """Two messages each mentioning node_a and node_b → 1 relation with shared_count=2."""
+        from telegram_scraper.kg.services import KGNodeProjectionService
+
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+
+        node_a = self._make_node("node-a")
+        node_b = self._make_node("node-b")
+        repository.save_nodes([node_a, node_b])
+
+        msg1 = build_message(100, 1, minute=0, text="msg1")
+        msg2 = build_message(100, 2, minute=1, text="msg2")
+        repository.upsert_raw_messages([msg1, msg2])
+
+        # Both messages mention both nodes.
+        repository.save_message_node_assignments([
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id="node-a", confidence=0.9),
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id="node-b", confidence=0.8),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id="node-a", confidence=0.85),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id="node-b", confidence=0.75),
+        ])
+
+        service = KGNodeProjectionService(repository=repository, vector_store=vector_store)
+        count = service.rebuild_node_relations_from_messages()
+
+        self.assertEqual(count, 1)
+        relations = repository.list_node_relations("node-a")
+        self.assertEqual(len(relations), 1)
+        self.assertEqual(relations[0].shared_story_count, 2)
+        self.assertEqual(relations[0].score, 2.0)
+
+    def test_cross_channel_bonus_adds_half_point(self):
+        """A cross-channel match between two event nodes adds 0.5 bonus to their relation."""
+        from telegram_scraper.kg.services import KGNodeProjectionService
+        from telegram_scraper.kg.models import CrossChannelMessageMatch, MessageSemanticRecord
+
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+
+        node_a = self._make_node("event-a", kind="event")
+        node_b = self._make_node("event-b", kind="event")
+        repository.save_nodes([node_a, node_b])
+
+        msg1 = build_message(100, 1, minute=0, text="event a msg")
+        msg2 = build_message(200, 1, minute=0, text="event b msg")
+        repository.upsert_raw_messages([msg1, msg2])
+
+        # Each message mentions one event (no shared message, so no shared_count).
+        repository.save_message_node_assignments([
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id="event-a", confidence=0.9, is_primary_event=True),
+            MessageNodeAssignment(channel_id=200, message_id=1, node_id="event-b", confidence=0.9, is_primary_event=True),
+        ])
+
+        # Cross-channel message match.
+        repository.save_cross_channel_message_matches([
+            CrossChannelMessageMatch(
+                channel_id=100, message_id=1,
+                matched_channel_id=200, matched_message_id=1,
+                similarity_score=0.95,
+            )
+        ])
+        repository.upsert_message_semantics([
+            MessageSemanticRecord(channel_id=100, message_id=1, primary_event_node_id="event-a"),
+            MessageSemanticRecord(channel_id=200, message_id=1, primary_event_node_id="event-b"),
+        ])
+
+        service = KGNodeProjectionService(repository=repository, vector_store=vector_store)
+        count = service.rebuild_node_relations_from_messages()
+
+        self.assertEqual(count, 1)
+        relations = repository.list_node_relations("event-a")
+        self.assertEqual(len(relations), 1)
+        self.assertAlmostEqual(relations[0].score, 0.5)
+        self.assertEqual(relations[0].shared_story_count, 0)
+
+    def test_no_assignments_produces_no_relations(self):
+        from telegram_scraper.kg.services import KGNodeProjectionService
+
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        service = KGNodeProjectionService(repository=repository, vector_store=vector_store)
+        count = service.rebuild_node_relations_from_messages()
+        self.assertEqual(count, 0)
+
+
+class RefreshThemeStatsFromMessagesTests(unittest.TestCase):
+    """Tests for KGNodeProjectionService.refresh_theme_stats_from_messages()."""
+
+    def test_smoke_writes_theme_daily_stats(self):
+        """Smoke test: theme with 2 messages on today's date → stat written with article_count=2."""
+        from telegram_scraper.kg.services import KGNodeProjectionService
+        from telegram_scraper.kg.models import Node, MessageEmbeddingRecord
+
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+
+        theme = Node(
+            node_id="theme-x",
+            kind="theme",
+            slug="theme-x",
+            display_name="Theme X",
+            canonical_name="Theme X",
+            normalized_name="theme x",
+            summary=None,
+            aliases=(),
+            status="active",
+            label_source="test",
+            article_count=2,
+        )
+        repository.save_nodes([theme])
+
+        today = datetime.now(timezone.utc).date()
+        ts_today = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+
+        msg1 = RawMessage(channel_id=100, message_id=1, timestamp=ts_today, sender_id=None, sender_name=None, text="t1")
+        msg2 = RawMessage(channel_id=100, message_id=2, timestamp=ts_today, sender_id=None, sender_name=None, text="t2")
+        repository.upsert_raw_messages([msg1, msg2])
+        repository.save_message_node_assignments([
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id="theme-x", confidence=0.9),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id="theme-x", confidence=0.8),
+        ])
+        vector_store.upsert_message_embeddings([
+            MessageEmbeddingRecord(channel_id=100, message_id=1, embedding=[1.0, 0.0], timestamp=ts_today),
+            MessageEmbeddingRecord(channel_id=100, message_id=2, embedding=[0.9, 0.1], timestamp=ts_today),
+        ])
+
+        service = KGNodeProjectionService(repository=repository, vector_store=vector_store)
+        count = service.refresh_theme_stats_from_messages(days=1)
+
+        self.assertGreater(count, 0)
+        stat = repository.theme_daily_stats.get(("theme-x", today))
+        self.assertIsNotNone(stat)
+        self.assertEqual(stat.article_count, 2)
+
+
+class NodeShowMessagesTests(unittest.TestCase):
+    """Tests for KGQueryService.node_show_messages()."""
+
+    def _make_node(self, node_id: str, kind: str = "theme") -> "Node":
+        from telegram_scraper.kg.models import Node
+        return Node(
+            node_id=node_id,
+            kind=kind,
+            slug=node_id,
+            display_name=node_id,
+            canonical_name=node_id,
+            normalized_name=node_id,
+            summary=None,
+            aliases=(),
+            status="active",
+            label_source="test",
+            article_count=0,
+        )
+
+    def test_returns_messages_not_stories(self):
+        """node_show_messages returns NodeDetail with messages populated, stories empty."""
+        from telegram_scraper.kg.services import KGQueryService
+
+        repository = FakeRepository()
+        theme = self._make_node("theme-t1")
+        repository.save_nodes([theme])
+
+        msg = RawMessage(
+            channel_id=100, message_id=1,
+            timestamp=datetime(2026, 4, 9, 12, 0, tzinfo=timezone.utc),
+            sender_id=None, sender_name=None, text="Theme message content",
+            english_text="Theme message content",
+        )
+        repository.upsert_raw_messages([msg])
+        repository.save_message_node_assignments([
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id="theme-t1", confidence=0.9),
+        ])
+
+        service = KGQueryService(repository=repository)
+        detail = service.node_show_messages(kind="theme", slug="theme-t1")
+
+        self.assertIsNotNone(detail)
+        self.assertEqual(detail.node_id, "theme-t1")
+        self.assertEqual(len(detail.messages), 1)
+        self.assertEqual(len(detail.stories), 0)
+        self.assertEqual(detail.messages[0].message_id, 1)
+        self.assertEqual(detail.messages[0].channel_id, 100)
+        self.assertEqual(detail.messages[0].confidence, 0.9)
+
+    def test_returns_none_for_missing_node(self):
+        from telegram_scraper.kg.services import KGQueryService
+
+        repository = FakeRepository()
+        service = KGQueryService(repository=repository)
+        detail = service.node_show_messages(kind="theme", slug="nonexistent")
+        self.assertIsNone(detail)
+
+    def test_pagination_via_offset(self):
+        """Pagination: message_limit=1 and message_offset=1 returns second message."""
+        from telegram_scraper.kg.services import KGQueryService
+
+        repository = FakeRepository()
+        theme = self._make_node("theme-pag")
+        repository.save_nodes([theme])
+
+        ts_base = datetime(2026, 4, 9, 12, 0, tzinfo=timezone.utc)
+        for i in range(1, 4):
+            msg = RawMessage(
+                channel_id=100, message_id=i,
+                timestamp=ts_base + timedelta(minutes=i),
+                sender_id=None, sender_name=None, text=f"msg {i}",
+            )
+            repository.upsert_raw_messages([msg])
+            repository.save_message_node_assignments([
+                MessageNodeAssignment(
+                    channel_id=100, message_id=i, node_id="theme-pag",
+                    confidence=0.9,
+                    assigned_at=ts_base + timedelta(minutes=i),
+                ),
+            ])
+
+        service = KGQueryService(repository=repository)
+
+        # Page 1: most recent first.
+        detail_p1 = service.node_show_messages(kind="theme", slug="theme-pag", message_limit=1, message_offset=0)
+        # Page 2: offset by 1.
+        detail_p2 = service.node_show_messages(kind="theme", slug="theme-pag", message_limit=1, message_offset=1)
+
+        self.assertEqual(len(detail_p1.messages), 1)
+        self.assertEqual(len(detail_p2.messages), 1)
+        # The two pages should return different messages.
+        self.assertNotEqual(detail_p1.messages[0].message_id, detail_p2.messages[0].message_id)
+
+    def test_related_entities_via_co_occurrence(self):
+        """Related nodes are computed from message co-occurrence, not story relations."""
+        from telegram_scraper.kg.services import KGQueryService
+        from telegram_scraper.kg.models import Node
+
+        repository = FakeRepository()
+        theme = self._make_node("theme-main")
+        person = Node(
+            node_id="person-related",
+            kind="person",
+            slug="person-related",
+            display_name="Related Person",
+            canonical_name="Related Person",
+            normalized_name="related person",
+            summary=None,
+            aliases=(),
+            status="active",
+            label_source="test",
+            article_count=1,
+        )
+        repository.save_nodes([theme, person])
+
+        msg = RawMessage(
+            channel_id=100, message_id=1,
+            timestamp=datetime(2026, 4, 9, 12, 0, tzinfo=timezone.utc),
+            sender_id=None, sender_name=None, text="Joint message",
+        )
+        repository.upsert_raw_messages([msg])
+        repository.save_message_node_assignments([
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id="theme-main", confidence=0.9),
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id="person-related", confidence=0.8),
+        ])
+
+        service = KGQueryService(repository=repository)
+        detail = service.node_show_messages(kind="theme", slug="theme-main")
+
+        self.assertIsNotNone(detail)
+        self.assertEqual(len(detail.people), 1)
+        self.assertEqual(detail.people[0].node_id, "person-related")
+        self.assertEqual(detail.people[0].shared_story_count, 1)
+
+
+class GroupedMessagesTests(unittest.TestCase):
+    """Tests for KGQueryService.grouped_messages()."""
+
+    def _make_node(self, node_id: str, kind: str = "event") -> "Node":
+        from telegram_scraper.kg.models import Node
+        return Node(
+            node_id=node_id,
+            kind=kind,
+            slug=node_id,
+            display_name=node_id,
+            canonical_name=node_id,
+            normalized_name=node_id,
+            summary=None,
+            aliases=(),
+            status="active",
+            label_source="test",
+            article_count=0,
+        )
+
+    def test_three_messages_on_three_different_days_produce_three_groups(self):
+        """Messages on 3 different days with window='1d' → 3 groups."""
+        from telegram_scraper.kg.services import KGQueryService
+
+        repository = FakeRepository()
+        node = self._make_node("event-e1")
+        repository.save_nodes([node])
+
+        base = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+        for i in range(3):
+            ts = base + timedelta(days=i)
+            msg = RawMessage(
+                channel_id=100, message_id=i + 1,
+                timestamp=ts, sender_id=None, sender_name=None, text=f"day {i+1}",
+            )
+            repository.upsert_raw_messages([msg])
+            repository.save_message_node_assignments([
+                MessageNodeAssignment(channel_id=100, message_id=i + 1, node_id="event-e1", confidence=0.9),
+            ])
+
+        service = KGQueryService(repository=repository)
+        groups = service.grouped_messages(node_id="event-e1", window="1d")
+
+        self.assertEqual(len(groups), 3)
+        # Groups are sorted by timestamp_start DESC.
+        self.assertGreater(groups[0].timestamp_start, groups[1].timestamp_start)
+        self.assertGreater(groups[1].timestamp_start, groups[2].timestamp_start)
+        for group in groups:
+            self.assertEqual(len(group.messages), 1)
+            self.assertEqual(group.dominant_node_id, "event-e1")
+
+    def test_two_messages_within_same_day_produce_one_group(self):
+        """Two messages in the same day → 1 group."""
+        from telegram_scraper.kg.services import KGQueryService
+
+        repository = FakeRepository()
+        node = self._make_node("event-e2")
+        repository.save_nodes([node])
+
+        base = datetime(2026, 4, 5, 8, 0, tzinfo=timezone.utc)
+        for i in range(2):
+            ts = base + timedelta(hours=i * 4)  # 4 hours apart, same day.
+            msg = RawMessage(
+                channel_id=100, message_id=i + 1,
+                timestamp=ts, sender_id=None, sender_name=None, text=f"msg {i+1}",
+            )
+            repository.upsert_raw_messages([msg])
+            repository.save_message_node_assignments([
+                MessageNodeAssignment(channel_id=100, message_id=i + 1, node_id="event-e2", confidence=0.9),
+            ])
+
+        service = KGQueryService(repository=repository)
+        groups = service.grouped_messages(node_id="event-e2", window="1d")
+
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(len(groups[0].messages), 2)
+
+    def test_empty_node_returns_empty_list(self):
+        """Node with no message assignments → empty list."""
+        from telegram_scraper.kg.services import KGQueryService
+
+        repository = FakeRepository()
+        service = KGQueryService(repository=repository)
+        groups = service.grouped_messages(node_id="nonexistent-node", window="1d")
+        self.assertEqual(groups, [])
+
+    def test_group_id_is_deterministic(self):
+        """Calling grouped_messages twice returns groups with the same group_ids."""
+        from telegram_scraper.kg.services import KGQueryService
+
+        repository = FakeRepository()
+        node = self._make_node("event-e3")
+        repository.save_nodes([node])
+
+        ts = datetime(2026, 4, 5, 10, 0, tzinfo=timezone.utc)
+        msg = RawMessage(
+            channel_id=100, message_id=1,
+            timestamp=ts, sender_id=None, sender_name=None, text="once",
+        )
+        repository.upsert_raw_messages([msg])
+        repository.save_message_node_assignments([
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id="event-e3", confidence=0.9),
+        ])
+
+        service = KGQueryService(repository=repository)
+        groups1 = service.grouped_messages(node_id="event-e3", window="1d")
+        groups2 = service.grouped_messages(node_id="event-e3", window="1d")
+
+        self.assertEqual(len(groups1), 1)
+        self.assertEqual(groups1[0].group_id, groups2[0].group_id)
+        self.assertEqual(len(groups1[0].group_id), 16)  # sha256[:16]
+
+
+class FakeRepositoryNewMethodTests(unittest.TestCase):
+    """Tests for the three new FakeRepository helper methods."""
+
+    def test_list_message_keys_for_node_on_date(self):
+        repository = FakeRepository()
+        ts_today = datetime(2026, 4, 10, 12, 0, tzinfo=timezone.utc)
+        ts_yesterday = datetime(2026, 4, 9, 12, 0, tzinfo=timezone.utc)
+
+        msg_today = RawMessage(channel_id=100, message_id=1, timestamp=ts_today, sender_id=None, sender_name=None, text="t")
+        msg_yesterday = RawMessage(channel_id=100, message_id=2, timestamp=ts_yesterday, sender_id=None, sender_name=None, text="y")
+        repository.upsert_raw_messages([msg_today, msg_yesterday])
+        repository.save_message_node_assignments([
+            MessageNodeAssignment(channel_id=100, message_id=1, node_id="node-x", confidence=0.9),
+            MessageNodeAssignment(channel_id=100, message_id=2, node_id="node-x", confidence=0.8),
+        ])
+
+        keys_today = repository.list_message_keys_for_node_on_date("node-x", ts_today.date())
+        keys_yesterday = repository.list_message_keys_for_node_on_date("node-x", ts_yesterday.date())
+
+        self.assertIn((100, 1), keys_today)
+        self.assertNotIn((100, 2), keys_today)
+        self.assertIn((100, 2), keys_yesterday)
+        self.assertNotIn((100, 1), keys_yesterday)
+
+    def test_get_raw_message(self):
+        repository = FakeRepository()
+        ts = datetime(2026, 4, 10, 12, 0, tzinfo=timezone.utc)
+        msg = RawMessage(channel_id=100, message_id=42, timestamp=ts, sender_id=None, sender_name=None, text="hello")
+        repository.upsert_raw_messages([msg])
+
+        found = repository.get_raw_message(channel_id=100, message_id=42)
+        missing = repository.get_raw_message(channel_id=100, message_id=999)
+
+        self.assertIsNotNone(found)
+        self.assertEqual(found.message_id, 42)
+        self.assertIsNone(missing)
+
+    def test_list_raw_messages_by_keys(self):
+        repository = FakeRepository()
+        ts = datetime(2026, 4, 10, 12, 0, tzinfo=timezone.utc)
+        msg1 = RawMessage(channel_id=100, message_id=1, timestamp=ts, sender_id=None, sender_name=None, text="a")
+        msg2 = RawMessage(channel_id=100, message_id=2, timestamp=ts + timedelta(seconds=1), sender_id=None, sender_name=None, text="b")
+        repository.upsert_raw_messages([msg1, msg2])
+
+        # Fetch both.
+        results = repository.list_raw_messages_by_keys([(100, 1), (100, 2)])
+        self.assertEqual(len(results), 2)
+
+        # Fetch only one.
+        results_one = repository.list_raw_messages_by_keys([(100, 1)])
+        self.assertEqual(len(results_one), 1)
+        self.assertEqual(results_one[0].message_id, 1)
+
+        # Empty input → empty output.
+        results_empty = repository.list_raw_messages_by_keys([])
+        self.assertEqual(results_empty, [])
+
+        # Missing key → silently omitted.
+        results_missing = repository.list_raw_messages_by_keys([(100, 999)])
+        self.assertEqual(results_missing, [])
 
 
 if __name__ == "__main__":

@@ -562,6 +562,113 @@ class QueryMessageEmbeddingsTests(unittest.TestCase):
         self.assertIn("timestamp", call_kwargs["filter"])
 
 
+# ---------------------------------------------------------------------------
+# New repository helper tests (S2-T4)
+# ---------------------------------------------------------------------------
+
+
+class ListMessageKeysForNodeOnDateTests(unittest.TestCase):
+    def test_queries_message_nodes_joined_to_raw_messages(self):
+        repo = _make_repo()
+        cursor = _make_cursor(rows=[(100, 1), (100, 2)])
+        conn = _make_connection(cursor)
+        from datetime import date
+        day = date(2026, 4, 10)
+        with patch.object(repo, "_connect", return_value=conn):
+            result = repo.list_message_keys_for_node_on_date("node-x", day)
+        self.assertEqual(result, [(100, 1), (100, 2)])
+        executed_sql, params = cursor.execute.call_args[0]
+        self.assertIn("message_nodes", executed_sql)
+        self.assertIn("raw_messages", executed_sql)
+        self.assertIn("JOIN", executed_sql.upper())
+        self.assertEqual(params[0], "node-x")
+        self.assertEqual(params[1], day)
+        self.assertEqual(params[2], day)
+
+    def test_returns_empty_list_when_no_rows(self):
+        repo = _make_repo()
+        cursor = _make_cursor(rows=[])
+        conn = _make_connection(cursor)
+        from datetime import date
+        with patch.object(repo, "_connect", return_value=conn):
+            result = repo.list_message_keys_for_node_on_date("node-x", date(2026, 1, 1))
+        self.assertEqual(result, [])
+
+
+class GetRawMessageTests(unittest.TestCase):
+    _FULL_ROW = (
+        100, 42,
+        _NOW,
+        None, None,
+        "hello world", None, None, None,
+        None, None, None, {},
+    )
+
+    def test_returns_none_when_not_found(self):
+        repo = _make_repo()
+        cursor = _make_cursor(fetchone_row=None)
+        conn = _make_connection(cursor)
+        with patch.object(repo, "_connect", return_value=conn):
+            result = repo.get_raw_message(channel_id=100, message_id=999)
+        self.assertIsNone(result)
+
+    def test_returns_raw_message_when_found(self):
+        repo = _make_repo()
+        cursor = _make_cursor(fetchone_row=self._FULL_ROW)
+        conn = _make_connection(cursor)
+        with patch.object(repo, "_connect", return_value=conn):
+            result = repo.get_raw_message(channel_id=100, message_id=42)
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.channel_id, 100)
+        self.assertEqual(result.message_id, 42)
+        self.assertEqual(result.text, "hello world")
+
+    def test_query_uses_primary_key(self):
+        repo = _make_repo()
+        cursor = _make_cursor(fetchone_row=None)
+        conn = _make_connection(cursor)
+        with patch.object(repo, "_connect", return_value=conn):
+            repo.get_raw_message(channel_id=5, message_id=7)
+        executed_sql, params = cursor.execute.call_args[0]
+        self.assertIn("raw_messages", executed_sql)
+        self.assertIn("channel_id = %s", executed_sql)
+        self.assertIn("message_id = %s", executed_sql)
+        self.assertEqual(params, (5, 7))
+
+
+class ListRawMessagesByKeysTests(unittest.TestCase):
+    def test_short_circuits_on_empty_keys(self):
+        repo = _make_repo()
+        with patch.object(repo, "_connect") as mock_connect:
+            result = repo.list_raw_messages_by_keys([])
+        self.assertEqual(result, [])
+        mock_connect.assert_not_called()
+
+    def test_queries_with_any_operator(self):
+        repo = _make_repo()
+        cursor = _make_cursor(rows=[])
+        conn = _make_connection(cursor)
+        with patch.object(repo, "_connect", return_value=conn):
+            repo.list_raw_messages_by_keys([(100, 1), (200, 2)])
+        executed_sql = cursor.execute.call_args[0][0]
+        self.assertIn("raw_messages", executed_sql)
+        self.assertIn("ANY(%s)", executed_sql)
+        self.assertIn("(channel_id, message_id)", executed_sql)
+
+    def test_returns_raw_message_objects(self):
+        repo = _make_repo()
+        row = (100, 1, _NOW, None, None, "text here", None, None, None, None, None, None, {})
+        cursor = _make_cursor(rows=[row])
+        conn = _make_connection(cursor)
+        with patch.object(repo, "_connect", return_value=conn):
+            result = repo.list_raw_messages_by_keys([(100, 1)])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].channel_id, 100)
+        self.assertEqual(result[0].message_id, 1)
+        self.assertEqual(result[0].text, "text here")
+
+
 class DeleteMessageEmbeddingsTests(unittest.TestCase):
     def test_skips_empty(self):
         vs = _make_vector_store()

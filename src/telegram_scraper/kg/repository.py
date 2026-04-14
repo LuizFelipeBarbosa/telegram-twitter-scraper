@@ -2028,6 +2028,70 @@ class PostgresStoryRepository:
                 rows = cursor.fetchall()
         return [_raw_message_from_row(row) for row in rows]
 
+    def list_message_keys_for_node_on_date(
+        self, node_id: str, day: date
+    ) -> list[tuple[int, int]]:
+        """Return (channel_id, message_id) tuples where this node is assigned AND
+        the message's raw_messages.timestamp falls on `day` (UTC date boundary).
+        """
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT mn.channel_id, mn.message_id
+                    FROM message_nodes mn
+                    JOIN raw_messages rm ON rm.channel_id = mn.channel_id AND rm.message_id = mn.message_id
+                    WHERE mn.node_id = %s
+                      AND rm.timestamp >= %s::date
+                      AND rm.timestamp < (%s::date + INTERVAL '1 day')
+                    ORDER BY rm.timestamp, mn.channel_id, mn.message_id
+                    """,
+                    (node_id, day, day),
+                )
+                rows = cursor.fetchall()
+        return [(int(row[0]), int(row[1])) for row in rows]
+
+    def get_raw_message(
+        self, *, channel_id: int, message_id: int
+    ) -> RawMessage | None:
+        """Fetch one raw_messages row by primary key. Return None if absent."""
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT channel_id, message_id, timestamp, sender_id, sender_name,
+                           text, english_text, source_language, translated_at,
+                           media_refs, forwarded_from, reply_to_message_id, raw_json
+                    FROM raw_messages
+                    WHERE channel_id = %s AND message_id = %s
+                    """,
+                    (channel_id, message_id),
+                )
+                row = cursor.fetchone()
+        return _raw_message_from_row(row) if row is not None else None
+
+    def list_raw_messages_by_keys(
+        self, keys: Sequence[tuple[int, int]]
+    ) -> list[RawMessage]:
+        """Batch fetch raw_messages rows by (channel_id, message_id) pairs."""
+        if not keys:
+            return []
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT channel_id, message_id, timestamp, sender_id, sender_name,
+                           text, english_text, source_language, translated_at,
+                           media_refs, forwarded_from, reply_to_message_id, raw_json
+                    FROM raw_messages
+                    WHERE (channel_id, message_id) = ANY(%s)
+                    ORDER BY timestamp ASC, channel_id ASC, message_id ASC
+                    """,
+                    (list(keys),),
+                )
+                rows = cursor.fetchall()
+        return [_raw_message_from_row(row) for row in rows]
+
     def refresh_message_heat_view(self) -> None:
         import psycopg
 

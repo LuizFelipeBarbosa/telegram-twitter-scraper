@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
+import hashlib
 import time
 import re
 from typing import Callable, Literal, Sequence
@@ -36,6 +37,7 @@ from telegram_scraper.kg.models import (
     EventChildSummary,
     ExtractedSemanticNode,
     MessageEmbeddingRecord,
+    MessageGroup,
     MessageNodeAssignment,
     MessageSemanticExtraction,
     MessageSemanticRecord,
@@ -44,6 +46,7 @@ from telegram_scraper.kg.models import (
     NodeDetail,
     NodeKind,
     NodeListEntry,
+    NodeMessage,
     NodeRelation,
     NodeSupportRecord,
     NodeStory,
@@ -851,6 +854,133 @@ class KGNodeProjectionService:
     def refresh_all(self, *, days: int = 31) -> KGProjectionRefreshResult:
         relations_created = self.rebuild_node_relations()
         theme_stats_written = self.refresh_theme_stats(days=days)
+        return KGProjectionRefreshResult(relations_created=relations_created, theme_stats_written=theme_stats_written)
+
+    # ── Message-atomic variants ───────────────────────────────────────────────
+
+    def rebuild_node_relations_from_messages(self) -> int:
+        """Same semantics as rebuild_node_relations but aggregates over message_nodes
+        joined to raw_messages.timestamp instead of story_units/story_nodes.
+        """
+        active_node_ids = {node.node_id for node in self.repository.list_nodes(status="active")}
+
+        # Collect all message keys per node (only active nodes).
+        node_to_message_keys: dict[str, list[tuple[int, int]]] = {}
+        for node_id in active_node_ids:
+            keys = self.repository.list_message_keys_for_node(node_id)
+            if keys:
+                node_to_message_keys[node_id] = keys
+
+        # Build inverse: message key → list of node_ids
+        message_to_nodes: dict[tuple[int, int], list[str]] = defaultdict(list)
+        for node_id, keys in node_to_message_keys.items():
+            for key in keys:
+                message_to_nodes[key].append(node_id)
+
+        # For each message, compute co-occurrence pairs.
+        # We also need message timestamps for latest_at.
+        # Batch-fetch all messages that have at least 2 nodes assigned.
+        multi_node_keys = [key for key, nids in message_to_nodes.items() if len(nids) >= 2]
+        messages_by_key: dict[tuple[int, int], RawMessage] = {}
+        if multi_node_keys:
+            for msg in self.repository.list_raw_messages_by_keys(multi_node_keys):
+                messages_by_key[(msg.channel_id, msg.message_id)] = msg
+
+        shared_counts: dict[tuple[str, str], int] = defaultdict(int)
+        latest_at: dict[tuple[str, str], datetime] = {}
+
+        for key, node_ids in message_to_nodes.items():
+            unique_node_ids = sorted(set(node_id for node_id in node_ids if node_id in active_node_ids))
+            if len(unique_node_ids) < 2:
+                continue
+            msg = messages_by_key.get(key)
+            for index, left_id in enumerate(unique_node_ids):
+                for right_id in unique_node_ids[index + 1:]:
+                    pair = _canonical_pair(left_id, right_id)
+                    shared_counts[pair] += 1
+                    if msg is not None:
+                        current_latest = latest_at.get(pair)
+                        if current_latest is None or msg.timestamp > current_latest:
+                            latest_at[pair] = msg.timestamp
+
+        # Cross-channel bonus: look up primary_event_node_id for each message side.
+        primary_event_by_message: dict[tuple[int, int], str] = {}
+        cross_bonus: dict[tuple[str, str], float] = defaultdict(float)
+        for match in self.repository.list_cross_channel_message_matches():
+            left_key = (match.channel_id, match.message_id)
+            right_key = (match.matched_channel_id, match.matched_message_id)
+            # Lazy-load primary_event_node_id from message_semantics.
+            for key in (left_key, right_key):
+                if key not in primary_event_by_message:
+                    record = self.repository.get_message_semantic_record(
+                        channel_id=key[0], message_id=key[1]
+                    )
+                    primary_event_by_message[key] = record.primary_event_node_id if record and record.primary_event_node_id else ""
+            left_event = primary_event_by_message.get(left_key, "")
+            right_event = primary_event_by_message.get(right_key, "")
+            if not left_event or not right_event or left_event == right_event:
+                continue
+            pair = _canonical_pair(left_event, right_event)
+            cross_bonus[pair] += 0.5
+
+        relations: list[NodeRelation] = []
+        all_pairs = sorted(set(shared_counts) | set(cross_bonus))
+        for pair in all_pairs:
+            shared_count = shared_counts.get(pair, 0)
+            score = float(shared_count) + cross_bonus.get(pair, 0.0)
+            if score <= 0:
+                continue
+            relations.append(
+                NodeRelation(
+                    source_node_id=pair[0],
+                    target_node_id=pair[1],
+                    relation_type="related",
+                    score=score,
+                    shared_story_count=shared_count,
+                    latest_story_at=latest_at.get(pair),
+                )
+            )
+
+        self.repository.replace_node_relations(relations)
+        return len(relations)
+
+    def refresh_theme_stats_from_messages(self, *, days: int = 31) -> int:
+        """Per-theme-per-day article_count (message_count) and centroid_drift,
+        computed from message_nodes joined to raw_messages.timestamp.
+        """
+        themes = self.repository.list_nodes(kind="theme")
+        today = _utc_now().date()
+        start = today - timedelta(days=max(days - 1, 0))
+        stats: list[ThemeDailyStat] = []
+
+        for offset in range(days):
+            day = start + timedelta(days=offset)
+            previous_day = day - timedelta(days=1)
+            for theme in themes:
+                current_keys = self.repository.list_message_keys_for_node_on_date(theme.node_id, day)
+                previous_keys = self.repository.list_message_keys_for_node_on_date(theme.node_id, previous_day)
+                current_centroid = average_vectors(self.vector_store.fetch_message_embeddings(current_keys).values())
+                previous_centroid = average_vectors(self.vector_store.fetch_message_embeddings(previous_keys).values())
+                drift = 0.0
+                if current_centroid and previous_centroid:
+                    drift = 1.0 - cosine_similarity(current_centroid, previous_centroid)
+                stats.append(
+                    ThemeDailyStat(
+                        node_id=theme.node_id,
+                        date=day,
+                        article_count=len(current_keys),
+                        centroid_drift=drift,
+                    )
+                )
+
+        self.repository.save_theme_daily_stats(stats)
+        self.repository.refresh_message_heat_view()
+        return len(stats)
+
+    def refresh_all_from_messages(self, *, days: int = 31) -> KGProjectionRefreshResult:
+        """Message-atomic parallel of refresh_all."""
+        relations_created = self.rebuild_node_relations_from_messages()
+        theme_stats_written = self.refresh_theme_stats_from_messages(days=days)
         return KGProjectionRefreshResult(relations_created=relations_created, theme_stats_written=theme_stats_written)
 
 
@@ -2551,3 +2681,229 @@ class KGQueryService:
             )
             if shared_story_count > 0
         ]
+
+    # ── Message-atomic query methods ──────────────────────────────────────────
+
+    def node_show_messages(
+        self,
+        *,
+        kind: NodeKind,
+        slug: str,
+        message_limit: int = 20,
+        message_offset: int = 0,
+    ) -> NodeDetail | None:
+        """Message-atomic parallel of node_show(). Returns NodeDetail where the
+        `messages` field is populated (not `stories`).
+        """
+        node = self.repository.get_node_by_slug(kind=kind, slug=slug)
+        if node is None:
+            return None
+
+        node_id = node.node_id
+
+        # Fetch all message assignments for this node, paginated by assigned_at DESC.
+        all_assignments = self.repository.list_message_node_assignments(node_ids=[node_id])
+        all_assignments_sorted = sorted(
+            all_assignments,
+            key=lambda a: (a.assigned_at or datetime.min.replace(tzinfo=timezone.utc)),
+            reverse=True,
+        )
+        paged_assignments = all_assignments_sorted[message_offset: message_offset + message_limit]
+
+        # Fetch message objects for paged assignments.
+        paged_keys = [(a.channel_id, a.message_id) for a in paged_assignments]
+        messages_by_key: dict[tuple[int, int], RawMessage] = {}
+        for msg in self.repository.list_raw_messages_by_keys(paged_keys):
+            messages_by_key[(msg.channel_id, msg.message_id)] = msg
+
+        # Build channel title lookup.
+        channel_profiles: dict[int, ChannelProfile | None] = {}
+        for assignment in paged_assignments:
+            if assignment.channel_id not in channel_profiles:
+                channel_profiles[assignment.channel_id] = self.repository.get_channel_profile(assignment.channel_id)
+
+        message_rows = tuple(
+            NodeMessage(
+                channel_id=assignment.channel_id,
+                message_id=assignment.message_id,
+                channel_title=_channel_title_for_story(
+                    assignment.channel_id, channel_profiles.get(assignment.channel_id)
+                ),
+                timestamp=msg.timestamp,
+                confidence=assignment.confidence,
+                text=msg.english_text or msg.text or "",
+                english_text=msg.english_text,
+                media_refs=msg.media_refs,
+            )
+            for assignment in paged_assignments
+            if (msg := messages_by_key.get((assignment.channel_id, assignment.message_id))) is not None
+        )
+
+        # Related entities: count co-occurring messages.
+        # For each other node, count how many messages appear with BOTH this node and that other.
+        all_keys_for_node = self.repository.list_message_keys_for_node(node_id)
+        all_assignments_for_messages = self.repository.list_message_node_assignments(
+            message_keys=all_keys_for_node
+        )
+
+        # Build: message_key → set of node_ids assigned to that message.
+        message_key_to_nodes: dict[tuple[int, int], set[str]] = defaultdict(set)
+        for assignment in all_assignments_for_messages:
+            message_key_to_nodes[(assignment.channel_id, assignment.message_id)].add(assignment.node_id)
+
+        # Count co-occurrences: how many messages contain both node_id and some other node.
+        co_occurrence: Counter[str] = Counter()
+        for key, node_ids_in_msg in message_key_to_nodes.items():
+            if node_id not in node_ids_in_msg:
+                continue
+            for other_node_id in node_ids_in_msg:
+                if other_node_id != node_id:
+                    co_occurrence[other_node_id] += 1
+
+        # Fetch the related node objects.
+        related_node_ids = sorted(co_occurrence)
+        related_nodes = {n.node_id: n for n in self.repository.get_nodes(related_node_ids)}
+
+        bucketed: dict[str, list[RelatedNode]] = defaultdict(list)
+        for other_id, count in co_occurrence.items():
+            related = related_nodes.get(other_id)
+            if related is None or related.status != "active":
+                continue
+            bucketed[related.kind].append(
+                RelatedNode(
+                    node_id=related.node_id,
+                    kind=related.kind,
+                    slug=related.slug,
+                    display_name=related.display_name,
+                    summary=related.summary,
+                    article_count=related.article_count,
+                    score=float(count),
+                    shared_story_count=count,
+                    latest_story_at=None,
+                )
+            )
+
+        # Event hierarchy (deferred — same as existing node_show).
+        parent_event = None
+        child_events: tuple = ()
+        if kind == "event":
+            snapshot = build_event_hierarchy_snapshot(self.repository)
+            snap_node = snapshot.nodes_by_id.get(node_id)
+            if snap_node is not None:
+                parent_event = snapshot.ref_for(snap_node.parent_node_id) if snap_node.parent_node_id else None
+                child_ids = snapshot.children_by_parent.get(node_id, ())
+                excluded_actor_keys = _implicit_parent_actor_keys(snap_node)
+                all_msg_assignments_by_story: dict[str, list] = {}  # not used in message path
+                child_events = tuple(
+                    _build_event_child_summary(
+                        child=snapshot.node(child_id),
+                        child_story_ids=set(snapshot.direct_story_ids_by_node.get(child_id, set())),
+                        assignments_by_story=all_msg_assignments_by_story,
+                        related_nodes={},
+                        excluded_actor_keys=excluded_actor_keys,
+                    )
+                    for child_id in sorted(
+                        child_ids,
+                        key=lambda cid: (
+                            -(snapshot.rollup_last_updated_by_node.get(cid).timestamp() if snapshot.rollup_last_updated_by_node.get(cid) is not None else 0.0),
+                            -(snapshot.node(cid).event_start_at.timestamp() if snapshot.node(cid).event_start_at is not None else 0.0),
+                            snapshot.node(cid).display_name.lower(),
+                        ),
+                    )
+                )
+
+        return NodeDetail(
+            node_id=node.node_id,
+            kind=node.kind,
+            slug=node.slug,
+            display_name=node.display_name,
+            summary=node.summary,
+            article_count=node.article_count,
+            parent_event=parent_event,
+            child_events=child_events,
+            events=tuple(_sort_related(bucketed.get("event", []))),
+            people=tuple(_sort_related(bucketed.get("person", []))),
+            nations=tuple(_sort_related(bucketed.get("nation", []))),
+            orgs=tuple(_sort_related(bucketed.get("org", []))),
+            places=tuple(_sort_related(bucketed.get("place", []))),
+            themes=tuple(_sort_related(bucketed.get("theme", []))),
+            stories=(),
+            messages=message_rows,
+        )
+
+    def grouped_messages(
+        self,
+        *,
+        node_id: str,
+        window: str = "1d",
+    ) -> list[MessageGroup]:
+        """Query-time grouping of messages assigned to a node, bucketed by time window."""
+        # Parse window string.
+        _window_map = {"1d": 86400, "3d": 259200, "7d": 604800}
+        window_seconds = _window_map.get(window, 86400)
+        if window not in _window_map:
+            # Try to parse "Nd" pattern.
+            if window.endswith("d"):
+                try:
+                    window_seconds = int(window[:-1]) * 86400
+                except ValueError:
+                    window_seconds = 86400
+
+        # Fetch all message assignments for this node.
+        all_assignments = self.repository.list_message_node_assignments(node_ids=[node_id])
+        if not all_assignments:
+            return []
+
+        # Fetch message timestamps by batch-loading raw messages.
+        all_keys = [(a.channel_id, a.message_id) for a in all_assignments]
+        messages_by_key: dict[tuple[int, int], RawMessage] = {}
+        for msg in self.repository.list_raw_messages_by_keys(all_keys):
+            messages_by_key[(msg.channel_id, msg.message_id)] = msg
+
+        # Fetch channel profiles for channel title resolution.
+        channel_ids_needed = {a.channel_id for a in all_assignments}
+        channel_profiles: dict[int, ChannelProfile | None] = {
+            ch_id: self.repository.get_channel_profile(ch_id) for ch_id in channel_ids_needed
+        }
+
+        # Bucket assignments by floor(timestamp / window_seconds).
+        buckets: dict[int, list[tuple[MessageNodeAssignment, RawMessage]]] = defaultdict(list)
+        for assignment in all_assignments:
+            msg = messages_by_key.get((assignment.channel_id, assignment.message_id))
+            if msg is None:
+                continue
+            bucket_index = int(msg.timestamp.timestamp()) // window_seconds
+            buckets[bucket_index].append((assignment, msg))
+
+        groups: list[MessageGroup] = []
+        for bucket_index, items in buckets.items():
+            group_id = hashlib.sha256(f"{node_id}:{bucket_index}".encode()).hexdigest()[:16]
+            timestamps = [msg.timestamp for _assignment, msg in items]
+            node_messages = tuple(
+                NodeMessage(
+                    channel_id=assignment.channel_id,
+                    message_id=assignment.message_id,
+                    channel_title=_channel_title_for_story(
+                        assignment.channel_id, channel_profiles.get(assignment.channel_id)
+                    ),
+                    timestamp=msg.timestamp,
+                    confidence=assignment.confidence,
+                    text=msg.english_text or msg.text or "",
+                    english_text=msg.english_text,
+                    media_refs=msg.media_refs,
+                )
+                for assignment, msg in sorted(items, key=lambda item: item[1].timestamp)
+            )
+            groups.append(
+                MessageGroup(
+                    group_id=group_id,
+                    dominant_node_id=node_id,
+                    messages=node_messages,
+                    timestamp_start=min(timestamps),
+                    timestamp_end=max(timestamps),
+                )
+            )
+
+        # Sort groups by timestamp_start DESC.
+        groups.sort(key=lambda g: g.timestamp_start, reverse=True)
+        return groups

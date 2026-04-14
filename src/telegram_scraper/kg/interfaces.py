@@ -228,6 +228,18 @@ class StoryRepository(Protocol):
 
     def list_message_heat_rows(self, *, kind: str) -> list[NodeHeatSnapshot]: ...
 
+    def list_message_keys_for_node_on_date(
+        self, node_id: str, day: date
+    ) -> list[tuple[int, int]]: ...
+
+    def get_raw_message(
+        self, *, channel_id: int, message_id: int
+    ) -> RawMessage | None: ...
+
+    def list_raw_messages_by_keys(
+        self, keys: Sequence[tuple[int, int]]
+    ) -> list[RawMessage]: ...
+
 
 class StreamEntry(Protocol):
     entry_id: str
