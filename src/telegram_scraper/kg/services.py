@@ -1502,7 +1502,7 @@ class KGNodeProcessingService:
         self.hierarchy_service.rebuild()
 
         projection_result = (
-            self.projection_service.refresh_all(days=31)
+            self.projection_service.refresh_all_from_messages(days=31)
             if options.projection_policy == "per_batch"
             else KGProjectionRefreshResult(relations_created=0, theme_stats_written=0)
         )

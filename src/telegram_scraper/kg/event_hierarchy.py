@@ -516,7 +516,7 @@ class KGEventHierarchyService:
         real_events = {node_id: node for node_id, node in event_nodes.items() if node.label_source != "hierarchy_group"}
         synthetic_events = {node_id: node for node_id, node in event_nodes.items() if node.label_source == "hierarchy_group"}
 
-        assignments = self.repository.list_message_node_assignments()
+        assignments = self.repository.list_message_node_assignments(node_ids=tuple(event_nodes))
         message_assignments: dict[tuple[int, int], list[MessageNodeAssignment]] = defaultdict(list)
         direct_message_keys_by_event: dict[str, set[tuple[int, int]]] = defaultdict(set)
         for assignment in assignments:

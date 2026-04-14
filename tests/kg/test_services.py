@@ -618,6 +618,9 @@ class FakeRepository:
             self.message_nodes[(assignment.channel_id, assignment.message_id, assignment.node_id)] = assignment
 
     def list_message_node_assignments(self, *, message_keys=None, node_ids=None):
+        # Mirror the real repository guard: prevent accidental full-table scans.
+        if message_keys is None and node_ids is None:
+            return []
         key_filter = set(tuple(k) for k in (message_keys or []))
         node_filter = set(node_ids or [])
         rows = []
@@ -899,10 +902,26 @@ class FakeRepository:
 class FakeProjectionService:
     def __init__(self) -> None:
         self.calls = 0
+        self.refresh_all_calls = 0
+        self.refresh_all_from_messages_calls = 0
 
     def refresh_all(self, *, days=31):
         del days
         self.calls += 1
+        self.refresh_all_calls += 1
+        return type(
+            "ProjectionResult",
+            (),
+            {
+                "relations_created": 11,
+                "theme_stats_written": 7,
+            },
+        )()
+
+    def refresh_all_from_messages(self, *, days=31):
+        del days
+        self.calls += 1
+        self.refresh_all_from_messages_calls += 1
         return type(
             "ProjectionResult",
             (),
@@ -1169,6 +1188,44 @@ class KGProcessMessagesTests(unittest.TestCase):
         self.assertEqual(len(primary_events), 1)
         primary_node = repository.nodes[primary_events[0].node_id]
         self.assertEqual(primary_node.kind, "event")
+
+    def test_process_messages_calls_refresh_all_from_messages_not_refresh_all(self):
+        """process_messages with per_batch projection_policy calls refresh_all_from_messages, not refresh_all."""
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+        projection_service = FakeProjectionService()
+
+        msg = build_message(100, 1, text="Ceasefire negotiations advance")
+        repository.upsert_raw_messages([msg])
+
+        extractor = FakeExtractor(
+            message_payloads={
+                (100, 1): MessageSemanticExtraction(
+                    channel_id=100,
+                    message_id=1,
+                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
+                )
+            }
+        )
+
+        service = KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+            projection_service=projection_service,
+        )
+        # Default options use projection_policy="per_batch", which should route to
+        # refresh_all_from_messages rather than the legacy refresh_all.
+        service.process_messages([msg])
+
+        self.assertEqual(projection_service.refresh_all_from_messages_calls, 1,
+                         "process_messages must call refresh_all_from_messages (not refresh_all)")
+        self.assertEqual(projection_service.refresh_all_calls, 0,
+                         "process_messages must NOT call the legacy refresh_all")
 
 
 class KGProcessingWorkerTests(unittest.TestCase):
