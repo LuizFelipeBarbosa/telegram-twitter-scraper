@@ -527,7 +527,7 @@ if typer is not None:
         yes: bool = typer.Option(False, "--yes", help="Confirm semantic-state deletion."),
         env_file: Path = typer.Option(Path(".env"), help="Path to environment file."),
     ) -> None:
-        """Clear derived node state for a channel while preserving raw messages and story units."""
+        """Clear derived node state for a channel while preserving raw messages."""
         if not yes:
             raise _exit_with_error("kg-reset-channel requires --yes")
         try:
@@ -552,7 +552,7 @@ if typer is not None:
         workers: Optional[int] = typer.Option(None, "--workers", min=1, help="Optional extractor worker count."),
         env_file: Path = typer.Option(Path(".env"), help="Path to environment file."),
     ) -> None:
-        """Fetch missing raw messages for channels, rebuild stories, translate non-English text, and rerun KG semantics."""
+        """Fetch missing raw messages for channels, rebuild KG state, translate non-English text, and rerun KG semantics."""
         try:
             _settings, _kg_settings, client, service = _build_channel_repair_service(env_file)
             effective_since = parse_since_date(since) if since else None

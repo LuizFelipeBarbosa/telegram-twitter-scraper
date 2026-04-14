@@ -320,13 +320,50 @@ class VisualizationQueriesTests(unittest.TestCase):
         self.assertEqual(len(groups[0]["messages"]), 1)
         self.assertEqual(groups[0]["messages"][0]["channel_id"], 1)
 
-    def test_get_grouped_messages_drops_empty_groups(self):
+    def test_get_grouped_messages_returns_empty_for_unknown_node(self):
         queries, _service = self._build_queries()
 
         # node_id that returns no groups from fake service
         groups = queries.get_grouped_messages(node_id="nonexistent-node", window="1d")
 
         self.assertEqual(groups, [])
+
+    def test_get_grouped_messages_drops_group_when_all_messages_invisible(self):
+        """Groups where every message comes from a non-candidate channel are dropped."""
+        queries, service = self._build_queries()
+
+        # Patch the fake service to return a group whose only messages are from
+        # channel 2 (not in FakeRepository.list_candidate_channel_ids() == [1]).
+        original_grouped = service.grouped_messages
+
+        def _invisible_only_group(*, node_id: str, window: str = "1d"):
+            return [
+                MessageGroup(
+                    group_id="grp-invisible",
+                    dominant_node_id=node_id,
+                    messages=(
+                        NodeMessage(
+                            channel_id=2,
+                            message_id=999,
+                            channel_title="Legacy Channel",
+                            timestamp=datetime(2026, 4, 13, 12, 0, tzinfo=UTC),
+                            confidence=0.7,
+                            text="Invisible message",
+                        ),
+                    ),
+                    timestamp_start=datetime(2026, 4, 13, 12, 0, tzinfo=UTC),
+                    timestamp_end=datetime(2026, 4, 13, 12, 0, tzinfo=UTC),
+                )
+            ]
+
+        service.grouped_messages = _invisible_only_group
+
+        groups = queries.get_grouped_messages(node_id="visible-event", window="1d")
+
+        # The group must be dropped because channel 2 is not a candidate channel.
+        self.assertEqual(groups, [])
+
+        service.grouped_messages = original_grouped
 
     def test_related_node_fields_remapped_to_message_names(self):
         queries, _service = self._build_queries()

@@ -216,8 +216,7 @@ def create_app(settings: KGSettings) -> FastAPI:
         window: str = Query(default="1d"),
     ) -> dict:
         if window not in _VALID_GROUPED_WINDOWS:
-            from fastapi import HTTPException as _HTTPException
-            raise _HTTPException(
+            raise HTTPException(
                 status_code=400,
                 detail=f"Invalid window '{window}'. Must be one of: {sorted(_VALID_GROUPED_WINDOWS)}",
             )
