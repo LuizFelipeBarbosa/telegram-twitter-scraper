@@ -37,7 +37,7 @@ SCHEMA_STATEMENTS = [
         media_group_window_seconds INT NOT NULL DEFAULT 60,
         time_gap_minutes INT NOT NULL DEFAULT 10,
         similarity_merge_threshold DOUBLE PRECISION NOT NULL DEFAULT 0.7,
-        lookback_story_count INT NOT NULL DEFAULT 5,
+        lookback_message_count INT NOT NULL DEFAULT 5,
         notes TEXT,
         channel_title TEXT,
         channel_slug TEXT,
@@ -126,6 +126,12 @@ SCHEMA_STATEMENTS = [
             WHERE table_name = 'node_relations' AND column_name = 'latest_story_at'
         ) THEN
             ALTER TABLE node_relations RENAME COLUMN latest_story_at TO latest_message_at;
+        END IF;
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'channel_profiles' AND column_name = 'lookback_message_count'
+        ) THEN
+            ALTER TABLE channel_profiles RENAME COLUMN lookback_message_count TO lookback_message_count;
         END IF;
     END $$;
     """,
@@ -314,7 +320,7 @@ class PostgresRepository:
                         media_group_window_seconds,
                         time_gap_minutes,
                         similarity_merge_threshold,
-                        lookback_story_count,
+                        lookback_message_count,
                         notes,
                         channel_title,
                         channel_slug,
@@ -326,7 +332,7 @@ class PostgresRepository:
                         media_group_window_seconds = EXCLUDED.media_group_window_seconds,
                         time_gap_minutes = EXCLUDED.time_gap_minutes,
                         similarity_merge_threshold = EXCLUDED.similarity_merge_threshold,
-                        lookback_story_count = EXCLUDED.lookback_story_count,
+                        lookback_message_count = EXCLUDED.lookback_message_count,
                         notes = EXCLUDED.notes,
                         channel_title = EXCLUDED.channel_title,
                         channel_slug = EXCLUDED.channel_slug,
@@ -339,7 +345,7 @@ class PostgresRepository:
                         profile.media_group_window_seconds,
                         profile.time_gap_minutes,
                         profile.similarity_merge_threshold,
-                        profile.lookback_story_count,
+                        profile.lookback_message_count,
                         profile.notes,
                         profile.channel_title,
                         profile.channel_slug,
@@ -354,7 +360,7 @@ class PostgresRepository:
                 cursor.execute(
                     """
                     SELECT channel_id, delimiter_patterns, media_group_window_seconds, time_gap_minutes,
-                           similarity_merge_threshold, lookback_story_count, notes,
+                           similarity_merge_threshold, lookback_message_count, notes,
                            channel_title, channel_slug, channel_username, created_at, updated_at
                     FROM channel_profiles
                     WHERE channel_id = %s
@@ -511,26 +517,6 @@ class PostgresRepository:
                     rows,
                 )
             connection.commit()
-
-    def list_unsegmented_raw_messages(self, channel_id: int, *, limit: int | None = None) -> list[RawMessage]:
-        """Return raw messages not yet assigned to any node (is_extracted = FALSE)."""
-        query = """
-            SELECT channel_id, message_id, timestamp, sender_id, sender_name,
-                   text, english_text, source_language, translated_at,
-                   media_refs, forwarded_from, reply_to_message_id, raw_json
-            FROM raw_messages
-            WHERE channel_id = %s AND is_extracted = FALSE
-            ORDER BY timestamp, message_id
-        """
-        params: list[Any] = [channel_id]
-        if limit is not None:
-            query += " LIMIT %s"
-            params.append(limit)
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(query, params)
-                rows = cursor.fetchall()
-        return [_raw_message_from_row(row) for row in rows]
 
     def list_recent_raw_messages(self, channel_id: int, *, limit: int) -> list[RawMessage]:
         with self._connect() as connection:
@@ -1599,7 +1585,7 @@ def _channel_profile_from_row(row: Sequence[Any]) -> ChannelProfile:
         media_group_window_seconds=int(row[2]),
         time_gap_minutes=int(row[3]),
         similarity_merge_threshold=float(row[4]),
-        lookback_story_count=int(row[5]),
+        lookback_message_count=int(row[5]),
         notes=str(row[6]) if row[6] is not None else None,
         channel_title=str(row[7]) if row[7] is not None else None,
         channel_slug=str(row[8]) if row[8] is not None else None,

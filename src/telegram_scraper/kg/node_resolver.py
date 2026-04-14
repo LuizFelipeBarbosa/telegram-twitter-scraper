@@ -255,7 +255,7 @@ class NodeResolver:
         created = self._create_node(
             kind=kind,
             candidate=candidate,
-            story_timestamp=message_timestamp,
+            message_timestamp=message_timestamp,
             activate_immediately=activate_immediately,
         )
         support = self._support_state(created)
@@ -400,7 +400,7 @@ class NodeResolver:
         *,
         kind: NodeKind,
         candidate: ExtractedSemanticNode,
-        story_timestamp: datetime,
+        message_timestamp: datetime,
         activate_immediately: bool,
     ) -> Node:
         slug = self._unique_slug(kind=kind, display_name=candidate.name, event_start_at=candidate.start_at)
@@ -416,7 +416,7 @@ class NodeResolver:
             status=self._initial_status(kind=kind, activate_immediately=activate_immediately),
             article_count=0,
             created_at=self.utc_now(),
-            last_updated=story_timestamp,
+            last_updated=message_timestamp,
             event_start_at=ensure_utc(candidate.start_at) if candidate.start_at is not None else None,
             event_end_at=ensure_utc(candidate.end_at) if candidate.end_at is not None else None,
         )

@@ -7,7 +7,7 @@ export interface ChannelSummary {
   channel_title: string;
   channel_slug?: string | null;
   channel_username?: string | null;
-  story_count: number;
+  message_count: number;
 }
 
 export interface GraphNodeRow {

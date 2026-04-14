@@ -31,9 +31,6 @@ def safe_message_text(text: str, *, max_chars: int) -> str:
     return stripped[:head].rstrip() + "\n" + stripped[-tail:].lstrip()
 
 
-# Keep safe_story_text as alias for internal use (embedding text helper).
-safe_story_text = safe_message_text
-
 
 # ============================================================
 # JSON Schema for structured extraction output.

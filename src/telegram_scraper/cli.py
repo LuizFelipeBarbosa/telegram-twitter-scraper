@@ -323,7 +323,7 @@ if typer is not None:
             media_group_window_seconds=int(payload.get("media_group_window_seconds", 60)),
             time_gap_minutes=int(payload.get("time_gap_minutes", 10)),
             similarity_merge_threshold=float(payload.get("similarity_merge_threshold", 0.7)),
-            lookback_story_count=int(payload.get("lookback_story_count", 5)),
+            lookback_message_count=int(payload.get("lookback_message_count", payload.get("lookback_story_count", 5))),
             notes=str(payload["notes"]) if payload.get("notes") is not None else None,
             channel_title=str(payload["channel_title"]) if payload.get("channel_title") is not None else None,
             channel_slug=str(payload["channel_slug"]) if payload.get("channel_slug") is not None else None,

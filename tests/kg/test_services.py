@@ -307,15 +307,6 @@ class FakeRepository:
         for message in messages:
             self.raw_messages[(message.channel_id, message.message_id)] = message
 
-    def list_unsegmented_raw_messages(self, channel_id, *, limit=None):
-        rows = [
-            message
-            for key, message in self.raw_messages.items()
-            if key[0] == channel_id
-        ]
-        rows.sort(key=lambda message: message.timestamp)
-        return rows[:limit] if limit is not None else rows
-
     def list_recent_raw_messages(self, channel_id, *, limit):
         rows = [message for key, message in self.raw_messages.items() if key[0] == channel_id]
         rows.sort(key=lambda message: message.timestamp)

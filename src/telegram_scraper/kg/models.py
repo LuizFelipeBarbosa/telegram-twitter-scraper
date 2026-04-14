@@ -23,7 +23,7 @@ class ChannelProfile:
     media_group_window_seconds: int = 60
     time_gap_minutes: int = 10
     similarity_merge_threshold: float = 0.7
-    lookback_story_count: int = 5
+    lookback_message_count: int = 5
     notes: str | None = None
     channel_title: str | None = None
     channel_slug: str | None = None

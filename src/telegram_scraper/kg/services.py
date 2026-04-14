@@ -1193,7 +1193,7 @@ class KGNodeProcessingService:
 class KGProcessingWorker:
     """Consumer-loop worker for the message-atomic pipeline.
 
-    Replaces KGSegmentWorker once the CLI/docker switches over (S2-T5).
+    This is the canonical worker for the message-atomic pipeline.
     Flow per batch:
     1. stream.read(consumer_name, count=batch_size)
     2. upsert_raw_messages
