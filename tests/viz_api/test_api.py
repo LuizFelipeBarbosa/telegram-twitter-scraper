@@ -21,7 +21,7 @@ class FakeVisualizationQueries:
                     "channel_title": "Signal Watch",
                     "channel_slug": "signal-watch",
                     "channel_username": "signalwatch",
-                    "story_count": 4,
+                    "message_count": 4,
                 }
             ]
         }

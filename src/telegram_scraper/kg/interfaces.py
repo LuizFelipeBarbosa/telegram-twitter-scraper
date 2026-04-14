@@ -6,7 +6,6 @@ from typing import Callable, Protocol, Sequence
 from telegram_scraper.kg.models import (
     ChannelProfile,
     ChannelSummary,
-    CrossChannelMatch,
     CrossChannelMessageMatch,
     MessageEmbeddingRecord,
     MessageMatch,
@@ -23,18 +22,12 @@ from telegram_scraper.kg.models import (
     NodeRelation,
     NodeSupportRecord,
     RawMessage,
-    StoryEmbeddingRecord,
-    StoryMatch,
-    StoryNodeAssignment,
-    StorySemanticExtraction,
-    StorySemanticRecord,
-    StoryUnit,
     ThemeDailyStat,
     ThemeHistoryPoint,
 )
 
 
-class StoryRepository(Protocol):
+class Repository(Protocol):
     def ensure_schema(self) -> None: ...
 
     def upsert_channel_profile(self, profile: ChannelProfile) -> None: ...
@@ -62,38 +55,6 @@ class StoryRepository(Protocol):
 
     def save_raw_message_translations(self, messages: Sequence[RawMessage]) -> None: ...
 
-    def get_last_story_unit(self, channel_id: int) -> StoryUnit | None: ...
-
-    def list_recent_story_units(self, channel_id: int, *, limit: int) -> list[StoryUnit]: ...
-
-    def list_story_units(self, *, channel_id: int | None = None) -> list[StoryUnit]: ...
-
-    def get_story_messages(self, story_id: str) -> list[RawMessage]: ...
-
-    def save_story_units(self, stories: Sequence[StoryUnit]) -> None: ...
-
-    def list_stories_without_semantics(
-        self,
-        *,
-        channel_id: int | None = None,
-        limit: int | None = None,
-    ) -> list[StoryUnit]: ...
-
-    def get_story_unit(self, story_id: str) -> StoryUnit | None: ...
-
-    def upsert_story_semantics(self, records: Sequence[StorySemanticRecord]) -> None: ...
-
-    def save_semantic_results(
-        self,
-        *,
-        nodes: Sequence[Node],
-        assignments: Sequence[StoryNodeAssignment],
-        semantics: Sequence[StorySemanticRecord],
-        cross_channel_matches: Sequence[CrossChannelMatch] = (),
-    ) -> None: ...
-
-    def get_story_semantic_record(self, story_id: str) -> StorySemanticRecord | None: ...
-
     def save_nodes(self, nodes: Sequence[Node]) -> None: ...
 
     def get_nodes(self, node_ids: Sequence[str]) -> list[Node]: ...
@@ -116,39 +77,7 @@ class StoryRepository(Protocol):
 
     def list_node_relations(self, node_id: str) -> list[NodeRelation]: ...
 
-    def save_story_node_assignments(self, assignments: Sequence[StoryNodeAssignment]) -> None: ...
-
-    def delete_story_node_assignments(
-        self,
-        *,
-        node_id: str | None = None,
-        story_ids: Sequence[str] | None = None,
-    ) -> None: ...
-
-    def get_story_node_assignments(self, story_id: str) -> list[StoryNodeAssignment]: ...
-
-    def list_story_node_assignments(
-        self,
-        *,
-        story_ids: Sequence[str] | None = None,
-        node_ids: Sequence[str] | None = None,
-    ) -> list[StoryNodeAssignment]: ...
-
-    def list_story_node_ids(self, story_id: str) -> list[str]: ...
-
-    def get_story_units_by_ids(self, story_ids: Sequence[str]) -> list[StoryUnit]: ...
-
-    def list_story_ids_for_node_on_date(self, node_id: str, day: date) -> list[str]: ...
-
-    def list_story_ids_for_node(self, node_id: str) -> list[str]: ...
-
-    def list_stories_for_node(self, node_id: str, *, limit: int, offset: int) -> tuple[int, list[tuple[StoryUnit, StoryNodeAssignment]]]: ...
-
-    def save_cross_channel_matches(self, matches: Sequence[CrossChannelMatch]) -> None: ...
-
-    def replace_cross_channel_matches(self, matches: Sequence[CrossChannelMatch]) -> None: ...
-
-    def list_cross_channel_matches(self) -> list[CrossChannelMatch]: ...
+    def list_relations_for_nodes(self, node_ids: Sequence[str]) -> list[NodeRelation]: ...
 
     def save_theme_daily_stats(self, stats: Sequence[ThemeDailyStat]) -> None: ...
 
@@ -166,8 +95,6 @@ class StoryRepository(Protocol):
         channel_id: int | None = None,
     ) -> tuple[list[str], list[str], list[str]]: ...
 
-    def clear_story_state(self, *, channel_id: int) -> tuple[list[str], list[str], list[str]]: ...
-
     def run_with_advisory_lock(self, lock_name: str, callback: Callable[[], None]) -> bool: ...
 
     def list_theme_heat(self, *, phase: str | None = None, limit: int | None = None) -> list[NodeHeatSnapshot]: ...
@@ -181,7 +108,7 @@ class StoryRepository(Protocol):
         limit: int | None = None,
     ) -> list[NodeListEntry]: ...
 
-    def get_node_detail(self, *, kind: NodeKind, slug: str, story_limit: int = 20, story_offset: int = 0) -> NodeDetail | None: ...
+    def get_node_detail(self, *, kind: NodeKind, slug: str) -> NodeDetail | None: ...
 
     # ── Message-atomic pipeline methods ──────────────────────────────────────
 
@@ -224,9 +151,7 @@ class StoryRepository(Protocol):
         self, *, channel_id: int | None = None, limit: int | None = None
     ) -> list[RawMessage]: ...
 
-    def refresh_message_heat_view(self) -> None: ...
-
-    def list_message_heat_rows(self, *, kind: str) -> list[NodeHeatSnapshot]: ...
+    def list_node_heat_rows(self, *, kind: str) -> list[NodeHeatSnapshot]: ...
 
     def list_message_keys_for_node_on_date(
         self, node_id: str, day: date
@@ -239,6 +164,8 @@ class StoryRepository(Protocol):
     def list_raw_messages_by_keys(
         self, keys: Sequence[tuple[int, int]]
     ) -> list[RawMessage]: ...
+
+
 
 
 class StreamEntry(Protocol):
@@ -261,11 +188,6 @@ class Embedder(Protocol):
 
 
 class SemanticExtractor(Protocol):
-    # Legacy story API (to be removed in Session 2 of the message-atomic refactor).
-    def extract_story(self, story: StoryUnit) -> StorySemanticExtraction: ...
-
-    def extract_stories(self, stories: Sequence[StoryUnit]) -> list[StorySemanticExtraction]: ...
-
     # New message-atomic API (structured output).
     def extract_message(self, message: RawMessage) -> MessageSemanticExtraction: ...
 
@@ -282,21 +204,6 @@ class MessageTranslator(Protocol):
 
 
 class VectorStore(Protocol):
-    def upsert_story_embeddings(self, records: Sequence[StoryEmbeddingRecord]) -> None: ...
-
-    def update_story_node_ids(self, story_id: str, node_ids: Sequence[str]) -> None: ...
-
-    def fetch_story_embeddings(self, story_ids: Sequence[str]) -> dict[str, list[float]]: ...
-
-    def query_story_embeddings(
-        self,
-        embedding: list[float],
-        *,
-        top_k: int,
-        exclude_channel_id: int | None = None,
-        timestamp_gte: datetime | None = None,
-    ) -> list[StoryMatch]: ...
-
     def upsert_theme_centroids(self, records: Sequence[NodeCentroidRecord]) -> None: ...
 
     def fetch_theme_centroids(self, node_ids: Sequence[str]) -> dict[str, list[float]]: ...
@@ -308,8 +215,6 @@ class VectorStore(Protocol):
     def fetch_event_centroids(self, node_ids: Sequence[str]) -> dict[str, list[float]]: ...
 
     def query_event_centroids(self, embedding: list[float], *, top_k: int) -> list[NodeMatch]: ...
-
-    def delete_story_embeddings(self, story_ids: Sequence[str]) -> None: ...
 
     def delete_theme_centroids(self, node_ids: Sequence[str]) -> None: ...
 

@@ -20,7 +20,7 @@ class ChannelSummary(BaseModel):
     channel_title: str
     channel_slug: Optional[str] = None
     channel_username: Optional[str] = None
-    story_count: int
+    message_count: int
 
 
 class ChannelsResponse(BaseModel):

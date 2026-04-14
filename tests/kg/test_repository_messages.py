@@ -386,47 +386,26 @@ class ListMessagesWithoutSemanticsTests(unittest.TestCase):
         self.assertIn("LIMIT %s", executed_sql)
 
 
-class RefreshMessageHeatViewTests(unittest.TestCase):
-    def test_tries_concurrent_refresh(self):
+class RefreshNodeHeatViewTests(unittest.TestCase):
+    def test_executes_refresh_and_commits(self):
         repo = _make_repo()
         cursor = _make_cursor()
         conn = _make_connection(cursor)
         with patch.object(repo, "_connect", return_value=conn):
-            repo.refresh_message_heat_view()
+            repo.refresh_node_heat_view()
         sql = cursor.execute.call_args[0][0]
-        self.assertIn("message_heat_view", sql)
+        self.assertIn("node_heat_view", sql)
+        self.assertIn("REFRESH MATERIALIZED VIEW", sql)
         conn.commit.assert_called_once()
 
-    def test_falls_back_to_non_concurrent_on_object_not_in_prerequisite_state(self):
+    def test_exception_propagates(self):
         repo = _make_repo()
         cursor = _make_cursor()
         conn = _make_connection(cursor)
-        # Simulate psycopg raising ObjectNotInPrerequisiteState (view not yet populated).
-        not_ready_error = psycopg.errors.ObjectNotInPrerequisiteState(
-            "cannot refresh materialized view concurrently"
-        )
-        cursor.execute.side_effect = [not_ready_error, None]
-        with patch.object(repo, "_connect", return_value=conn):
-            repo.refresh_message_heat_view()
-        # Should have called execute twice (CONCURRENTLY then without)
-        self.assertEqual(cursor.execute.call_count, 2)
-        fallback_sql = cursor.execute.call_args_list[1][0][0]
-        self.assertIn("REFRESH MATERIALIZED VIEW", fallback_sql)
-        self.assertNotIn("CONCURRENTLY", fallback_sql)
-        conn.commit.assert_called_once()
-
-    def test_unrelated_exception_propagates_and_is_not_swallowed(self):
-        repo = _make_repo()
-        cursor = _make_cursor()
-        conn = _make_connection(cursor)
-        # A generic OperationalError (e.g., connection lost) must NOT be caught.
-        unrelated_error = psycopg.OperationalError("server closed the connection unexpectedly")
-        cursor.execute.side_effect = unrelated_error
+        cursor.execute.side_effect = psycopg.OperationalError("connection lost")
         with patch.object(repo, "_connect", return_value=conn):
             with self.assertRaises(psycopg.OperationalError):
-                repo.refresh_message_heat_view()
-        # Only the first (failing) execute should have been called.
-        self.assertEqual(cursor.execute.call_count, 1)
+                repo.refresh_node_heat_view()
         conn.commit.assert_not_called()
 
 
@@ -436,10 +415,10 @@ class ListMessageHeatRowsTests(unittest.TestCase):
         cursor = _make_cursor(rows=[])
         conn = _make_connection(cursor)
         with patch.object(repo, "_connect", return_value=conn):
-            result = repo.list_message_heat_rows(kind="event")
+            result = repo.list_node_heat_rows(kind="event")
         self.assertEqual(result, [])
         executed_sql, params = cursor.execute.call_args[0]
-        self.assertIn("message_heat_view", executed_sql)
+        self.assertIn("node_heat_view", executed_sql)
         self.assertIn("kind = %s", executed_sql)
         self.assertEqual(params, ("event",))
 
@@ -462,7 +441,7 @@ class UpsertMessageEmbeddingsTests(unittest.TestCase):
     def test_skips_empty(self):
         vs = _make_vector_store()
         mock_index = MagicMock()
-        with patch.object(vs, "_story_index", return_value=mock_index):
+        with patch.object(vs, "_message_index", return_value=mock_index):
             vs.upsert_message_embeddings([])
         mock_index.upsert.assert_not_called()
 
@@ -478,7 +457,7 @@ class UpsertMessageEmbeddingsTests(unittest.TestCase):
                 node_ids=("n1",),
             )
         ]
-        with patch.object(vs, "_story_index", return_value=mock_index):
+        with patch.object(vs, "_message_index", return_value=mock_index):
             vs.upsert_message_embeddings(records)
         mock_index.upsert.assert_called_once()
         vectors = mock_index.upsert.call_args[1]["vectors"]
@@ -506,7 +485,7 @@ class FetchMessageEmbeddingsTests(unittest.TestCase):
         mock_response = MagicMock()
         mock_response.vectors = {"3:7": mock_vector}
         mock_index.fetch.return_value = mock_response
-        with patch.object(vs, "_story_index", return_value=mock_index):
+        with patch.object(vs, "_message_index", return_value=mock_index):
             result = vs.fetch_message_embeddings([(3, 7)])
         self.assertIn((3, 7), result)
         self.assertEqual(result[(3, 7)], [0.1, 0.2])
@@ -522,7 +501,7 @@ class QueryMessageEmbeddingsTests(unittest.TestCase):
             ]
         }
         mock_index.query.return_value = mock_response
-        with patch.object(vs, "_story_index", return_value=mock_index):
+        with patch.object(vs, "_message_index", return_value=mock_index):
             results = vs.query_message_embeddings([0.1, 0.2], top_k=5)
         self.assertEqual(len(results), 1)
         self.assertIsInstance(results[0], MessageMatch)
@@ -539,7 +518,7 @@ class QueryMessageEmbeddingsTests(unittest.TestCase):
             ]
         }
         mock_index.query.return_value = mock_response
-        with patch.object(vs, "_story_index", return_value=mock_index):
+        with patch.object(vs, "_message_index", return_value=mock_index):
             results = vs.query_message_embeddings([0.1], top_k=5)
         # UUID story IDs don't have format "channel_id:message_id" with integer parts,
         # so they should be skipped (ValueError on int conversion).
@@ -549,7 +528,7 @@ class QueryMessageEmbeddingsTests(unittest.TestCase):
         vs = _make_vector_store()
         mock_index = MagicMock()
         mock_index.query.return_value = {"matches": []}
-        with patch.object(vs, "_story_index", return_value=mock_index):
+        with patch.object(vs, "_message_index", return_value=mock_index):
             vs.query_message_embeddings(
                 [0.1],
                 top_k=3,
@@ -673,14 +652,14 @@ class DeleteMessageEmbeddingsTests(unittest.TestCase):
     def test_skips_empty(self):
         vs = _make_vector_store()
         mock_index = MagicMock()
-        with patch.object(vs, "_story_index", return_value=mock_index):
+        with patch.object(vs, "_message_index", return_value=mock_index):
             vs.delete_message_embeddings([])
         mock_index.delete.assert_not_called()
 
     def test_deletes_by_composite_id(self):
         vs = _make_vector_store()
         mock_index = MagicMock()
-        with patch.object(vs, "_story_index", return_value=mock_index):
+        with patch.object(vs, "_message_index", return_value=mock_index):
             vs.delete_message_embeddings([(1, 10), (2, 20)])
         mock_index.delete.assert_called_once()
         ids = mock_index.delete.call_args[1]["ids"]
@@ -692,7 +671,7 @@ class UpdateMessageNodeIdsTests(unittest.TestCase):
     def test_calls_update_with_composite_id(self):
         vs = _make_vector_store()
         mock_index = MagicMock()
-        with patch.object(vs, "_story_index", return_value=mock_index):
+        with patch.object(vs, "_message_index", return_value=mock_index):
             vs.update_message_node_ids(channel_id=3, message_id=7, node_ids=["n1", "n2"])
         mock_index.update.assert_called_once_with(
             id="3:7",

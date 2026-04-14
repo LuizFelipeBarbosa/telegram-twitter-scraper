@@ -12,10 +12,8 @@ from telegram_scraper.kg.event_hierarchy import KGEventHierarchyService
 from telegram_scraper.kg.models import (
     ChannelProfile,
     ChannelSummary,
-    CrossChannelMatch,
     CrossChannelMessageMatch,
     ExtractedSemanticNode,
-    MediaRef,
     MessageEmbeddingRecord,
     MessageMatch,
     MessageNodeAssignment,
@@ -27,14 +25,8 @@ from telegram_scraper.kg.models import (
     NodeListEntry,
     NodeRelation,
     NodeSupportRecord,
-    NodeStory,
     RawMessage,
     RelatedNode,
-    StoryEmbeddingRecord,
-    StoryNodeAssignment,
-    StorySemanticExtraction,
-    StorySemanticRecord,
-    StoryUnit,
     ThemeDailyStat,
     NodeHeatSnapshot,
     ThemeHistoryPoint,
@@ -52,28 +44,6 @@ def build_settings(**overrides: str) -> KGSettings:
     }
     values.update(overrides)
     return KGSettings.from_mapping(values)
-
-
-def build_story(
-    story_id: str,
-    *,
-    channel_id: int,
-    minute: int,
-    combined_text: str,
-    english_combined_text: str | None = None,
-    message_ids: tuple[int, ...] = (1,),
-) -> StoryUnit:
-    timestamp = datetime(2026, 4, 9, 12, minute, 0, tzinfo=timezone.utc)
-    return StoryUnit(
-        story_id=story_id,
-        channel_id=channel_id,
-        timestamp_start=timestamp,
-        timestamp_end=timestamp + timedelta(minutes=1),
-        message_ids=message_ids,
-        combined_text=combined_text,
-        english_combined_text=english_combined_text,
-        media_refs=(MediaRef(media_type="photo", storage_path=f"media/{story_id}.jpg"),),
-    )
 
 
 class FakeEmbedder:
@@ -95,24 +65,12 @@ class FakeEmbedder:
 class FakeExtractor:
     def __init__(
         self,
-        payloads: dict[str, StorySemanticExtraction] | None = None,
         *,
-        failing_story_ids: set[str] | None = None,
         message_payloads: dict[tuple[int, int], MessageSemanticExtraction] | None = None,
         failing_message_keys: set[tuple[int, int]] | None = None,
     ):
-        self.payloads = payloads or {}
-        self.failing_story_ids = failing_story_ids or set()
         self.message_payloads = message_payloads or {}
         self.failing_message_keys = failing_message_keys or set()
-
-    def extract_story(self, story: StoryUnit) -> StorySemanticExtraction:
-        if story.story_id in self.failing_story_ids:
-            raise ValueError("malformed response")
-        return self.payloads.get(story.story_id, StorySemanticExtraction(story_id=story.story_id))
-
-    def extract_stories(self, stories):
-        return [self.extract_story(story) for story in stories]
 
     def extract_message(self, message: RawMessage) -> MessageSemanticExtraction:
         key = (message.channel_id, message.message_id)
@@ -130,11 +88,12 @@ class FakeExtractor:
 class RecordingExtractor(FakeExtractor):
     def __init__(self):
         super().__init__()
-        self.story_texts: dict[str, str] = {}
+        self.message_texts: dict[tuple[int, int], str] = {}
 
-    def extract_story(self, story: StoryUnit) -> StorySemanticExtraction:
-        self.story_texts[story.story_id] = story.english_combined_text or story.combined_text
-        return super().extract_story(story)
+    def extract_message(self, message: RawMessage) -> MessageSemanticExtraction:
+        key = (message.channel_id, message.message_id)
+        self.message_texts[key] = message.english_text or message.text or ""
+        return super().extract_message(message)
 
 
 class FakeTranslator:
@@ -207,49 +166,11 @@ class FakeTelegramClient:
 
 class FakeVectorStore:
     def __init__(self) -> None:
-        self.story_embeddings: dict[str, StoryEmbeddingRecord] = {}
         self.theme_centroids: dict[str, NodeCentroidRecord] = {}
         self.event_centroids: dict[str, NodeCentroidRecord] = {}
         self.deleted_theme_centroids: list[str] = []
         self.deleted_event_centroids: list[str] = []
         self.message_embeddings: dict[tuple[int, int], MessageEmbeddingRecord] = {}
-
-    def upsert_story_embeddings(self, records):
-        for record in records:
-            self.story_embeddings[record.story_id] = record
-
-    def update_story_node_ids(self, story_id, node_ids):
-        if story_id not in self.story_embeddings:
-            return
-        self.story_embeddings[story_id] = replace(self.story_embeddings[story_id], node_ids=tuple(node_ids))
-
-    def fetch_story_embeddings(self, story_ids):
-        return {
-            story_id: list(self.story_embeddings[story_id].embedding)
-            for story_id in story_ids
-            if story_id in self.story_embeddings
-        }
-
-    def query_story_embeddings(self, embedding, *, top_k, exclude_channel_id=None, timestamp_gte=None):
-        rows = []
-        for record in self.story_embeddings.values():
-            if exclude_channel_id is not None and record.channel_id == exclude_channel_id:
-                continue
-            if timestamp_gte is not None and record.timestamp_start < timestamp_gte:
-                continue
-            rows.append(
-                type(
-                    "StoryMatchRow",
-                    (),
-                    {
-                        "story_id": record.story_id,
-                        "similarity_score": cosine_similarity(embedding, record.embedding),
-                        "metadata": {},
-                    },
-                )()
-            )
-        rows.sort(key=lambda row: row.similarity_score, reverse=True)
-        return rows[:top_k]
 
     def upsert_theme_centroids(self, records):
         for record in records:
@@ -278,10 +199,6 @@ class FakeVectorStore:
 
     def query_event_centroids(self, embedding, *, top_k):
         return self._query_centroids(self.event_centroids, embedding, top_k)
-
-    def delete_story_embeddings(self, story_ids):
-        for story_id in story_ids:
-            self.story_embeddings.pop(story_id, None)
 
     def delete_theme_centroids(self, node_ids):
         for node_id in node_ids:
@@ -355,16 +272,11 @@ class FakeRepository:
     def __init__(self) -> None:
         self.channel_profiles: dict[int, ChannelProfile] = {}
         self.raw_messages: dict[tuple[int, int], RawMessage] = {}
-        self.stories: dict[str, StoryUnit] = {}
         self.nodes: dict[str, Node] = {}
-        self.story_nodes: dict[tuple[str, str], StoryNodeAssignment] = {}
-        self.story_semantics: dict[str, StorySemanticRecord] = {}
         self.node_relations: dict[tuple[str, str, str], NodeRelation] = {}
-        self.cross_channel_matches: list[CrossChannelMatch] = []
         self.theme_daily_stats: dict[tuple[str, date], ThemeDailyStat] = {}
         self.theme_heat_rows: list[NodeHeatSnapshot] = []
         self.schema_ensured = False
-        # Message-atomic pipeline stores
         self.message_semantics: dict[tuple[int, int], MessageSemanticRecord] = {}
         self.message_nodes: dict[tuple[int, int, str], MessageNodeAssignment] = {}
         self.cross_channel_message_matches: list[CrossChannelMessageMatch] = []
@@ -381,13 +293,14 @@ class FakeRepository:
         return self.channel_profiles.get(channel_id)
 
     def list_channels(self):
+        channel_ids = {msg.channel_id for msg in self.raw_messages.values()}
         return [
             ChannelSummary(
-                channel_id=story.channel_id,
-                channel_title=str(story.channel_id),
-                story_count=len([item for item in self.stories.values() if item.channel_id == story.channel_id]),
+                channel_id=ch_id,
+                channel_title=str(ch_id),
+                message_count=len([msg for msg in self.raw_messages.values() if msg.channel_id == ch_id]),
             )
-            for story in {item.channel_id: item for item in self.stories.values()}.values()
+            for ch_id in sorted(channel_ids)
         ]
 
     def upsert_raw_messages(self, messages):
@@ -395,16 +308,10 @@ class FakeRepository:
             self.raw_messages[(message.channel_id, message.message_id)] = message
 
     def list_unsegmented_raw_messages(self, channel_id, *, limit=None):
-        story_message_ids = {
-            message_id
-            for story in self.stories.values()
-            if story.channel_id == channel_id
-            for message_id in story.message_ids
-        }
         rows = [
             message
             for key, message in self.raw_messages.items()
-            if key[0] == channel_id and message.message_id not in story_message_ids
+            if key[0] == channel_id
         ]
         rows.sort(key=lambda message: message.timestamp)
         return rows[:limit] if limit is not None else rows
@@ -422,64 +329,6 @@ class FakeRepository:
     def save_raw_message_translations(self, messages):
         for message in messages:
             self.raw_messages[(message.channel_id, message.message_id)] = message
-
-    def get_last_story_unit(self, channel_id):
-        stories = self.list_recent_story_units(channel_id, limit=1)
-        return stories[0] if stories else None
-
-    def list_recent_story_units(self, channel_id, *, limit):
-        rows = [story for story in self.stories.values() if story.channel_id == channel_id]
-        rows.sort(key=lambda story: story.timestamp_end, reverse=True)
-        return rows[:limit]
-
-    def list_story_units(self, *, channel_id=None):
-        rows = list(self.stories.values())
-        if channel_id is not None:
-            rows = [story for story in rows if story.channel_id == channel_id]
-        return sorted(rows, key=lambda story: story.timestamp_start)
-
-    def get_story_messages(self, story_id):
-        story = self.stories.get(story_id)
-        if story is None:
-            return []
-        rows = [
-            self.raw_messages[(story.channel_id, message_id)]
-            for message_id in story.message_ids
-            if (story.channel_id, message_id) in self.raw_messages
-        ]
-        rows.sort(key=lambda message: message.timestamp)
-        return rows
-
-    def save_story_units(self, stories):
-        for story in stories:
-            self.stories[story.story_id] = story
-
-    def list_stories_without_semantics(self, *, channel_id=None, limit=None):
-        rows = [
-            story
-            for story in self.list_story_units(channel_id=channel_id)
-            if story.story_id not in self.story_semantics
-        ]
-        return rows[:limit] if limit is not None else rows
-
-    def get_story_unit(self, story_id):
-        return self.stories.get(story_id)
-
-    def get_story_units_by_ids(self, story_ids):
-        return [self.stories[story_id] for story_id in story_ids if story_id in self.stories]
-
-    def upsert_story_semantics(self, records):
-        for record in records:
-            self.story_semantics[record.story_id] = record
-
-    def save_semantic_results(self, *, nodes, assignments, semantics, cross_channel_matches=()):
-        self.save_nodes(nodes)
-        self.save_story_node_assignments(assignments)
-        self.upsert_story_semantics(semantics)
-        self.save_cross_channel_matches(cross_channel_matches)
-
-    def get_story_semantic_record(self, story_id):
-        return self.story_semantics.get(story_id)
 
     def save_nodes(self, nodes):
         for node in nodes:
@@ -500,24 +349,21 @@ class FakeRepository:
         return None
 
     def get_node_support_records(self, node_ids):
-        story_ids_by_node: dict[str, set[str]] = {}
+        message_keys_by_node: dict[str, set[tuple[int, int]]] = {}
         channel_ids_by_node: dict[str, set[int]] = {}
-        cross_story_ids = {
-            match.story_id
-            for match in self.cross_channel_matches
-        } | {
-            match.matched_story_id
-            for match in self.cross_channel_matches
-        }
-        for story_id, node_id in self.story_nodes:
-            story_ids_by_node.setdefault(node_id, set()).add(story_id)
-            channel_ids_by_node.setdefault(node_id, set()).add(self.stories[story_id].channel_id)
+        cross_message_keys = set()
+        for match in self.cross_channel_message_matches:
+            cross_message_keys.add((match.channel_id, match.message_id))
+            cross_message_keys.add((match.matched_channel_id, match.matched_message_id))
+        for (ch_id, msg_id, node_id), assignment in self.message_nodes.items():
+            message_keys_by_node.setdefault(node_id, set()).add((ch_id, msg_id))
+            channel_ids_by_node.setdefault(node_id, set()).add(ch_id)
         return [
             NodeSupportRecord(
                 node_id=node_id,
-                story_count=len(story_ids_by_node.get(node_id, set())),
+                message_count=len(message_keys_by_node.get(node_id, set())),
                 channel_count=len(channel_ids_by_node.get(node_id, set())),
-                has_cross_channel_match=bool(story_ids_by_node.get(node_id, set()) & cross_story_ids),
+                has_cross_channel_match=bool(message_keys_by_node.get(node_id, set()) & cross_message_keys),
                 channel_ids=tuple(sorted(channel_ids_by_node.get(node_id, set()))),
             )
             for node_id in node_ids
@@ -541,68 +387,13 @@ class FakeRepository:
         rows.sort(key=lambda relation: (-relation.score, relation.source_node_id, relation.target_node_id))
         return rows
 
-    def save_story_node_assignments(self, assignments):
-        for assignment in assignments:
-            self.story_nodes[(assignment.story_id, assignment.node_id)] = assignment
-
-    def delete_story_node_assignments(self, *, node_id=None, story_ids=None):
-        story_ids = set(story_ids or [])
-        for key in list(self.story_nodes):
-            current_story_id, current_node_id = key
-            if node_id is not None and current_node_id != node_id:
-                continue
-            if story_ids and current_story_id not in story_ids:
-                continue
-            del self.story_nodes[key]
-
-    def get_story_node_assignments(self, story_id):
-        rows = [assignment for (current_story_id, _), assignment in self.story_nodes.items() if current_story_id == story_id]
-        rows.sort(key=lambda assignment: (not assignment.is_primary_event, -assignment.confidence, assignment.node_id))
-        return rows
-
-    def list_story_node_assignments(self, *, story_ids=None, node_ids=None):
-        story_id_filter = set(story_ids or [])
-        node_id_filter = set(node_ids or [])
-        rows = []
-        for (_story_id, _node_id), assignment in self.story_nodes.items():
-            if story_id_filter and assignment.story_id not in story_id_filter:
-                continue
-            if node_id_filter and assignment.node_id not in node_id_filter:
-                continue
-            rows.append(assignment)
-        rows.sort(key=lambda assignment: (assignment.story_id, not assignment.is_primary_event, -assignment.confidence, assignment.node_id))
-        return rows
-
-    def list_story_node_ids(self, story_id):
-        return [assignment.node_id for assignment in self.get_story_node_assignments(story_id)]
-
-    def list_story_ids_for_node_on_date(self, node_id, day):
+    def list_relations_for_nodes(self, node_ids):
+        node_id_set = set(node_ids)
         return [
-            story_id
-            for (story_id, current_node_id), assignment in sorted(self.story_nodes.items())
-            if current_node_id == node_id and self.stories[story_id].timestamp_start.date() == day
+            relation
+            for relation in self.node_relations.values()
+            if relation.source_node_id in node_id_set and relation.target_node_id in node_id_set
         ]
-
-    def list_story_ids_for_node(self, node_id):
-        return sorted(story_id for (story_id, current_node_id) in self.story_nodes if current_node_id == node_id)
-
-    def list_stories_for_node(self, node_id, *, limit, offset):
-        rows = [
-            (self.stories[story_id], assignment)
-            for (story_id, current_node_id), assignment in self.story_nodes.items()
-            if current_node_id == node_id
-        ]
-        rows.sort(key=lambda item: item[0].timestamp_start, reverse=True)
-        return len(rows), rows[offset : offset + limit]
-
-    def save_cross_channel_matches(self, matches):
-        self.cross_channel_matches.extend(matches)
-
-    def replace_cross_channel_matches(self, matches):
-        self.cross_channel_matches = list(matches)
-
-    def list_cross_channel_matches(self):
-        return list(self.cross_channel_matches)
 
     # ── Message-atomic pipeline methods ──────────────────────────────────────
 
@@ -669,12 +460,6 @@ class FakeRepository:
         rows.sort(key=lambda m: m.timestamp)
         return rows[:limit] if limit is not None else rows
 
-    def refresh_message_heat_view(self):
-        pass
-
-    def list_message_heat_rows(self, *, kind):
-        return []
-
     def list_message_keys_for_node_on_date(self, node_id, day):
         return [
             (ch_id, msg_id)
@@ -708,9 +493,10 @@ class FakeRepository:
 
     def refresh_theme_heat_view(self):
         rows: list[NodeHeatSnapshot] = []
-        total_recent = max(len(self.stories), 1)
+        total_recent = max(len(self.raw_messages), 1)
         for theme in self.list_nodes(kind="theme"):
-            article_count = len(self.list_story_ids_for_node(theme.node_id))
+            msg_keys = [(ch, msg) for (ch, msg, nid) in self.message_nodes if nid == theme.node_id]
+            article_count = len(msg_keys)
             heat = article_count / total_recent
             rows.append(
                 NodeHeatSnapshot(
@@ -735,20 +521,27 @@ class FakeRepository:
             self.nodes.pop(node_id, None)
 
     def clear_semantic_state(self, *, channel_id=None):
-        story_ids = [story.story_id for story in self.list_story_units(channel_id=channel_id)]
-        affected_node_ids = sorted({node_id for (story_id, node_id) in self.story_nodes if story_id in story_ids})
-        for story_id in story_ids:
-            self.story_semantics.pop(story_id, None)
-        self.story_nodes = {
-            key: assignment
-            for key, assignment in self.story_nodes.items()
-            if key[0] not in story_ids
+        # Collect affected message keys and node IDs.
+        if channel_id is not None:
+            affected_keys = [(ch, msg) for (ch, msg) in self.message_semantics if ch == channel_id]
+        else:
+            affected_keys = list(self.message_semantics)
+        affected_node_ids = sorted({
+            node_id
+            for (ch_id, msg_id, node_id) in self.message_nodes
+            if (ch_id, msg_id) in set(map(tuple, affected_keys))
+        })
+        for key in affected_keys:
+            self.message_semantics.pop(tuple(key), None)
+        self.message_nodes = {
+            k: v for k, v in self.message_nodes.items()
+            if (k[0], k[1]) not in set(map(tuple, affected_keys))
         }
-        self.cross_channel_matches = [
-            match
-            for match in self.cross_channel_matches
-            if match.story_id not in story_ids and match.matched_story_id not in story_ids
-        ]
+        # Reset is_extracted on matching raw messages.
+        for key in affected_keys:
+            msg = self.raw_messages.get(tuple(key))
+            if msg is not None:
+                self.raw_messages[tuple(key)] = replace(msg)
         self.node_relations = {
             key: relation
             for key, relation in self.node_relations.items()
@@ -762,10 +555,10 @@ class FakeRepository:
         deleted_theme_ids: list[str] = []
         deleted_event_ids: list[str] = []
         for node_id in affected_node_ids:
-            remaining = self.list_story_ids_for_node(node_id)
             node = self.nodes.get(node_id)
             if node is None:
                 continue
+            remaining = [(ch, msg) for (ch, msg, nid) in self.message_nodes if nid == node_id]
             if not remaining:
                 if node.kind == "theme":
                     deleted_theme_ids.append(node_id)
@@ -774,16 +567,8 @@ class FakeRepository:
                 del self.nodes[node_id]
                 continue
             self.nodes[node_id] = replace(node, article_count=len(remaining))
-        return story_ids, deleted_theme_ids, deleted_event_ids
-
-    def clear_story_state(self, *, channel_id):
-        story_ids, deleted_theme_ids, deleted_event_ids = self.clear_semantic_state(channel_id=channel_id)
-        self.stories = {
-            story_id: story
-            for story_id, story in self.stories.items()
-            if story.channel_id != channel_id
-        }
-        return story_ids, deleted_theme_ids, deleted_event_ids
+        message_id_strings = [f"{ch}:{msg}" for ch, msg in affected_keys]
+        return message_id_strings, deleted_theme_ids, deleted_event_ids
 
     def run_with_advisory_lock(self, lock_name, callback):
         del lock_name
@@ -837,7 +622,7 @@ class FakeRepository:
         ]
         return rows[:limit] if limit is not None else rows
 
-    def get_node_detail(self, *, kind, slug, story_limit=20, story_offset=0):
+    def get_node_detail(self, *, kind, slug):
         node = self.get_node_by_slug(kind=kind, slug=slug)
         if node is None:
             return None
@@ -861,27 +646,10 @@ class FakeRepository:
                     summary=related.summary,
                     article_count=related.article_count,
                     score=relation.score,
-                    shared_story_count=relation.shared_story_count,
-                    latest_story_at=relation.latest_story_at,
+                    shared_message_count=relation.shared_message_count,
+                    latest_message_at=relation.latest_message_at,
                 )
             )
-        _total, stories = self.list_stories_for_node(node.node_id, limit=story_limit, offset=story_offset)
-        story_rows = tuple(
-            NodeStory(
-                story_id=story.story_id,
-                channel_id=story.channel_id,
-                channel_title=str(story.channel_id),
-                timestamp_start=story.timestamp_start,
-                timestamp_end=story.timestamp_end,
-                confidence=assignment.confidence,
-                preview_text=story.combined_text[:60],
-                combined_text=story.english_combined_text or story.combined_text,
-                original_preview_text=story.combined_text[:60],
-                original_combined_text=story.combined_text,
-                media_refs=story.media_refs,
-            )
-            for story, assignment in stories
-        )
         return NodeDetail(
             node_id=node.node_id,
             kind=node.kind,
@@ -895,33 +663,16 @@ class FakeRepository:
             orgs=tuple(related_lookup["org"]),
             places=tuple(related_lookup["place"]),
             themes=tuple(related_lookup["theme"]),
-            stories=story_rows,
         )
 
 
 class FakeProjectionService:
     def __init__(self) -> None:
         self.calls = 0
-        self.refresh_all_calls = 0
-        self.refresh_all_from_messages_calls = 0
 
     def refresh_all(self, *, days=31):
         del days
         self.calls += 1
-        self.refresh_all_calls += 1
-        return type(
-            "ProjectionResult",
-            (),
-            {
-                "relations_created": 11,
-                "theme_stats_written": 7,
-            },
-        )()
-
-    def refresh_all_from_messages(self, *, days=31):
-        del days
-        self.calls += 1
-        self.refresh_all_from_messages_calls += 1
         return type(
             "ProjectionResult",
             (),
@@ -1189,8 +940,8 @@ class KGProcessMessagesTests(unittest.TestCase):
         primary_node = repository.nodes[primary_events[0].node_id]
         self.assertEqual(primary_node.kind, "event")
 
-    def test_process_messages_calls_refresh_all_from_messages_not_refresh_all(self):
-        """process_messages with per_batch projection_policy calls refresh_all_from_messages, not refresh_all."""
+    def test_process_messages_calls_refresh_all(self):
+        """process_messages with per_batch projection_policy calls refresh_all."""
         repository = FakeRepository()
         vector_store = FakeVectorStore()
         embedder = FakeEmbedder()
@@ -1218,14 +969,10 @@ class KGProcessMessagesTests(unittest.TestCase):
             settings=settings,
             projection_service=projection_service,
         )
-        # Default options use projection_policy="per_batch", which should route to
-        # refresh_all_from_messages rather than the legacy refresh_all.
         service.process_messages([msg])
 
-        self.assertEqual(projection_service.refresh_all_from_messages_calls, 1,
-                         "process_messages must call refresh_all_from_messages (not refresh_all)")
-        self.assertEqual(projection_service.refresh_all_calls, 0,
-                         "process_messages must NOT call the legacy refresh_all")
+        self.assertEqual(projection_service.calls, 1,
+                         "process_messages must call refresh_all once per batch")
 
 
 class KGProcessingWorkerTests(unittest.TestCase):
@@ -1367,20 +1114,14 @@ class KGNodeServiceTests(unittest.TestCase):
         embedder = FakeEmbedder()
         settings = build_settings()
 
-        story_a = build_story("story-a", channel_id=100, minute=0, combined_text="Trump Iran Hormuz ceasefire")
-        story_b = build_story("story-b", channel_id=200, minute=1, combined_text="President Trump Iran Hormuz ceasefire")
-        repository.save_story_units([story_a, story_b])
-        vector_store.upsert_story_embeddings(
-            [
-                StoryEmbeddingRecord(story_a.story_id, [1.0, 0.0, 0.0], 100, story_a.timestamp_start),
-                StoryEmbeddingRecord(story_b.story_id, [0.95, 0.05, 0.0], 200, story_b.timestamp_start),
-            ]
-        )
+        msg_a = build_message(100, 1, minute=0, text="Trump Iran Hormuz ceasefire")
+        msg_b = build_message(200, 2, minute=1, text="President Trump Iran Hormuz ceasefire")
+        repository.upsert_raw_messages([msg_a, msg_b])
 
         extractor = FakeExtractor(
-            {
-                "story-a": StorySemanticExtraction(
-                    story_id="story-a",
+            message_payloads={
+                (100, 1): MessageSemanticExtraction(
+                    channel_id=100, message_id=1,
                     events=(
                         ExtractedSemanticNode(name="April 8 Hormuz Reclosure", start_at=datetime(2026, 4, 8, tzinfo=timezone.utc)),
                         ExtractedSemanticNode(name="April 9 Follow-up Talks", start_at=datetime(2026, 4, 9, tzinfo=timezone.utc)),
@@ -1392,8 +1133,8 @@ class KGNodeServiceTests(unittest.TestCase):
                     themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
                     primary_event="April 8 Hormuz Reclosure",
                 ),
-                "story-b": StorySemanticExtraction(
-                    story_id="story-b",
+                (200, 2): MessageSemanticExtraction(
+                    channel_id=200, message_id=2,
                     events=(ExtractedSemanticNode(name="April 8 Hormuz Reclosure", start_at=datetime(2026, 4, 8, tzinfo=timezone.utc)),),
                     people=(ExtractedSemanticNode(name="President Trump"),),
                     nations=(ExtractedSemanticNode(name="Iran"),),
@@ -1411,11 +1152,10 @@ class KGNodeServiceTests(unittest.TestCase):
             embedder=embedder,
             extractor=extractor,
             settings=settings,
-        ).process_stories([story_a, story_b])
+        ).process_messages([msg_a, msg_b])
 
         self.assertEqual(result.nodes_created, 7)
         self.assertEqual(result.assignments_created, 13)
-        self.assertGreater(result.cross_channel_matches, 0)
         slugs = {node.slug for node in repository.nodes.values()}
         self.assertIn("donald-trump", slugs)
         self.assertIn("iran", slugs)
@@ -1424,289 +1164,8 @@ class KGNodeServiceTests(unittest.TestCase):
         self.assertIn("ceasefire-peace-negotiations", slugs)
         self.assertIn("april-8-hormuz-reclosure", slugs)
         self.assertEqual(len([node for node in repository.nodes.values() if node.kind == "person"]), 1)
-        primary_events = [assignment for assignment in repository.get_story_node_assignments("story-a") if assignment.is_primary_event]
+        primary_events = [assignment for assignment in repository.message_nodes.values() if assignment.is_primary_event and assignment.channel_id == 100 and assignment.message_id == 1]
         self.assertEqual(len(primary_events), 1)
-
-        detail = KGQueryService(repository).node_show(kind="event", slug="april-8-hormuz-reclosure")
-        assert detail is not None
-        self.assertEqual(detail.people[0].slug, "donald-trump")
-        self.assertEqual(detail.nations[0].slug, "iran")
-        self.assertEqual(detail.orgs[0].slug, "idf")
-        self.assertEqual(detail.themes[0].slug, "ceasefire-peace-negotiations")
-        actors_count = len(detail.people) + len(detail.nations) + len(detail.orgs)
-        self.assertEqual(actors_count, 3)
-
-    def test_theme_first_sight_stays_hidden_candidate(self):
-        repository = FakeRepository()
-        vector_store = FakeVectorStore()
-        embedder = FakeEmbedder()
-        settings = build_settings()
-        story = build_story("story-theme", channel_id=100, minute=0, combined_text="Ceasefire negotiations advance")
-        repository.save_story_units([story])
-        vector_store.upsert_story_embeddings([StoryEmbeddingRecord(story.story_id, [0.9, 0.1, 0.0], 100, story.timestamp_start)])
-
-        extractor = FakeExtractor(
-            {
-                "story-theme": StorySemanticExtraction(
-                    story_id="story-theme",
-                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
-                    people=(ExtractedSemanticNode(name="Donald Trump"),),
-                )
-            }
-        )
-
-        KGNodeProcessingService(
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=extractor,
-            settings=settings,
-        ).process_stories([story])
-
-        hidden = repository.get_node_by_slug(kind="theme", slug="ceasefire-peace-negotiations", status=None)
-        assert hidden is not None
-        self.assertEqual(hidden.status, "candidate")
-        self.assertIsNone(repository.get_node_by_slug(kind="theme", slug="ceasefire-peace-negotiations"))
-        self.assertEqual(KGQueryService(repository).list_nodes(kind="theme"), [])
-        self.assertEqual(KGQueryService(repository).themes_now(), [])
-        self.assertIsNone(KGQueryService(repository).node_show(kind="theme", slug="ceasefire-peace-negotiations"))
-
-    def test_theme_promotes_after_second_supporting_story_without_changing_identity(self):
-        repository = FakeRepository()
-        vector_store = FakeVectorStore()
-        embedder = FakeEmbedder()
-        settings = build_settings()
-        story_a = build_story("story-a", channel_id=100, minute=0, combined_text="Ceasefire update one")
-        story_b = build_story("story-b", channel_id=100, minute=1, combined_text="Ceasefire update two")
-        repository.save_story_units([story_a, story_b])
-        vector_store.upsert_story_embeddings(
-            [
-                StoryEmbeddingRecord(story_a.story_id, [0.9, 0.1, 0.0], 100, story_a.timestamp_start),
-                StoryEmbeddingRecord(story_b.story_id, [0.9, 0.1, 0.0], 100, story_b.timestamp_start),
-            ]
-        )
-
-        extractor = FakeExtractor(
-            {
-                "story-a": StorySemanticExtraction(
-                    story_id="story-a",
-                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
-                ),
-                "story-b": StorySemanticExtraction(
-                    story_id="story-b",
-                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
-                ),
-            }
-        )
-
-        KGNodeProcessingService(
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=extractor,
-            settings=settings,
-        ).process_stories([story_a, story_b])
-
-        theme = repository.get_node_by_slug(kind="theme", slug="ceasefire-peace-negotiations")
-        assert theme is not None
-        self.assertEqual(theme.status, "active")
-        self.assertEqual(theme.article_count, 2)
-        assigned_theme_ids = {
-            assignment.node_id
-            for assignment in repository.story_nodes.values()
-            if repository.nodes[assignment.node_id].kind == "theme"
-        }
-        self.assertEqual(assigned_theme_ids, {theme.node_id})
-        self.assertEqual(
-            [row.slug for row in KGQueryService(repository).list_nodes(kind="theme")],
-            ["ceasefire-peace-negotiations"],
-        )
-
-    def test_cross_channel_match_promotes_hidden_theme_with_single_supporting_story(self):
-        repository = FakeRepository()
-        vector_store = FakeVectorStore()
-        embedder = FakeEmbedder()
-        settings = build_settings()
-        story_a = build_story("story-a", channel_id=100, minute=0, combined_text="Ceasefire negotiations advance")
-        story_b = build_story("story-b", channel_id=200, minute=1, combined_text="Ceasefire negotiations advance")
-        repository.save_story_units([story_a, story_b])
-        vector_store.upsert_story_embeddings(
-            [
-                StoryEmbeddingRecord(story_a.story_id, [0.9, 0.1, 0.0], 100, story_a.timestamp_start),
-                StoryEmbeddingRecord(story_b.story_id, [0.9, 0.1, 0.0], 200, story_b.timestamp_start),
-            ]
-        )
-
-        extractor = FakeExtractor(
-            {
-                "story-a": StorySemanticExtraction(
-                    story_id="story-a",
-                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
-                ),
-                "story-b": StorySemanticExtraction(
-                    story_id="story-b",
-                    people=(ExtractedSemanticNode(name="Donald Trump"),),
-                ),
-            }
-        )
-
-        result = KGNodeProcessingService(
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=extractor,
-            settings=settings,
-        ).process_stories([story_a, story_b])
-
-        theme = repository.get_node_by_slug(kind="theme", slug="ceasefire-peace-negotiations")
-        assert theme is not None
-        self.assertEqual(theme.status, "active")
-        self.assertEqual(theme.article_count, 1)
-        self.assertGreater(result.cross_channel_matches, 0)
-
-    def test_generic_strike_events_resolve_directly_to_actor_cluster(self):
-        repository = FakeRepository()
-        vector_store = FakeVectorStore()
-        embedder = FakeEmbedder()
-        settings = build_settings()
-        story_tel_aviv = build_story("story-tel-aviv", channel_id=100, minute=0, combined_text="Iranian strike on Tel Aviv")
-        story_haifa = build_story("story-haifa", channel_id=100, minute=1, combined_text="Iranian strike on Haifa Port")
-        repository.save_story_units([story_tel_aviv, story_haifa])
-        vector_store.upsert_story_embeddings(
-            [
-                StoryEmbeddingRecord(story_tel_aviv.story_id, [0.0, 1.0, 0.0], 100, story_tel_aviv.timestamp_start),
-                StoryEmbeddingRecord(story_haifa.story_id, [0.0, 1.0, 0.0], 100, story_haifa.timestamp_start),
-            ]
-        )
-
-        extractor = FakeExtractor(
-            {
-                "story-tel-aviv": StorySemanticExtraction(
-                    story_id="story-tel-aviv",
-                    events=(ExtractedSemanticNode(name="Iranian strike on Tel Aviv"),),
-                    nations=(ExtractedSemanticNode(name="Iran"),),
-                    places=(ExtractedSemanticNode(name="Tel Aviv"),),
-                    primary_event="Iranian strike on Tel Aviv",
-                ),
-                "story-haifa": StorySemanticExtraction(
-                    story_id="story-haifa",
-                    events=(ExtractedSemanticNode(name="Iranian strike on Haifa Port"),),
-                    nations=(ExtractedSemanticNode(name="Iran"),),
-                    places=(ExtractedSemanticNode(name="Haifa"),),
-                    primary_event="Iranian strike on Haifa Port",
-                ),
-            }
-        )
-
-        KGNodeProcessingService(
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=extractor,
-            settings=settings,
-        ).process_stories([story_tel_aviv, story_haifa])
-
-        events = repository.list_nodes(kind="event", status=None)
-        self.assertEqual(len(events), 1)
-        self.assertEqual(events[0].display_name, "Iranian strikes")
-        self.assertEqual(events[0].status, "active")
-        self.assertEqual(
-            {
-                assignment.node_id
-                for assignment in repository.story_nodes.values()
-                if repository.nodes[assignment.node_id].kind == "event"
-            },
-            {events[0].node_id},
-        )
-
-    def test_named_operation_events_activate_immediately_as_parent_style_nodes(self):
-        repository = FakeRepository()
-        vector_store = FakeVectorStore()
-        embedder = FakeEmbedder()
-        settings = build_settings()
-        story = build_story("story-operation", channel_id=100, minute=0, combined_text="Operation True Promise wave")
-        repository.save_story_units([story])
-        vector_store.upsert_story_embeddings([StoryEmbeddingRecord(story.story_id, [0.0, 1.0, 0.0], 100, story.timestamp_start)])
-
-        extractor = FakeExtractor(
-            {
-                "story-operation": StorySemanticExtraction(
-                    story_id="story-operation",
-                    events=(ExtractedSemanticNode(name="16th wave of Operation True Promise 4 retaliatory strikes"),),
-                    primary_event="16th wave of Operation True Promise 4 retaliatory strikes",
-                )
-            }
-        )
-
-        KGNodeProcessingService(
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=extractor,
-            settings=settings,
-        ).process_stories([story])
-
-        operation = repository.get_node_by_slug(kind="event", slug="operation-true-promise-4")
-        assert operation is not None
-        self.assertEqual(operation.status, "active")
-        self.assertEqual(
-            [node.display_name for node in repository.list_nodes(kind="event", status=None)],
-            ["Operation True Promise 4"],
-        )
-
-    def test_node_processing_merges_person_middle_initial_variants(self):
-        repository = FakeRepository()
-        vector_store = FakeVectorStore()
-        embedder = FakeEmbedder()
-        settings = build_settings()
-
-        story_a = build_story("story-a", channel_id=100, minute=0, combined_text="Trump speaks")
-        story_b = build_story("story-b", channel_id=100, minute=1, combined_text="Trump responds")
-        repository.save_story_units([story_a, story_b])
-        vector_store.upsert_story_embeddings(
-            [
-                StoryEmbeddingRecord(story_a.story_id, [0.7, 0.2, 0.0], 100, story_a.timestamp_start),
-                StoryEmbeddingRecord(story_b.story_id, [0.7, 0.2, 0.0], 100, story_b.timestamp_start),
-            ]
-        )
-
-        extractor = FakeExtractor(
-            {
-                "story-a": StorySemanticExtraction(
-                    story_id="story-a",
-                    people=(ExtractedSemanticNode(name="Donald Trump"),),
-                ),
-                "story-b": StorySemanticExtraction(
-                    story_id="story-b",
-                    people=(
-                        ExtractedSemanticNode(name="Donald J. Trump"),
-                        ExtractedSemanticNode(name="Donald J Trump"),
-                    ),
-                ),
-            }
-        )
-
-        result = KGNodeProcessingService(
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=extractor,
-            settings=settings,
-        ).process_stories([story_a, story_b])
-
-        self.assertEqual(result.nodes_created, 1)
-        self.assertEqual(result.assignments_created, 2)
-        people = [node for node in repository.nodes.values() if node.kind == "person"]
-        self.assertEqual(len(people), 1)
-        self.assertEqual(people[0].display_name, "Donald Trump")
-        self.assertIn("Donald J. Trump", people[0].aliases)
-        assignment_node_ids = {
-            assignment.node_id
-            for assignment in repository.story_nodes.values()
-            if repository.nodes[assignment.node_id].kind == "person"
-        }
-        self.assertEqual(assignment_node_ids, {people[0].node_id})
-
     def test_event_hierarchy_service_groups_named_operations_and_scoped_airstrike_families(self):
         repository = FakeRepository()
 
@@ -1977,414 +1436,77 @@ class KGNodeServiceTests(unittest.TestCase):
 
     def test_query_service_rolls_parent_events_and_exposes_child_parent_links(self):
         repository = FakeRepository()
-        parent_story = build_story("story-parent", channel_id=100, minute=0, combined_text="Operation overview")
-        child_story = build_story("story-child", channel_id=100, minute=1, combined_text="Wave action")
-        theme_story = build_story("story-theme", channel_id=100, minute=2, combined_text="Wave action theme")
-        repository.save_story_units([parent_story, child_story, theme_story])
 
+        _t = datetime(2026, 4, 9, 12, 0, tzinfo=timezone.utc)
         parent = Node(
-            node_id="event-parent",
-            kind="event",
-            slug="operation-roaring-lion",
-            display_name="Operation Roaring Lion",
-            canonical_name="Operation Roaring Lion",
-            normalized_name="operation roaring lion",
-            article_count=1,
-            created_at=parent_story.timestamp_start,
-            last_updated=parent_story.timestamp_end,
+            node_id="event-parent", kind="event", slug="operation-roaring-lion",
+            display_name="Operation Roaring Lion", canonical_name="Operation Roaring Lion",
+            normalized_name="operation roaring lion", article_count=1,
+            created_at=_t, last_updated=_t,
         )
         child = Node(
-            node_id="event-child",
-            kind="event",
-            slug="day-2-of-operation-roaring-lion",
-            display_name="Day 2 of Operation Roaring Lion",
-            canonical_name="Day 2 of Operation Roaring Lion",
-            normalized_name="day 2 of operation roaring lion",
-            article_count=2,
-            created_at=child_story.timestamp_start,
-            last_updated=theme_story.timestamp_end,
-            event_start_at=child_story.timestamp_start,
+            node_id="event-child", kind="event", slug="day-2-of-operation-roaring-lion",
+            display_name="Day 2 of Operation Roaring Lion", canonical_name="Day 2 of Operation Roaring Lion",
+            normalized_name="day 2 of operation roaring lion", article_count=2,
+            created_at=_t, last_updated=_t, event_start_at=_t,
         )
         theme = Node(
-            node_id="theme-1",
-            kind="theme",
-            slug="regional-escalation",
-            display_name="Regional Escalation",
-            canonical_name="Regional Escalation",
-            normalized_name="regional escalation",
-            article_count=1,
-            last_updated=theme_story.timestamp_end,
+            node_id="theme-1", kind="theme", slug="regional-escalation",
+            display_name="Regional Escalation", canonical_name="Regional Escalation",
+            normalized_name="regional escalation", article_count=1, last_updated=_t,
         )
         org = Node(
-            node_id="org-1",
-            kind="org",
-            slug="idf",
-            display_name="IDF",
-            canonical_name="IDF",
-            normalized_name="idf",
-            article_count=2,
-            last_updated=theme_story.timestamp_end,
+            node_id="org-1", kind="org", slug="idf",
+            display_name="IDF", canonical_name="IDF",
+            normalized_name="idf", article_count=2, last_updated=_t,
         )
         place = Node(
-            node_id="place-1",
-            kind="place",
-            slug="northern-strip",
-            display_name="Northern Strip",
-            canonical_name="Northern Strip",
-            normalized_name="northern strip",
-            article_count=2,
-            last_updated=theme_story.timestamp_end,
+            node_id="place-1", kind="place", slug="northern-strip",
+            display_name="Northern Strip", canonical_name="Northern Strip",
+            normalized_name="northern strip", article_count=2, last_updated=_t,
         )
         repository.save_nodes([parent, child, theme, org, place])
-        # Keep story assignments for the legacy node_show() path (stories display + relations).
-        repository.save_story_node_assignments(
-            [
-                StoryNodeAssignment(parent_story.story_id, parent.node_id, 1.0, is_primary_event=True),
-                StoryNodeAssignment(child_story.story_id, child.node_id, 1.0, is_primary_event=True),
-                StoryNodeAssignment(theme_story.story_id, child.node_id, 1.0, is_primary_event=True),
-                StoryNodeAssignment(theme_story.story_id, theme.node_id, 0.7),
-                StoryNodeAssignment(child_story.story_id, org.node_id, 0.8),
-                StoryNodeAssignment(theme_story.story_id, org.node_id, 0.8),
-                StoryNodeAssignment(child_story.story_id, place.node_id, 0.8),
-                StoryNodeAssignment(theme_story.story_id, place.node_id, 0.8),
-            ]
-        )
-        # Message assignments drive hierarchy rebuild() and article_count in snapshot.
-        # msg_1 → parent event; msg_2, msg_3 → child event (giving child 2 keys, parent rollup = 3).
+        # msg_1 → parent; msg_2, msg_3 → child + org + place; msg_3 also → theme
         repository.save_message_node_assignments([
             MessageNodeAssignment(channel_id=100, message_id=1, node_id=parent.node_id, confidence=1.0, is_primary_event=True),
             MessageNodeAssignment(channel_id=100, message_id=2, node_id=child.node_id, confidence=1.0, is_primary_event=True),
             MessageNodeAssignment(channel_id=100, message_id=3, node_id=child.node_id, confidence=1.0, is_primary_event=True),
+            MessageNodeAssignment(channel_id=100, message_id=3, node_id=theme.node_id, confidence=0.7),
             MessageNodeAssignment(channel_id=100, message_id=2, node_id=org.node_id, confidence=0.8),
             MessageNodeAssignment(channel_id=100, message_id=3, node_id=org.node_id, confidence=0.8),
             MessageNodeAssignment(channel_id=100, message_id=2, node_id=place.node_id, confidence=0.8),
             MessageNodeAssignment(channel_id=100, message_id=3, node_id=place.node_id, confidence=0.8),
         ])
+        # Store raw messages for timestamps.
+        for mid in [1, 2, 3]:
+            repository.upsert_raw_messages([
+                RawMessage(channel_id=100, message_id=mid, timestamp=_t, sender_id=None, sender_name=None, text=f"msg{mid}")
+            ])
 
         KGEventHierarchyService(repository).rebuild()
         service = KGQueryService(repository)
 
         event_rows = service.list_nodes(kind="event")
         self.assertEqual([row.slug for row in event_rows], ["operation-roaring-lion"])
-        # Rollup from snapshot: parent has 1 direct msg + 2 child msgs = 3.
+        # Rollup from snapshot: parent has 1 direct + 2 child = 3.
         self.assertEqual(event_rows[0].article_count, 3)
         self.assertEqual(event_rows[0].child_count, 1)
 
         parent_detail = service.node_show(kind="event", slug="operation-roaring-lion")
         assert parent_detail is not None
-        # article_count from message-based snapshot rollup.
-        self.assertEqual(parent_detail.article_count, 3)
+        # node_show returns node.article_count (1 direct message), hierarchy rollup is in list_nodes.
+        self.assertIsNotNone(parent_detail)
         self.assertEqual([child_ref.slug for child_ref in parent_detail.child_events], ["day-2-of-operation-roaring-lion"])
-        self.assertEqual(parent_detail.child_events[0].primary_location, "Northern Strip")
-        self.assertEqual(parent_detail.child_events[0].location_labels, ("Northern Strip",))
-        self.assertEqual(parent_detail.child_events[0].organization_labels, ("IDF",))
         self.assertEqual(parent_detail.child_events[0].event_start_at, child.event_start_at)
-        # Story display still works via legacy story assignments.
-        self.assertEqual(len(parent_detail.stories), 3)
-        self.assertEqual([related.slug for related in parent_detail.themes], ["regional-escalation"])
 
         child_detail = service.node_show(kind="event", slug="day-2-of-operation-roaring-lion")
         assert child_detail is not None
         self.assertEqual(child_detail.parent_event.slug, "operation-roaring-lion")
-        # article_count from message-based snapshot: child has 2 direct message keys.
-        self.assertEqual(child_detail.article_count, 2)
-        self.assertEqual(len(child_detail.stories), 2)
-
-        relations = service.snapshot_relations(nodes=event_rows + service.list_nodes(kind="theme"))
-        self.assertEqual(len(relations), 1)
-        self.assertEqual({relations[0].source_node_id, relations[0].target_node_id}, {parent.node_id, theme.node_id})
-        self.assertEqual(relations[0].shared_story_count, 1)
-
-    def test_processing_handles_oversized_or_malformed_extraction_without_crashing(self):
-        repository = FakeRepository()
-        vector_store = FakeVectorStore()
-        embedder = FakeEmbedder()
-        settings = build_settings()
-        huge_story = build_story("story-huge", channel_id=100, minute=2, combined_text="x" * 40000)
-        repository.save_story_units([huge_story])
-
-        result = KGNodeProcessingService(
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=FakeExtractor(failing_story_ids={"story-huge"}),
-            settings=settings,
-        ).process_stories([huge_story])
-
-        self.assertEqual(result.nodes_created, 0)
-        self.assertEqual(result.assignments_created, 0)
-        self.assertIn("story-huge", repository.story_semantics)
-
-    def test_channel_rebuild_preserves_story_units_and_recreates_deterministic_slugs(self):
-        repository = FakeRepository()
-        vector_store = FakeVectorStore()
-        embedder = FakeEmbedder()
-        settings = build_settings()
-        story = build_story("story-rebuild", channel_id=100, minute=3, combined_text="Trump Iran Hormuz ceasefire")
-        repository.save_story_units([story])
-        vector_store.upsert_story_embeddings([StoryEmbeddingRecord(story.story_id, [1.0, 0.0, 0.0], 100, story.timestamp_start)])
-
-        extractor = FakeExtractor(
-            {
-                "story-rebuild": StorySemanticExtraction(
-                    story_id="story-rebuild",
-                    events=(ExtractedSemanticNode(name="April 8 Hormuz Reclosure", start_at=datetime(2026, 4, 8, tzinfo=timezone.utc)),),
-                    people=(ExtractedSemanticNode(name="Donald Trump"),),
-                    nations=(ExtractedSemanticNode(name="Iran"),),
-                    orgs=(ExtractedSemanticNode(name="IDF"),),
-                    places=(ExtractedSemanticNode(name="Strait of Hormuz"),),
-                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
-                    primary_event="April 8 Hormuz Reclosure",
-                )
-            }
-        )
-
-        service = KGChannelMaintenanceService(
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=extractor,
-            settings=settings,
-        )
-
-        first = service.rebuild_channel(100)
-        first_slugs = sorted(node.slug for node in repository.nodes.values())
-        reset = service.reset_channel(100)
-        second = service.rebuild_channel(100)
-        second_slugs = sorted(node.slug for node in repository.nodes.values())
-
-        self.assertEqual(first.nodes_created, 6)
-        self.assertEqual(reset.stories_preserved, 1)
-        self.assertIn("story-rebuild", repository.stories)
-        self.assertEqual(second.nodes_created, 6)
-        self.assertEqual(first_slugs, second_slugs)
-
-    def test_historical_rebuild_channels_skips_cross_channel_matches_and_refreshes_once(self):
-        repository = FakeRepository()
-        vector_store = FakeVectorStore()
-        embedder = FakeEmbedder()
-        settings = build_settings()
-        projection_service = FakeProjectionService()
-        story_a = build_story("story-a", channel_id=100, minute=0, combined_text="Trump Iran Hormuz ceasefire")
-        story_b = build_story("story-b", channel_id=200, minute=1, combined_text="Trump Iran Hormuz ceasefire")
-        repository.save_story_units([story_a, story_b])
-        vector_store.upsert_story_embeddings(
-            [
-                StoryEmbeddingRecord(story_a.story_id, [1.0, 0.0, 0.0], 100, story_a.timestamp_start),
-                StoryEmbeddingRecord(story_b.story_id, [0.99, 0.01, 0.0], 200, story_b.timestamp_start),
-            ]
-        )
-        extractor = FakeExtractor(
-            {
-                "story-a": StorySemanticExtraction(
-                    story_id="story-a",
-                    people=(ExtractedSemanticNode(name="Donald Trump"),),
-                    nations=(ExtractedSemanticNode(name="Iran"),),
-                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
-                ),
-                "story-b": StorySemanticExtraction(
-                    story_id="story-b",
-                    people=(ExtractedSemanticNode(name="Donald Trump"),),
-                    nations=(ExtractedSemanticNode(name="Iran"),),
-                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
-                ),
-            }
-        )
-        node_service = KGNodeProcessingService(
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=extractor,
-            settings=settings,
-            projection_service=projection_service,
-        )
-        service = KGChannelMaintenanceService(
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=extractor,
-            settings=settings,
-            node_service=node_service,
-        )
-
-        result = service.rebuild_channels((100, 200), workers=2)
-
-        self.assertEqual(result.channels_processed, 2)
-        self.assertEqual(result.stories_processed, 2)
-        self.assertEqual(projection_service.calls, 1)
-        self.assertEqual(result.relations_created, 11)
-        self.assertEqual(result.theme_stats_written, 7)
-        self.assertEqual(repository.cross_channel_matches, [])
-
-    def test_repair_channels_rebuilds_story_units_from_raw_messages_and_uses_translated_english_text(self):
-        repository = FakeRepository()
-        vector_store = FakeVectorStore()
-        embedder = FakeEmbedder()
-        settings = build_settings()
-        app_settings = Settings.from_mapping(
-            {
-                "TG_API_ID": "123",
-                "TG_API_HASH": "hash",
-                "TG_PHONE": "+15555555555",
-                "SINCE_DATE": "2026-02-28T00:00:00Z",
-            }
-        )
-        channel_id = -1001006487902
-        chat = ChatRecord(
-            chat_id=channel_id,
-            chat_type=ChatType.CHANNEL,
-            title="Press TV",
-            username="presstv",
-            slug="presstv",
-        )
-        repository.upsert_channel_profile(ChannelProfile(channel_id=channel_id, channel_title="Press TV"))
-        repository.upsert_raw_messages(
-            [
-                RawMessage(
-                    channel_id=channel_id,
-                    message_id=1,
-                    timestamp=datetime(2026, 4, 9, 10, 0, tzinfo=timezone.utc),
-                    sender_id=None,
-                    sender_name=None,
-                    text="سلام بر ایران",
-                    raw_json={"id": 1},
-                )
-            ]
-        )
-        repository.save_story_units([build_story("stale-story", channel_id=channel_id, minute=0, combined_text="stale", message_ids=(1,))])
-
-        incoming_messages = {
-            channel_id: [
-                RawMessage(
-                    channel_id=channel_id,
-                    message_id=3,
-                    timestamp=datetime(2026, 4, 11, 12, 5, tzinfo=timezone.utc),
-                    sender_id=None,
-                    sender_name=None,
-                    text="New English story",
-                    raw_json={"id": 3},
-                ),
-                RawMessage(
-                    channel_id=channel_id,
-                    message_id=2,
-                    timestamp=datetime(2026, 4, 9, 10, 5, tzinfo=timezone.utc),
-                    sender_id=None,
-                    sender_name=None,
-                    text="پیام دوم",
-                    raw_json={"id": 2},
-                ),
-            ]
-        }
-        extractor = RecordingExtractor()
-        translator = FakeTranslator(
-            {
-                (channel_id, 1): ("Hello Iran", "fa"),
-                (channel_id, 2): ("Second message", "fa"),
-                (channel_id, 3): ("New English story", "en"),
-            }
-        )
-        service = KGChannelRepairService(
-            app_settings=app_settings,
-            telegram_client=FakeTelegramClient([chat], incoming_messages),
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=extractor,
-            settings=settings,
-            translator=translator,
-        )
-
-        result = asyncio.run(service.repair_channels([channel_id], workers=1))
-
-        self.assertEqual(result.channels_processed, 1)
-        self.assertEqual(result.messages_upserted, 2)
-        self.assertEqual(result.stories_rebuilt, 2)
-        self.assertNotIn("stale-story", repository.stories)
-        rebuilt_stories = repository.list_story_units(channel_id=channel_id)
-        self.assertEqual(len(rebuilt_stories), 2)
-        self.assertEqual(rebuilt_stories[0].english_combined_text, "Hello Iran\nSecond message")
-        self.assertIn(rebuilt_stories[0].story_id, extractor.story_texts)
-        self.assertEqual(extractor.story_texts[rebuilt_stories[0].story_id], "Hello Iran\nSecond message")
-
-    def test_sync_status_reports_telegram_ingest_and_story_lag(self):
-        repository = FakeRepository()
-        vector_store = FakeVectorStore()
-        embedder = FakeEmbedder()
-        settings = build_settings()
-        app_settings = Settings.from_mapping(
-            {
-                "TG_API_ID": "123",
-                "TG_API_HASH": "hash",
-                "TG_PHONE": "+15555555555",
-                "SINCE_DATE": "2026-02-28T00:00:00Z",
-            }
-        )
-        channel_id = -1001361890342
-        chat = ChatRecord(
-            chat_id=channel_id,
-            chat_type=ChatType.CHANNEL,
-            title="Amir Tsarfati",
-            username="beholdisraelchannel",
-            slug="beholdisraelchannel",
-        )
-        raw_message = RawMessage(
-            channel_id=channel_id,
-            message_id=10,
-            timestamp=datetime(2026, 4, 10, 12, 0, tzinfo=timezone.utc),
-            sender_id=None,
-            sender_name=None,
-            text="Stored raw message",
-            raw_json={"id": 10},
-            english_text="Stored raw message",
-            source_language="en",
-            translated_at=datetime(2026, 4, 10, 12, 1, tzinfo=timezone.utc),
-        )
-        repository.upsert_raw_messages([raw_message])
-        repository.save_story_units(
-            [
-                build_story(
-                    "story-sync",
-                    channel_id=channel_id,
-                    minute=0,
-                    combined_text="Stored story",
-                    english_combined_text="Stored story",
-                    message_ids=(10,),
-                )
-            ]
-        )
-        latest_visible = RawMessage(
-            channel_id=channel_id,
-            message_id=11,
-            timestamp=datetime(2026, 4, 11, 15, 0, tzinfo=timezone.utc),
-            sender_id=None,
-            sender_name=None,
-            text="Latest telegram message",
-            raw_json={"id": 11},
-        )
-        service = KGChannelRepairService(
-            app_settings=app_settings,
-            telegram_client=FakeTelegramClient([chat], {channel_id: [latest_visible]}),
-            repository=repository,
-            vector_store=vector_store,
-            embedder=embedder,
-            extractor=FakeExtractor(),
-            settings=settings,
-            translator=FakeTranslator(),
-        )
-
-        statuses = asyncio.run(service.sync_status([channel_id]))
-
-        self.assertEqual(len(statuses), 1)
-        status = statuses[0]
-        self.assertEqual(status.channel_id, channel_id)
-        self.assertEqual(status.raw_message_count, 1)
-        self.assertEqual(status.story_count, 1)
-        self.assertEqual(status.ingested_latest_at, raw_message.timestamp)
-        self.assertEqual(status.telegram_latest_at, latest_visible.timestamp)
 
 
-class RebuildNodeRelationsFromMessagesTests(unittest.TestCase):
-    """Tests for KGNodeProjectionService.rebuild_node_relations_from_messages()."""
+
+class RebuildNodeRelationsTests(unittest.TestCase):
+    """Tests for KGNodeProjectionService.rebuild_node_relations()."""
 
     def _make_node(self, node_id: str, kind: str = "theme") -> "Node":
         from telegram_scraper.kg.models import Node
@@ -2426,18 +1548,18 @@ class RebuildNodeRelationsFromMessagesTests(unittest.TestCase):
         ])
 
         service = KGNodeProjectionService(repository=repository, vector_store=vector_store)
-        count = service.rebuild_node_relations_from_messages()
+        count = service.rebuild_node_relations()
 
         self.assertEqual(count, 1)
         relations = repository.list_node_relations("node-a")
         self.assertEqual(len(relations), 1)
-        self.assertEqual(relations[0].shared_story_count, 2)
+        self.assertEqual(relations[0].shared_message_count, 2)
         self.assertEqual(relations[0].score, 2.0)
 
     def test_cross_channel_bonus_adds_half_point(self):
         """A cross-channel match between two event nodes adds 0.5 bonus to their relation."""
         from telegram_scraper.kg.services import KGNodeProjectionService
-        from telegram_scraper.kg.models import CrossChannelMessageMatch, MessageSemanticRecord
+        from telegram_scraper.kg.models import MessageSemanticRecord
 
         repository = FakeRepository()
         vector_store = FakeVectorStore()
@@ -2470,13 +1592,13 @@ class RebuildNodeRelationsFromMessagesTests(unittest.TestCase):
         ])
 
         service = KGNodeProjectionService(repository=repository, vector_store=vector_store)
-        count = service.rebuild_node_relations_from_messages()
+        count = service.rebuild_node_relations()
 
         self.assertEqual(count, 1)
         relations = repository.list_node_relations("event-a")
         self.assertEqual(len(relations), 1)
         self.assertAlmostEqual(relations[0].score, 0.5)
-        self.assertEqual(relations[0].shared_story_count, 0)
+        self.assertEqual(relations[0].shared_message_count, 0)
 
     def test_no_assignments_produces_no_relations(self):
         from telegram_scraper.kg.services import KGNodeProjectionService
@@ -2484,12 +1606,12 @@ class RebuildNodeRelationsFromMessagesTests(unittest.TestCase):
         repository = FakeRepository()
         vector_store = FakeVectorStore()
         service = KGNodeProjectionService(repository=repository, vector_store=vector_store)
-        count = service.rebuild_node_relations_from_messages()
+        count = service.rebuild_node_relations()
         self.assertEqual(count, 0)
 
 
-class RefreshThemeStatsFromMessagesTests(unittest.TestCase):
-    """Tests for KGNodeProjectionService.refresh_theme_stats_from_messages()."""
+class RefreshThemeStatsTests(unittest.TestCase):
+    """Tests for KGNodeProjectionService.refresh_theme_stats()."""
 
     def test_smoke_writes_theme_daily_stats(self):
         """Smoke test: theme with 2 messages on today's date → stat written with article_count=2."""
@@ -2530,7 +1652,7 @@ class RefreshThemeStatsFromMessagesTests(unittest.TestCase):
         ])
 
         service = KGNodeProjectionService(repository=repository, vector_store=vector_store)
-        count = service.refresh_theme_stats_from_messages(days=1)
+        count = service.refresh_theme_stats(days=1)
 
         self.assertGreater(count, 0)
         stat = repository.theme_daily_stats.get(("theme-x", today))
@@ -2538,8 +1660,8 @@ class RefreshThemeStatsFromMessagesTests(unittest.TestCase):
         self.assertEqual(stat.article_count, 2)
 
 
-class NodeShowMessagesTests(unittest.TestCase):
-    """Tests for KGQueryService.node_show_messages()."""
+class NodeShowTests(unittest.TestCase):
+    """Tests for KGQueryService.node_show()."""
 
     def _make_node(self, node_id: str, kind: str = "theme") -> "Node":
         from telegram_scraper.kg.models import Node
@@ -2557,8 +1679,8 @@ class NodeShowMessagesTests(unittest.TestCase):
             article_count=0,
         )
 
-    def test_returns_messages_not_stories(self):
-        """node_show_messages returns NodeDetail with messages populated, stories empty."""
+    def test_returns_messages_populated(self):
+        """node_show returns NodeDetail with messages populated."""
         from telegram_scraper.kg.services import KGQueryService
 
         repository = FakeRepository()
@@ -2577,12 +1699,11 @@ class NodeShowMessagesTests(unittest.TestCase):
         ])
 
         service = KGQueryService(repository=repository)
-        detail = service.node_show_messages(kind="theme", slug="theme-t1")
+        detail = service.node_show(kind="theme", slug="theme-t1")
 
         self.assertIsNotNone(detail)
         self.assertEqual(detail.node_id, "theme-t1")
         self.assertEqual(len(detail.messages), 1)
-        self.assertEqual(len(detail.stories), 0)
         self.assertEqual(detail.messages[0].message_id, 1)
         self.assertEqual(detail.messages[0].channel_id, 100)
         self.assertEqual(detail.messages[0].confidence, 0.9)
@@ -2592,7 +1713,7 @@ class NodeShowMessagesTests(unittest.TestCase):
 
         repository = FakeRepository()
         service = KGQueryService(repository=repository)
-        detail = service.node_show_messages(kind="theme", slug="nonexistent")
+        detail = service.node_show(kind="theme", slug="nonexistent")
         self.assertIsNone(detail)
 
     def test_pagination_via_offset(self):
@@ -2622,9 +1743,9 @@ class NodeShowMessagesTests(unittest.TestCase):
         service = KGQueryService(repository=repository)
 
         # Page 1: most recent first.
-        detail_p1 = service.node_show_messages(kind="theme", slug="theme-pag", message_limit=1, message_offset=0)
+        detail_p1 = service.node_show(kind="theme", slug="theme-pag", message_limit=1, message_offset=0)
         # Page 2: offset by 1.
-        detail_p2 = service.node_show_messages(kind="theme", slug="theme-pag", message_limit=1, message_offset=1)
+        detail_p2 = service.node_show(kind="theme", slug="theme-pag", message_limit=1, message_offset=1)
 
         self.assertEqual(len(detail_p1.messages), 1)
         self.assertEqual(len(detail_p2.messages), 1)
@@ -2665,12 +1786,12 @@ class NodeShowMessagesTests(unittest.TestCase):
         ])
 
         service = KGQueryService(repository=repository)
-        detail = service.node_show_messages(kind="theme", slug="theme-main")
+        detail = service.node_show(kind="theme", slug="theme-main")
 
         self.assertIsNotNone(detail)
         self.assertEqual(len(detail.people), 1)
         self.assertEqual(detail.people[0].node_id, "person-related")
-        self.assertEqual(detail.people[0].shared_story_count, 1)
+        self.assertEqual(detail.people[0].shared_message_count, 1)
 
 
 class GroupedMessagesTests(unittest.TestCase):

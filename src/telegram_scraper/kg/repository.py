@@ -9,10 +9,8 @@ from typing import Any, Callable, Sequence
 from telegram_scraper.kg.models import (
     ChannelProfile,
     ChannelSummary,
-    CrossChannelMatch,
     CrossChannelMessageMatch,
     DelimiterPattern,
-    EventHierarchyRef,
     MediaRef,
     MessageNodeAssignment,
     MessageSemanticRecord,
@@ -23,12 +21,8 @@ from telegram_scraper.kg.models import (
     NodeListEntry,
     NodeRelation,
     NodeSupportRecord,
-    NodeStory,
     RawMessage,
     RelatedNode,
-    StoryNodeAssignment,
-    StorySemanticRecord,
-    StoryUnit,
     ThemeDailyStat,
     ThemeHistoryPoint,
 )
@@ -80,35 +74,6 @@ SCHEMA_STATEMENTS = [
     "CREATE INDEX IF NOT EXISTS idx_raw_messages_channel_timestamp ON raw_messages (channel_id, timestamp)",
     "CREATE INDEX IF NOT EXISTS idx_raw_messages_channel_message ON raw_messages (channel_id, message_id)",
     """
-    CREATE TABLE IF NOT EXISTS story_units (
-        story_id UUID PRIMARY KEY,
-        channel_id BIGINT NOT NULL,
-        timestamp_start TIMESTAMPTZ NOT NULL,
-        timestamp_end TIMESTAMPTZ NOT NULL,
-        message_ids BIGINT[] NOT NULL,
-        combined_text TEXT NOT NULL DEFAULT '',
-        english_combined_text TEXT,
-        translation_updated_at TIMESTAMPTZ,
-        media_refs JSONB NOT NULL DEFAULT '[]'::jsonb,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-    """,
-    "ALTER TABLE story_units ADD COLUMN IF NOT EXISTS english_combined_text TEXT",
-    "ALTER TABLE story_units ADD COLUMN IF NOT EXISTS translation_updated_at TIMESTAMPTZ",
-    "CREATE INDEX IF NOT EXISTS idx_story_units_channel_timestamp_start ON story_units (channel_id, timestamp_start)",
-    "CREATE INDEX IF NOT EXISTS idx_story_units_timestamp_start ON story_units (timestamp_start)",
-    """
-    CREATE TABLE IF NOT EXISTS story_messages (
-        story_id UUID NOT NULL REFERENCES story_units(story_id) ON DELETE CASCADE,
-        channel_id BIGINT NOT NULL,
-        message_id BIGINT NOT NULL,
-        position INT NOT NULL,
-        PRIMARY KEY (story_id, message_id)
-    )
-    """,
-    "CREATE INDEX IF NOT EXISTS idx_story_messages_channel_message ON story_messages (channel_id, message_id)",
-    "CREATE INDEX IF NOT EXISTS idx_story_messages_story_position ON story_messages (story_id, position)",
-    """
     CREATE TABLE IF NOT EXISTS nodes (
         node_id UUID PRIMARY KEY,
         kind TEXT NOT NULL CHECK (kind IN ('person', 'nation', 'org', 'place', 'event', 'theme')),
@@ -135,47 +100,34 @@ SCHEMA_STATEMENTS = [
     "CREATE INDEX IF NOT EXISTS idx_nodes_kind_canonical_name ON nodes (kind, canonical_name)",
     "CREATE INDEX IF NOT EXISTS idx_nodes_event_parent ON nodes (kind, parent_node_id)",
     """
-    CREATE TABLE IF NOT EXISTS story_semantics (
-        story_id UUID PRIMARY KEY REFERENCES story_units(story_id) ON DELETE CASCADE,
-        extraction_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
-        primary_event_node_id UUID REFERENCES nodes(node_id),
-        processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS story_nodes (
-        story_id UUID NOT NULL REFERENCES story_units(story_id) ON DELETE CASCADE,
-        node_id UUID NOT NULL REFERENCES nodes(node_id) ON DELETE CASCADE,
-        confidence DOUBLE PRECISION NOT NULL,
-        assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        is_primary_event BOOLEAN NOT NULL DEFAULT FALSE,
-        PRIMARY KEY (story_id, node_id)
-    )
-    """,
-    "CREATE INDEX IF NOT EXISTS idx_story_nodes_node ON story_nodes (node_id)",
-    "CREATE INDEX IF NOT EXISTS idx_story_nodes_primary_event ON story_nodes (node_id, is_primary_event)",
-    """
     CREATE TABLE IF NOT EXISTS node_relations (
         source_node_id UUID NOT NULL REFERENCES nodes(node_id) ON DELETE CASCADE,
         target_node_id UUID NOT NULL REFERENCES nodes(node_id) ON DELETE CASCADE,
         relation_type TEXT NOT NULL,
         score DOUBLE PRECISION NOT NULL,
-        shared_story_count INT NOT NULL,
-        latest_story_at TIMESTAMPTZ,
+        shared_message_count INT NOT NULL DEFAULT 0,
+        latest_message_at TIMESTAMPTZ,
         PRIMARY KEY (source_node_id, target_node_id, relation_type),
         CHECK (source_node_id <> target_node_id)
     )
     """,
+    # Rename legacy columns if they still exist (idempotent via DO $$ block).
     """
-    CREATE TABLE IF NOT EXISTS cross_channel_story_matches (
-        story_id UUID NOT NULL REFERENCES story_units(story_id) ON DELETE CASCADE,
-        matched_story_id UUID NOT NULL REFERENCES story_units(story_id) ON DELETE CASCADE,
-        similarity_score DOUBLE PRECISION NOT NULL,
-        timestamp_delta_seconds INT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (story_id, matched_story_id)
-    )
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'node_relations' AND column_name = 'shared_story_count'
+        ) THEN
+            ALTER TABLE node_relations RENAME COLUMN shared_story_count TO shared_message_count;
+        END IF;
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'node_relations' AND column_name = 'latest_story_at'
+        ) THEN
+            ALTER TABLE node_relations RENAME COLUMN latest_story_at TO latest_message_at;
+        END IF;
+    END $$;
     """,
     """
     CREATE TABLE IF NOT EXISTS theme_daily_stats (
@@ -189,68 +141,9 @@ SCHEMA_STATEMENTS = [
     "ALTER TABLE nodes ADD COLUMN IF NOT EXISTS parent_node_id UUID REFERENCES nodes(node_id) ON DELETE SET NULL",
     "CREATE INDEX IF NOT EXISTS idx_nodes_event_parent ON nodes (kind, parent_node_id)",
     "DROP MATERIALIZED VIEW IF EXISTS theme_heat_view CASCADE",
-    """
-    CREATE MATERIALIZED VIEW IF NOT EXISTS node_heat_view AS
-    WITH RECURSIVE
-    windows AS (
-        SELECT unnest(ARRAY[1, 3, 5, 7, 14, 31]) AS days
-    ),
-    window_totals AS (
-        SELECT w.days, COUNT(*) AS total
-        FROM windows w
-        JOIN story_units su ON su.timestamp_start >= NOW() - (w.days || ' days')::INTERVAL
-        GROUP BY w.days
-    ),
-    node_descendants AS (
-        SELECT node_id AS root_id, node_id AS descendant_id, 0 AS depth
-        FROM nodes
-        WHERE status = 'active'
-
-        UNION ALL
-
-        SELECT nd.root_id, n.node_id, nd.depth + 1
-        FROM node_descendants nd
-        JOIN nodes n ON n.parent_node_id = nd.descendant_id
-        WHERE n.status = 'active' AND nd.depth < 10
-    ),
-    window_counts AS (
-        SELECT
-            nd.root_id AS node_id,
-            w.days,
-            COUNT(DISTINCT su.story_id) AS cnt
-        FROM node_descendants nd
-        JOIN story_nodes sn ON sn.node_id = nd.descendant_id
-        JOIN story_units su ON su.story_id = sn.story_id
-        CROSS JOIN windows w
-        WHERE su.timestamp_start >= NOW() - (w.days || ' days')::INTERVAL
-        GROUP BY nd.root_id, w.days
-    ),
-    base AS (
-        SELECT
-            n.node_id,
-            n.kind,
-            n.slug,
-            n.display_name,
-            n.article_count,
-            COALESCE(MAX(CASE WHEN wc.days = 1  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_1d,
-            COALESCE(MAX(CASE WHEN wc.days = 3  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_3d,
-            COALESCE(MAX(CASE WHEN wc.days = 5  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_5d,
-            COALESCE(MAX(CASE WHEN wc.days = 7  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_7d,
-            COALESCE(MAX(CASE WHEN wc.days = 14 THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_14d,
-            COALESCE(MAX(CASE WHEN wc.days = 31 THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_31d
-        FROM nodes n
-        LEFT JOIN window_counts wc ON wc.node_id = n.node_id
-        LEFT JOIN window_totals wt ON wt.days = wc.days
-        WHERE n.status = 'active'
-        GROUP BY n.node_id, n.kind, n.slug, n.display_name, n.article_count
-    )
-    SELECT * FROM base
-    """,
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_node_heat_view_node ON node_heat_view (node_id)",
-    "CREATE INDEX IF NOT EXISTS idx_node_heat_view_kind ON node_heat_view (kind)",
+    "DROP MATERIALIZED VIEW IF EXISTS node_heat_view CASCADE",
     # ============================================================
-    # Message-atomic pipeline tables (Session 1 of refactor).
-    # These coexist with story_* tables; Session 2 will drop the old ones.
+    # Message-atomic pipeline tables.
     # ============================================================
     "ALTER TABLE raw_messages ADD COLUMN IF NOT EXISTS is_extracted BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE raw_messages ADD COLUMN IF NOT EXISTS is_embedded BOOLEAN NOT NULL DEFAULT FALSE",
@@ -304,12 +197,10 @@ SCHEMA_STATEMENTS = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_message_matches_matched ON message_matches (matched_channel_id, matched_message_id)",
-    # Message-atomic materialized view for heat.
-    # Uses message_nodes joined to raw_messages.timestamp instead of story_nodes/story_units.
-    # Session 2 will replace node_heat_view with this one.
+    # Drop old message_heat_view (if created in a previous migration run) before creating node_heat_view.
     "DROP MATERIALIZED VIEW IF EXISTS message_heat_view CASCADE",
     """
-    CREATE MATERIALIZED VIEW IF NOT EXISTS message_heat_view AS
+    CREATE MATERIALIZED VIEW IF NOT EXISTS node_heat_view AS
     WITH RECURSIVE
     windows AS (
         SELECT unnest(ARRAY[1, 3, 5, 7, 14, 31]) AS days
@@ -366,12 +257,12 @@ SCHEMA_STATEMENTS = [
     )
     SELECT * FROM base
     """,
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_message_heat_view_node ON message_heat_view (node_id)",
-    "CREATE INDEX IF NOT EXISTS idx_message_heat_view_kind ON message_heat_view (kind)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_node_heat_view_node ON node_heat_view (node_id)",
+    "CREATE INDEX IF NOT EXISTS idx_node_heat_view_kind ON node_heat_view (kind)",
 ]
 
 
-class PostgresStoryRepository:
+class PostgresRepository:
     def __init__(self, database_url: str):
         self.database_url = database_url
 
@@ -479,15 +370,15 @@ class PostgresStoryRepository:
                 cursor.execute(
                     """
                     SELECT
-                        su.channel_id,
+                        rm.channel_id,
                         cp.channel_title,
                         cp.channel_slug,
                         cp.channel_username,
-                        COUNT(DISTINCT su.story_id)::INT AS story_count
-                    FROM story_units su
-                    LEFT JOIN channel_profiles cp ON cp.channel_id = su.channel_id
-                    GROUP BY su.channel_id, cp.channel_title, cp.channel_slug, cp.channel_username
-                    ORDER BY COALESCE(NULLIF(cp.channel_title, ''), NULLIF(cp.channel_slug, ''), NULLIF(cp.channel_username, ''), su.channel_id::TEXT)
+                        COUNT(DISTINCT rm.message_id)::INT AS message_count
+                    FROM raw_messages rm
+                    LEFT JOIN channel_profiles cp ON cp.channel_id = rm.channel_id
+                    GROUP BY rm.channel_id, cp.channel_title, cp.channel_slug, cp.channel_username
+                    ORDER BY COALESCE(NULLIF(cp.channel_title, ''), NULLIF(cp.channel_slug, ''), NULLIF(cp.channel_username, ''), rm.channel_id::TEXT)
                     """
                 )
                 rows = cursor.fetchall()
@@ -498,12 +389,11 @@ class PostgresStoryRepository:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT DISTINCT su.channel_id
-                    FROM story_nodes sn
-                    JOIN nodes n ON n.node_id = sn.node_id
-                    JOIN story_units su ON su.story_id = sn.story_id
+                    SELECT DISTINCT mn.channel_id
+                    FROM message_nodes mn
+                    JOIN nodes n ON n.node_id = mn.node_id
                     WHERE n.status = 'candidate'
-                    ORDER BY su.channel_id
+                    ORDER BY mn.channel_id
                     """
                 )
                 rows = cursor.fetchall()
@@ -518,17 +408,16 @@ class PostgresStoryRepository:
         if not channel_ids:
             return []
         query = """
-            SELECT DISTINCT sn.node_id
-            FROM story_nodes sn
-            JOIN story_units su ON su.story_id = sn.story_id
-            JOIN nodes n ON n.node_id = sn.node_id
-            WHERE su.channel_id = ANY(%s)
+            SELECT DISTINCT mn.node_id
+            FROM message_nodes mn
+            JOIN nodes n ON n.node_id = mn.node_id
+            WHERE mn.channel_id = ANY(%s)
         """
         params: list[Any] = [list(channel_ids)]
         if status is not None:
             query += " AND n.status = %s"
             params.append(status)
-        query += " ORDER BY sn.node_id"
+        query += " ORDER BY mn.node_id"
         with self._connect() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(query, params)
@@ -624,15 +513,14 @@ class PostgresStoryRepository:
             connection.commit()
 
     def list_unsegmented_raw_messages(self, channel_id: int, *, limit: int | None = None) -> list[RawMessage]:
+        """Return raw messages not yet assigned to any node (is_extracted = FALSE)."""
         query = """
-            SELECT rm.channel_id, rm.message_id, rm.timestamp, rm.sender_id, rm.sender_name,
-                   rm.text, rm.english_text, rm.source_language, rm.translated_at,
-                   rm.media_refs, rm.forwarded_from, rm.reply_to_message_id, rm.raw_json
-            FROM raw_messages rm
-            LEFT JOIN story_messages sm
-              ON sm.channel_id = rm.channel_id AND sm.message_id = rm.message_id
-            WHERE rm.channel_id = %s AND sm.message_id IS NULL
-            ORDER BY rm.timestamp, rm.message_id
+            SELECT channel_id, message_id, timestamp, sender_id, sender_name,
+                   text, english_text, source_language, translated_at,
+                   media_refs, forwarded_from, reply_to_message_id, raw_json
+            FROM raw_messages
+            WHERE channel_id = %s AND is_extracted = FALSE
+            ORDER BY timestamp, message_id
         """
         params: list[Any] = [channel_id]
         if limit is not None:
@@ -681,382 +569,6 @@ class PostgresStoryRepository:
                 )
                 rows = cursor.fetchall()
         return [_raw_message_from_row(row) for row in rows]
-
-    def get_last_story_unit(self, channel_id: int) -> StoryUnit | None:
-        stories = self.list_recent_story_units(channel_id, limit=1)
-        return stories[0] if stories else None
-
-    def list_recent_story_units(self, channel_id: int, *, limit: int) -> list[StoryUnit]:
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT story_id, channel_id, timestamp_start, timestamp_end, message_ids, combined_text,
-                           english_combined_text, translation_updated_at, media_refs, created_at
-                    FROM story_units
-                    WHERE channel_id = %s
-                    ORDER BY timestamp_end DESC, created_at DESC
-                    LIMIT %s
-                    """,
-                    (channel_id, limit),
-                )
-                rows = cursor.fetchall()
-        return [_story_from_row(row) for row in rows]
-
-    def list_story_units(self, *, channel_id: int | None = None) -> list[StoryUnit]:
-        query = """
-            SELECT story_id, channel_id, timestamp_start, timestamp_end, message_ids, combined_text,
-                   english_combined_text, translation_updated_at, media_refs, created_at
-            FROM story_units
-        """
-        params: list[Any] = []
-        if channel_id is not None:
-            query += " WHERE channel_id = %s"
-            params.append(channel_id)
-        query += " ORDER BY timestamp_start, story_id"
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(query, params)
-                rows = cursor.fetchall()
-        return [_story_from_row(row) for row in rows]
-
-    def get_story_messages(self, story_id: str) -> list[RawMessage]:
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT rm.channel_id, rm.message_id, rm.timestamp, rm.sender_id, rm.sender_name,
-                           rm.text, rm.english_text, rm.source_language, rm.translated_at,
-                           rm.media_refs, rm.forwarded_from, rm.reply_to_message_id, rm.raw_json
-                    FROM story_messages sm
-                    JOIN raw_messages rm
-                      ON rm.channel_id = sm.channel_id AND rm.message_id = sm.message_id
-                    WHERE sm.story_id = %s
-                    ORDER BY sm.position, rm.message_id
-                    """,
-                    (story_id,),
-                )
-                rows = cursor.fetchall()
-        return [_raw_message_from_row(row) for row in rows]
-
-    def save_story_units(self, stories: Sequence[StoryUnit]) -> None:
-        if not stories:
-            return
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                for story in stories:
-                    cursor.execute(
-                        """
-                        INSERT INTO story_units (
-                            story_id,
-                            channel_id,
-                            timestamp_start,
-                            timestamp_end,
-                            message_ids,
-                            combined_text,
-                            english_combined_text,
-                            translation_updated_at,
-                            media_refs,
-                            created_at
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, NOW()))
-                        ON CONFLICT (story_id) DO UPDATE SET
-                            channel_id = EXCLUDED.channel_id,
-                            timestamp_start = EXCLUDED.timestamp_start,
-                            timestamp_end = EXCLUDED.timestamp_end,
-                            message_ids = EXCLUDED.message_ids,
-                            combined_text = EXCLUDED.combined_text,
-                            english_combined_text = EXCLUDED.english_combined_text,
-                            translation_updated_at = EXCLUDED.translation_updated_at,
-                            media_refs = EXCLUDED.media_refs
-                        """,
-                        (
-                            story.story_id,
-                            story.channel_id,
-                            ensure_utc(story.timestamp_start),
-                            ensure_utc(story.timestamp_end),
-                            list(story.message_ids),
-                            story.combined_text,
-                            story.english_combined_text,
-                            ensure_utc(story.translation_updated_at) if story.translation_updated_at is not None else None,
-                            self._jsonb(_serialize_media_refs(story.media_refs)),
-                            ensure_utc(story.created_at) if story.created_at is not None else None,
-                        ),
-                    )
-                    cursor.execute("DELETE FROM story_messages WHERE story_id = %s", (story.story_id,))
-                    cursor.executemany(
-                        """
-                        INSERT INTO story_messages (story_id, channel_id, message_id, position)
-                        VALUES (%s, %s, %s, %s)
-                        """,
-                        [
-                            (story.story_id, story.channel_id, message_id, position)
-                            for position, message_id in enumerate(story.message_ids)
-                        ],
-                    )
-            connection.commit()
-
-    def list_stories_without_semantics(
-        self,
-        *,
-        channel_id: int | None = None,
-        limit: int | None = None,
-    ) -> list[StoryUnit]:
-        query = """
-            SELECT su.story_id, su.channel_id, su.timestamp_start, su.timestamp_end, su.message_ids, su.combined_text,
-                   su.english_combined_text, su.translation_updated_at, su.media_refs, su.created_at
-            FROM story_units su
-            LEFT JOIN story_semantics ss ON ss.story_id = su.story_id
-            WHERE ss.story_id IS NULL
-        """
-        params: list[Any] = []
-        if channel_id is not None:
-            query += " AND su.channel_id = %s"
-            params.append(channel_id)
-        query += " ORDER BY su.timestamp_start ASC"
-        if limit is not None:
-            query += " LIMIT %s"
-            params.append(limit)
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(query, params)
-                rows = cursor.fetchall()
-        return [_story_from_row(row) for row in rows]
-
-    def get_story_unit(self, story_id: str) -> StoryUnit | None:
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT story_id, channel_id, timestamp_start, timestamp_end, message_ids, combined_text,
-                           english_combined_text, translation_updated_at, media_refs, created_at
-                    FROM story_units
-                    WHERE story_id = %s
-                    """,
-                    (story_id,),
-                )
-                row = cursor.fetchone()
-        return _story_from_row(row) if row is not None else None
-
-    def get_story_units_by_ids(self, story_ids: Sequence[str]) -> list[StoryUnit]:
-        if not story_ids:
-            return []
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT story_id, channel_id, timestamp_start, timestamp_end, message_ids, combined_text,
-                           english_combined_text, translation_updated_at, media_refs, created_at
-                    FROM story_units
-                    WHERE story_id = ANY(%s)
-                    """,
-                    (list(story_ids),),
-                )
-                rows = cursor.fetchall()
-        return [_story_from_row(row) for row in rows]
-
-    def upsert_story_semantics(self, records: Sequence[StorySemanticRecord]) -> None:
-        if not records:
-            return
-        rows = [
-            (
-                record.story_id,
-                self._jsonb(record.extraction_payload),
-                record.primary_event_node_id,
-                ensure_utc(record.processed_at) if record.processed_at is not None else None,
-                ensure_utc(record.updated_at) if record.updated_at is not None else None,
-            )
-            for record in records
-        ]
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.executemany(
-                    """
-                    INSERT INTO story_semantics (
-                        story_id,
-                        extraction_payload,
-                        primary_event_node_id,
-                        processed_at,
-                        updated_at
-                    )
-                    VALUES (%s, %s, %s, COALESCE(%s, NOW()), COALESCE(%s, NOW()))
-                    ON CONFLICT (story_id) DO UPDATE SET
-                        extraction_payload = EXCLUDED.extraction_payload,
-                        primary_event_node_id = EXCLUDED.primary_event_node_id,
-                        processed_at = EXCLUDED.processed_at,
-                        updated_at = EXCLUDED.updated_at
-                    """,
-                    rows,
-                )
-            connection.commit()
-
-    def save_semantic_results(
-        self,
-        *,
-        nodes: Sequence[Node],
-        assignments: Sequence[StoryNodeAssignment],
-        semantics: Sequence[StorySemanticRecord],
-        cross_channel_matches: Sequence[CrossChannelMatch] = (),
-    ) -> None:
-        if not nodes and not assignments and not semantics and not cross_channel_matches:
-            return
-        node_rows = [
-            (
-                node.node_id,
-                node.kind,
-                node.slug,
-                node.display_name,
-                node.canonical_name,
-                node.normalized_name,
-                node.summary,
-                list(node.aliases),
-                node.status,
-                node.label_source,
-                node.article_count,
-                ensure_utc(node.created_at) if node.created_at is not None else None,
-                ensure_utc(node.last_updated) if node.last_updated is not None else None,
-                ensure_utc(node.event_start_at) if node.event_start_at is not None else None,
-                ensure_utc(node.event_end_at) if node.event_end_at is not None else None,
-                node.parent_node_id,
-            )
-            for node in nodes
-        ]
-        assignment_rows = [
-            (
-                assignment.story_id,
-                assignment.node_id,
-                assignment.confidence,
-                ensure_utc(assignment.assigned_at) if assignment.assigned_at is not None else None,
-                assignment.is_primary_event,
-            )
-            for assignment in assignments
-        ]
-        semantic_rows = [
-            (
-                record.story_id,
-                self._jsonb(record.extraction_payload),
-                record.primary_event_node_id,
-                ensure_utc(record.processed_at) if record.processed_at is not None else None,
-                ensure_utc(record.updated_at) if record.updated_at is not None else None,
-            )
-            for record in semantics
-        ]
-        match_rows = [
-            (
-                match.story_id,
-                match.matched_story_id,
-                match.similarity_score,
-                match.timestamp_delta_seconds,
-                ensure_utc(match.created_at) if match.created_at is not None else None,
-            )
-            for match in cross_channel_matches
-        ]
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                if node_rows:
-                    cursor.executemany(
-                        """
-                        INSERT INTO nodes (
-                            node_id,
-                            kind,
-                            slug,
-                            display_name,
-                            canonical_name,
-                            normalized_name,
-                            summary,
-                            aliases,
-                            status,
-                            label_source,
-                            article_count,
-                            created_at,
-                            last_updated,
-                            event_start_at,
-                            event_end_at,
-                            parent_node_id
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, NOW()), COALESCE(%s, NOW()), %s, %s, %s)
-                        ON CONFLICT (node_id) DO UPDATE SET
-                            kind = EXCLUDED.kind,
-                            slug = EXCLUDED.slug,
-                            display_name = EXCLUDED.display_name,
-                            canonical_name = EXCLUDED.canonical_name,
-                            normalized_name = EXCLUDED.normalized_name,
-                            summary = EXCLUDED.summary,
-                            aliases = EXCLUDED.aliases,
-                            status = EXCLUDED.status,
-                            label_source = EXCLUDED.label_source,
-                            article_count = EXCLUDED.article_count,
-                            last_updated = EXCLUDED.last_updated,
-                            event_start_at = EXCLUDED.event_start_at,
-                            event_end_at = EXCLUDED.event_end_at,
-                            parent_node_id = EXCLUDED.parent_node_id
-                        """,
-                        node_rows,
-                    )
-                if assignment_rows:
-                    cursor.executemany(
-                        """
-                        INSERT INTO story_nodes (story_id, node_id, confidence, assigned_at, is_primary_event)
-                        VALUES (%s, %s, %s, COALESCE(%s, NOW()), %s)
-                        ON CONFLICT (story_id, node_id) DO UPDATE SET
-                            confidence = EXCLUDED.confidence,
-                            assigned_at = EXCLUDED.assigned_at,
-                            is_primary_event = EXCLUDED.is_primary_event
-                        """,
-                        assignment_rows,
-                    )
-                if semantic_rows:
-                    cursor.executemany(
-                        """
-                        INSERT INTO story_semantics (
-                            story_id,
-                            extraction_payload,
-                            primary_event_node_id,
-                            processed_at,
-                            updated_at
-                        )
-                        VALUES (%s, %s, %s, COALESCE(%s, NOW()), COALESCE(%s, NOW()))
-                        ON CONFLICT (story_id) DO UPDATE SET
-                            extraction_payload = EXCLUDED.extraction_payload,
-                            primary_event_node_id = EXCLUDED.primary_event_node_id,
-                            processed_at = EXCLUDED.processed_at,
-                            updated_at = EXCLUDED.updated_at
-                        """,
-                        semantic_rows,
-                    )
-                if match_rows:
-                    cursor.executemany(
-                        """
-                        INSERT INTO cross_channel_story_matches (
-                            story_id,
-                            matched_story_id,
-                            similarity_score,
-                            timestamp_delta_seconds,
-                            created_at
-                        )
-                        VALUES (%s, %s, %s, %s, COALESCE(%s, NOW()))
-                        ON CONFLICT (story_id, matched_story_id) DO UPDATE SET
-                            similarity_score = EXCLUDED.similarity_score,
-                            timestamp_delta_seconds = EXCLUDED.timestamp_delta_seconds,
-                            created_at = EXCLUDED.created_at
-                        """,
-                        match_rows,
-                    )
-            connection.commit()
-
-    def get_story_semantic_record(self, story_id: str) -> StorySemanticRecord | None:
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT story_id, extraction_payload, primary_event_node_id, processed_at, updated_at
-                    FROM story_semantics
-                    WHERE story_id = %s
-                    """,
-                    (story_id,),
-                )
-                row = cursor.fetchone()
-        return _story_semantic_from_row(row) if row is not None else None
 
     def save_nodes(self, nodes: Sequence[Node]) -> None:
         if not nodes:
@@ -1202,35 +714,34 @@ class PostgresStoryRepository:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    WITH story_support AS (
+                    WITH msg_support AS (
                         SELECT
-                            sn.node_id,
-                            COUNT(DISTINCT sn.story_id)::INT AS story_count,
-                            COUNT(DISTINCT su.channel_id)::INT AS channel_count,
-                            ARRAY_AGG(DISTINCT su.channel_id ORDER BY su.channel_id) AS channel_ids
-                        FROM story_nodes sn
-                        JOIN story_units su ON su.story_id = sn.story_id
-                        WHERE sn.node_id = ANY(%s)
-                        GROUP BY sn.node_id
+                            mn.node_id,
+                            COUNT(DISTINCT (mn.channel_id, mn.message_id))::INT AS message_count,
+                            COUNT(DISTINCT mn.channel_id)::INT AS channel_count,
+                            ARRAY_AGG(DISTINCT mn.channel_id ORDER BY mn.channel_id) AS channel_ids
+                        FROM message_nodes mn
+                        WHERE mn.node_id = ANY(%s)
+                        GROUP BY mn.node_id
                     ),
                     cross_support AS (
                         SELECT
-                            sn.node_id,
-                            BOOL_OR(cc.story_id IS NOT NULL) AS has_cross_channel_match
-                        FROM story_nodes sn
-                        LEFT JOIN cross_channel_story_matches cc
-                          ON cc.story_id = sn.story_id OR cc.matched_story_id = sn.story_id
-                        WHERE sn.node_id = ANY(%s)
-                        GROUP BY sn.node_id
+                            mn.node_id,
+                            BOOL_OR(mm.channel_id IS NOT NULL) AS has_cross_channel_match
+                        FROM message_nodes mn
+                        LEFT JOIN message_matches mm
+                          ON mm.channel_id = mn.channel_id AND mm.message_id = mn.message_id
+                        WHERE mn.node_id = ANY(%s)
+                        GROUP BY mn.node_id
                     )
                     SELECT
                         n.node_id,
-                        COALESCE(ss.story_count, 0),
-                        COALESCE(ss.channel_count, 0),
+                        COALESCE(ms.message_count, 0),
+                        COALESCE(ms.channel_count, 0),
                         COALESCE(cs.has_cross_channel_match, FALSE),
-                        COALESCE(ss.channel_ids, ARRAY[]::BIGINT[])
+                        COALESCE(ms.channel_ids, ARRAY[]::BIGINT[])
                     FROM nodes n
-                    LEFT JOIN story_support ss ON ss.node_id = n.node_id
+                    LEFT JOIN msg_support ms ON ms.node_id = n.node_id
                     LEFT JOIN cross_support cs ON cs.node_id = n.node_id
                     WHERE n.node_id = ANY(%s)
                     """,
@@ -1240,7 +751,7 @@ class PostgresStoryRepository:
         return [
             NodeSupportRecord(
                 node_id=str(row[0]),
-                story_count=int(row[1] or 0),
+                message_count=int(row[1] or 0),
                 channel_count=int(row[2] or 0),
                 has_cross_channel_match=bool(row[3]),
                 channel_ids=tuple(int(value) for value in (row[4] or ())),
@@ -1257,8 +768,8 @@ class PostgresStoryRepository:
                 relation.target_node_id,
                 relation.relation_type,
                 relation.score,
-                relation.shared_story_count,
-                ensure_utc(relation.latest_story_at) if relation.latest_story_at is not None else None,
+                relation.shared_message_count,
+                ensure_utc(relation.latest_message_at) if relation.latest_message_at is not None else None,
             )
             for relation in relations
         ]
@@ -1271,14 +782,14 @@ class PostgresStoryRepository:
                         target_node_id,
                         relation_type,
                         score,
-                        shared_story_count,
-                        latest_story_at
+                        shared_message_count,
+                        latest_message_at
                     )
                     VALUES (%s, %s, %s, %s, %s, %s)
                     ON CONFLICT (source_node_id, target_node_id, relation_type) DO UPDATE SET
                         score = EXCLUDED.score,
-                        shared_story_count = EXCLUDED.shared_story_count,
-                        latest_story_at = EXCLUDED.latest_story_at
+                        shared_message_count = EXCLUDED.shared_message_count,
+                        latest_message_at = EXCLUDED.latest_message_at
                     """,
                     rows,
                 )
@@ -1296,218 +807,33 @@ class PostgresStoryRepository:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT source_node_id, target_node_id, relation_type, score, shared_story_count, latest_story_at
+                    SELECT source_node_id, target_node_id, relation_type, score, shared_message_count, latest_message_at
                     FROM node_relations
                     WHERE source_node_id = %s OR target_node_id = %s
-                    ORDER BY score DESC, latest_story_at DESC NULLS LAST
+                    ORDER BY score DESC, latest_message_at DESC NULLS LAST
                     """,
                     (node_id, node_id),
                 )
                 rows = cursor.fetchall()
         return [_node_relation_from_row(row) for row in rows]
 
-    def save_story_node_assignments(self, assignments: Sequence[StoryNodeAssignment]) -> None:
-        if not assignments:
-            return
-        rows = [
-            (
-                assignment.story_id,
-                assignment.node_id,
-                assignment.confidence,
-                ensure_utc(assignment.assigned_at) if assignment.assigned_at is not None else None,
-                assignment.is_primary_event,
-            )
-            for assignment in assignments
-        ]
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.executemany(
-                    """
-                    INSERT INTO story_nodes (story_id, node_id, confidence, assigned_at, is_primary_event)
-                    VALUES (%s, %s, %s, COALESCE(%s, NOW()), %s)
-                    ON CONFLICT (story_id, node_id) DO UPDATE SET
-                        confidence = EXCLUDED.confidence,
-                        assigned_at = EXCLUDED.assigned_at,
-                        is_primary_event = EXCLUDED.is_primary_event
-                    """,
-                    rows,
-                )
-            connection.commit()
-
-    def delete_story_node_assignments(
-        self,
-        *,
-        node_id: str | None = None,
-        story_ids: Sequence[str] | None = None,
-    ) -> None:
-        clauses: list[str] = []
-        params: list[Any] = []
-        if node_id is not None:
-            clauses.append("node_id = %s")
-            params.append(node_id)
-        if story_ids:
-            clauses.append("story_id = ANY(%s)")
-            params.append(list(story_ids))
-        if not clauses:
-            return
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(f"DELETE FROM story_nodes WHERE {' AND '.join(clauses)}", params)
-            connection.commit()
-
-    def get_story_node_assignments(self, story_id: str) -> list[StoryNodeAssignment]:
+    def list_relations_for_nodes(self, node_ids: Sequence[str]) -> list[NodeRelation]:
+        if not node_ids:
+            return []
+        id_list = list(node_ids)
         with self._connect() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT story_id, node_id, confidence, assigned_at, is_primary_event
-                    FROM story_nodes
-                    WHERE story_id = %s
-                    ORDER BY is_primary_event DESC, confidence DESC, node_id
+                    SELECT source_node_id, target_node_id, relation_type, score, shared_message_count, latest_message_at
+                    FROM node_relations
+                    WHERE source_node_id = ANY(%s) AND target_node_id = ANY(%s)
+                    ORDER BY score DESC, latest_message_at DESC NULLS LAST
                     """,
-                    (story_id,),
+                    (id_list, id_list),
                 )
                 rows = cursor.fetchall()
-        return [_story_node_assignment_from_row(row) for row in rows]
-
-    def list_story_node_assignments(
-        self,
-        *,
-        story_ids: Sequence[str] | None = None,
-        node_ids: Sequence[str] | None = None,
-    ) -> list[StoryNodeAssignment]:
-        query = """
-            SELECT story_id, node_id, confidence, assigned_at, is_primary_event
-            FROM story_nodes
-            WHERE 1 = 1
-        """
-        params: list[Any] = []
-        if story_ids:
-            query += " AND story_id = ANY(%s)"
-            params.append(list(story_ids))
-        if node_ids:
-            query += " AND node_id = ANY(%s)"
-            params.append(list(node_ids))
-        query += " ORDER BY story_id, is_primary_event DESC, confidence DESC, node_id"
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(query, params)
-                rows = cursor.fetchall()
-        return [_story_node_assignment_from_row(row) for row in rows]
-
-    def list_story_node_ids(self, story_id: str) -> list[str]:
-        return [assignment.node_id for assignment in self.get_story_node_assignments(story_id)]
-
-    def list_story_ids_for_node_on_date(self, node_id: str, day: date) -> list[str]:
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT sn.story_id
-                    FROM story_nodes sn
-                    JOIN story_units su ON su.story_id = sn.story_id
-                    WHERE sn.node_id = %s
-                      AND su.timestamp_start >= %s::date
-                      AND su.timestamp_start < (%s::date + INTERVAL '1 day')
-                    ORDER BY su.timestamp_start, sn.story_id
-                    """,
-                    (node_id, day, day),
-                )
-                rows = cursor.fetchall()
-        return [str(row[0]) for row in rows]
-
-    def list_story_ids_for_node(self, node_id: str) -> list[str]:
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT story_id FROM story_nodes WHERE node_id = %s ORDER BY story_id",
-                    (node_id,),
-                )
-                rows = cursor.fetchall()
-        return [str(row[0]) for row in rows]
-
-    def list_stories_for_node(self, node_id: str, *, limit: int, offset: int) -> tuple[int, list[tuple[StoryUnit, StoryNodeAssignment]]]:
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT COUNT(*) FROM story_nodes WHERE node_id = %s", (node_id,))
-                total = int(cursor.fetchone()[0])
-                cursor.execute(
-                    """
-                    SELECT
-                        su.story_id, su.channel_id, su.timestamp_start, su.timestamp_end, su.message_ids, su.combined_text,
-                        su.english_combined_text, su.translation_updated_at, su.media_refs, su.created_at,
-                        sn.story_id, sn.node_id, sn.confidence, sn.assigned_at, sn.is_primary_event
-                    FROM story_nodes sn
-                    JOIN story_units su ON su.story_id = sn.story_id
-                    WHERE sn.node_id = %s
-                    ORDER BY su.timestamp_start DESC, su.story_id DESC
-                    LIMIT %s OFFSET %s
-                    """,
-                    (node_id, limit, offset),
-                )
-                rows = cursor.fetchall()
-        items = [
-            (
-                _story_from_row(row[:10]),
-                _story_node_assignment_from_row(row[10:15]),
-            )
-            for row in rows
-        ]
-        return total, items
-
-    def save_cross_channel_matches(self, matches: Sequence[CrossChannelMatch]) -> None:
-        if not matches:
-            return
-        rows = [
-            (
-                match.story_id,
-                match.matched_story_id,
-                match.similarity_score,
-                match.timestamp_delta_seconds,
-                ensure_utc(match.created_at) if match.created_at is not None else None,
-            )
-            for match in matches
-        ]
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.executemany(
-                    """
-                    INSERT INTO cross_channel_story_matches (
-                        story_id,
-                        matched_story_id,
-                        similarity_score,
-                        timestamp_delta_seconds,
-                        created_at
-                    )
-                    VALUES (%s, %s, %s, %s, COALESCE(%s, NOW()))
-                    ON CONFLICT (story_id, matched_story_id) DO UPDATE SET
-                        similarity_score = EXCLUDED.similarity_score,
-                        timestamp_delta_seconds = EXCLUDED.timestamp_delta_seconds,
-                        created_at = EXCLUDED.created_at
-                    """,
-                    rows,
-                )
-            connection.commit()
-
-    def replace_cross_channel_matches(self, matches: Sequence[CrossChannelMatch]) -> None:
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM cross_channel_story_matches")
-            connection.commit()
-        self.save_cross_channel_matches(matches)
-
-    def list_cross_channel_matches(self) -> list[CrossChannelMatch]:
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT story_id, matched_story_id, similarity_score, timestamp_delta_seconds, created_at
-                    FROM cross_channel_story_matches
-                    ORDER BY similarity_score DESC, created_at DESC
-                    """
-                )
-                rows = cursor.fetchall()
-        return [_cross_channel_match_from_row(row) for row in rows]
+        return [_node_relation_from_row(row) for row in rows]
 
     def save_theme_daily_stats(self, stats: Sequence[ThemeDailyStat]) -> None:
         if not stats:
@@ -1544,7 +870,7 @@ class PostgresStoryRepository:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    UPDATE story_semantics
+                    UPDATE message_semantics
                     SET primary_event_node_id = NULL
                     WHERE primary_event_node_id = ANY(%s)
                     """,
@@ -1554,40 +880,52 @@ class PostgresStoryRepository:
             connection.commit()
 
     def clear_semantic_state(self, *, channel_id: int | None = None) -> tuple[list[str], list[str], list[str]]:
+        """Clear message-level semantic state (assignments, semantics, relations) for a channel (or all).
+
+        Returns (message_ids_cleared, deleted_theme_ids, deleted_event_ids) where
+        message_ids_cleared is a list of "<channel_id>:<message_id>" strings for the
+        cleared messages — kept for API compatibility with callers that log/count them.
+        """
         with self._connect() as connection:
             with connection.cursor() as cursor:
-                story_query = "SELECT story_id FROM story_units"
-                story_params: list[Any] = []
+                msg_query = "SELECT channel_id, message_id FROM message_nodes"
+                msg_params: list[Any] = []
                 if channel_id is not None:
-                    story_query += " WHERE channel_id = %s"
-                    story_params.append(channel_id)
-                story_query += " ORDER BY timestamp_start, story_id"
-                cursor.execute(story_query, story_params)
-                story_ids = [str(row[0]) for row in cursor.fetchall()]
-                if not story_ids:
+                    msg_query += " WHERE channel_id = %s"
+                    msg_params.append(channel_id)
+                cursor.execute(msg_query, msg_params)
+                message_keys = [(int(row[0]), int(row[1])) for row in cursor.fetchall()]
+                if not message_keys:
                     return [], [], []
 
                 cursor.execute(
                     """
                     SELECT DISTINCT n.node_id, n.kind
-                    FROM story_nodes sn
-                    JOIN nodes n ON n.node_id = sn.node_id
-                    WHERE sn.story_id = ANY(%s)
+                    FROM message_nodes mn
+                    JOIN nodes n ON n.node_id = mn.node_id
+                    WHERE (mn.channel_id, mn.message_id) = ANY(%s)
                     """,
-                    (story_ids,),
+                    (message_keys,),
                 )
                 affected = [(str(row[0]), str(row[1])) for row in cursor.fetchall()]
                 affected_node_ids = [node_id for node_id, _kind in affected]
 
                 cursor.execute(
-                    """
-                    DELETE FROM cross_channel_story_matches
-                    WHERE story_id = ANY(%s) OR matched_story_id = ANY(%s)
-                    """,
-                    (story_ids, story_ids),
+                    "DELETE FROM message_semantics WHERE (channel_id, message_id) = ANY(%s)",
+                    (message_keys,),
                 )
-                cursor.execute("DELETE FROM story_semantics WHERE story_id = ANY(%s)", (story_ids,))
-                cursor.execute("DELETE FROM story_nodes WHERE story_id = ANY(%s)", (story_ids,))
+                cursor.execute(
+                    "DELETE FROM message_nodes WHERE (channel_id, message_id) = ANY(%s)",
+                    (message_keys,),
+                )
+                cursor.execute(
+                    """
+                    UPDATE raw_messages
+                    SET is_extracted = FALSE
+                    WHERE (channel_id, message_id) = ANY(%s)
+                    """,
+                    (message_keys,),
+                )
                 if affected_node_ids:
                     affected_theme_ids = [node_id for node_id, kind in affected if kind == "theme"]
                     cursor.execute(
@@ -1602,17 +940,17 @@ class PostgresStoryRepository:
                     cursor.execute(
                         """
                         UPDATE nodes n
-                        SET article_count = COALESCE(stats.article_count, 0),
-                            last_updated = COALESCE(stats.last_story_at, n.last_updated)
+                        SET article_count = COALESCE(stats.message_count, 0),
+                            last_updated = COALESCE(stats.last_message_at, n.last_updated)
                         FROM (
                             SELECT
-                                sn.node_id,
-                                COUNT(*)::INT AS article_count,
-                                MAX(su.timestamp_end) AS last_story_at
-                            FROM story_nodes sn
-                            JOIN story_units su ON su.story_id = sn.story_id
-                            WHERE sn.node_id = ANY(%s)
-                            GROUP BY sn.node_id
+                                mn.node_id,
+                                COUNT(*)::INT AS message_count,
+                                MAX(rm.timestamp) AS last_message_at
+                            FROM message_nodes mn
+                            JOIN raw_messages rm ON rm.channel_id = mn.channel_id AND rm.message_id = mn.message_id
+                            WHERE mn.node_id = ANY(%s)
+                            GROUP BY mn.node_id
                         ) stats
                         WHERE n.node_id = stats.node_id
                         """,
@@ -1623,7 +961,7 @@ class PostgresStoryRepository:
                         UPDATE nodes
                         SET article_count = 0
                         WHERE node_id = ANY(%s)
-                          AND node_id NOT IN (SELECT DISTINCT node_id FROM story_nodes)
+                          AND node_id NOT IN (SELECT DISTINCT node_id FROM message_nodes)
                         """,
                         (affected_node_ids,),
                     )
@@ -1641,7 +979,7 @@ class PostgresStoryRepository:
                         cursor.execute("DELETE FROM theme_daily_stats WHERE node_id = ANY(%s)", (deleted_node_ids,))
                         cursor.execute(
                             """
-                            UPDATE story_semantics
+                            UPDATE message_semantics
                             SET primary_event_node_id = NULL
                             WHERE primary_event_node_id = ANY(%s)
                             """,
@@ -1652,19 +990,10 @@ class PostgresStoryRepository:
                     deleted_rows = []
                 connection.commit()
 
+        message_ids = [f"{channel_id}:{message_id}" for channel_id, message_id in message_keys]
         theme_ids = [node_id for node_id, kind in deleted_rows if kind == "theme"]
         event_ids = [node_id for node_id, kind in deleted_rows if kind == "event"]
-        return story_ids, theme_ids, event_ids
-
-    def clear_story_state(self, *, channel_id: int) -> tuple[list[str], list[str], list[str]]:
-        story_ids, theme_ids, event_ids = self.clear_semantic_state(channel_id=channel_id)
-        if not story_ids:
-            return story_ids, theme_ids, event_ids
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM story_units WHERE story_id = ANY(%s)", (story_ids,))
-            connection.commit()
-        return story_ids, theme_ids, event_ids
+        return message_ids, theme_ids, event_ids
 
     def run_with_advisory_lock(self, lock_name: str, callback: Callable[[], None]) -> bool:
         with self._connect() as connection:
@@ -2092,39 +1421,7 @@ class PostgresStoryRepository:
                 rows = cursor.fetchall()
         return [_raw_message_from_row(row) for row in rows]
 
-    def refresh_message_heat_view(self) -> None:
-        import psycopg
-
-        # ObjectNotInPrerequisiteState is raised when CONCURRENTLY is used on a
-        # view that has never been populated (no unique index exists yet). In that
-        # case we fall back to a non-concurrent refresh. Any other error (e.g.,
-        # connection failure, bad view name) is re-raised so it is not silently lost.
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                try:
-                    cursor.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY message_heat_view")
-                except psycopg.errors.ObjectNotInPrerequisiteState:
-                    connection.rollback()
-                    cursor.execute("REFRESH MATERIALIZED VIEW message_heat_view")
-            connection.commit()
-
-    def list_message_heat_rows(self, *, kind: str) -> list[NodeHeatSnapshot]:
-        with self._connect() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT node_id, kind, slug, display_name, article_count,
-                           heat_1d, heat_3d, heat_5d, heat_7d, heat_14d, heat_31d
-                    FROM message_heat_view
-                    WHERE kind = %s
-                    ORDER BY heat_1d DESC, heat_3d DESC, display_name ASC
-                    """,
-                    (kind,),
-                )
-                rows = cursor.fetchall()
-        return [_node_heat_from_row(row) for row in rows]
-
-    def get_node_detail(self, *, kind: NodeKind, slug: str, story_limit: int = 20, story_offset: int = 0) -> NodeDetail | None:
+    def get_node_detail(self, *, kind: NodeKind, slug: str) -> NodeDetail | None:
         node = self.get_node_by_slug(kind=kind, slug=slug)
         if node is None:
             return None
@@ -2150,37 +1447,10 @@ class PostgresStoryRepository:
                     summary=related.summary,
                     article_count=related.article_count,
                     score=relation.score,
-                    shared_story_count=relation.shared_story_count,
-                    latest_story_at=relation.latest_story_at,
+                    shared_message_count=relation.shared_message_count,
+                    latest_message_at=relation.latest_message_at,
                 )
             )
-
-        total, stories = self.list_stories_for_node(node.node_id, limit=story_limit, offset=story_offset)
-        del total
-        channel_profiles = {
-            profile.channel_id: profile
-            for profile in [
-                self.get_channel_profile(story.channel_id)
-                for story, _assignment in stories
-            ]
-            if profile is not None
-        }
-        story_rows = tuple(
-            NodeStory(
-                story_id=story.story_id,
-                channel_id=story.channel_id,
-                channel_title=_channel_title_for_story(story.channel_id, channel_profiles.get(story.channel_id)),
-                timestamp_start=story.timestamp_start,
-                timestamp_end=story.timestamp_end,
-                confidence=assignment.confidence,
-                preview_text=_preview_text(story.english_combined_text or story.combined_text),
-                combined_text=story.english_combined_text or story.combined_text,
-                original_preview_text=_preview_text(story.combined_text),
-                original_combined_text=story.combined_text,
-                media_refs=story.media_refs,
-            )
-            for story, assignment in stories
-        )
 
         return NodeDetail(
             node_id=node.node_id,
@@ -2197,16 +1467,7 @@ class PostgresStoryRepository:
             orgs=tuple(_sort_related(bucketed["org"])),
             places=tuple(_sort_related(bucketed["place"])),
             themes=tuple(_sort_related(bucketed["theme"])),
-            stories=story_rows,
         )
-
-
-def _channel_title_for_story(channel_id: int, profile: ChannelProfile | None) -> str:
-    if profile is not None:
-        for value in (profile.channel_title, profile.channel_slug, profile.channel_username):
-            if value:
-                return value
-    return str(channel_id)
 
 
 def _sort_related(nodes: list[RelatedNode]) -> list[RelatedNode]:
@@ -2214,7 +1475,7 @@ def _sort_related(nodes: list[RelatedNode]) -> list[RelatedNode]:
         nodes,
         key=lambda item: (
             -item.score,
-            -(item.latest_story_at.timestamp() if item.latest_story_at is not None else 0.0),
+            -(item.latest_message_at.timestamp() if item.latest_message_at is not None else 0.0),
             item.display_name.lower(),
         ),
     )
@@ -2272,21 +1533,6 @@ def _deserialize_media_refs(payload: Any) -> tuple[MediaRef, ...]:
     return tuple(refs)
 
 
-def _story_from_row(row: Sequence[Any]) -> StoryUnit:
-    return StoryUnit(
-        story_id=str(row[0]),
-        channel_id=int(row[1]),
-        timestamp_start=ensure_utc(row[2]) or row[2],
-        timestamp_end=ensure_utc(row[3]) or row[3],
-        message_ids=tuple(int(value) for value in row[4]),
-        combined_text=str(row[5] or ""),
-        english_combined_text=str(row[6]) if row[6] is not None else None,
-        translation_updated_at=ensure_utc(row[7]) if row[7] is not None else None,
-        media_refs=_deserialize_media_refs(row[8]),
-        created_at=ensure_utc(row[9]) if row[9] is not None else None,
-    )
-
-
 def _node_from_row(row: Sequence[Any]) -> Node:
     return Node(
         node_id=str(row[0]),
@@ -2326,34 +1572,14 @@ def _raw_message_from_row(row: Sequence[Any]) -> RawMessage:
     )
 
 
-def _story_semantic_from_row(row: Sequence[Any]) -> StorySemanticRecord:
-    return StorySemanticRecord(
-        story_id=str(row[0]),
-        extraction_payload=dict(row[1] or {}),
-        primary_event_node_id=str(row[2]) if row[2] is not None else None,
-        processed_at=ensure_utc(row[3]) if row[3] is not None else None,
-        updated_at=ensure_utc(row[4]) if row[4] is not None else None,
-    )
-
-
-def _story_node_assignment_from_row(row: Sequence[Any]) -> StoryNodeAssignment:
-    return StoryNodeAssignment(
-        story_id=str(row[0]),
-        node_id=str(row[1]),
-        confidence=float(row[2]),
-        assigned_at=ensure_utc(row[3]) if row[3] is not None else None,
-        is_primary_event=bool(row[4]),
-    )
-
-
 def _node_relation_from_row(row: Sequence[Any]) -> NodeRelation:
     return NodeRelation(
         source_node_id=str(row[0]),
         target_node_id=str(row[1]),
         relation_type=str(row[2]),
         score=float(row[3]),
-        shared_story_count=int(row[4]),
-        latest_story_at=ensure_utc(row[5]) if row[5] is not None else None,
+        shared_message_count=int(row[4]),
+        latest_message_at=ensure_utc(row[5]) if row[5] is not None else None,
     )
 
 
@@ -2391,17 +1617,7 @@ def _channel_summary_from_row(row: Sequence[Any]) -> ChannelSummary:
         channel_title=channel_title,
         channel_slug=str(row[2]) if row[2] is not None else None,
         channel_username=str(row[3]) if row[3] is not None else None,
-        story_count=int(row[4]),
-    )
-
-
-def _cross_channel_match_from_row(row: Sequence[Any]) -> CrossChannelMatch:
-    return CrossChannelMatch(
-        story_id=str(row[0]),
-        matched_story_id=str(row[1]),
-        similarity_score=float(row[2]),
-        timestamp_delta_seconds=int(row[3]) if row[3] is not None else None,
-        created_at=ensure_utc(row[4]) if row[4] is not None else None,
+        message_count=int(row[4]),
     )
 
 
@@ -2479,3 +1695,7 @@ def _cross_channel_message_match_from_row(row: Sequence[Any]) -> CrossChannelMes
         timestamp_delta_seconds=int(row[5]) if row[5] is not None else None,
         created_at=ensure_utc(row[6]) if row[6] is not None else None,
     )
+
+
+# Backward-compatibility alias
+PostgresStoryRepository = PostgresRepository

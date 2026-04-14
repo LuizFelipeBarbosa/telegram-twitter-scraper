@@ -8,7 +8,7 @@ import re
 from typing import Iterable, Sequence
 from uuid import uuid4
 
-from telegram_scraper.kg.interfaces import StoryRepository
+from telegram_scraper.kg.interfaces import Repository as StoryRepository
 from telegram_scraper.kg.models import EventHierarchyRef, MessageNodeAssignment, Node, NodeKind, NodeListEntry
 
 # NOTE (post-S2 refactor): rebuild() and build_event_hierarchy_snapshot() now

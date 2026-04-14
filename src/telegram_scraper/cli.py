@@ -563,7 +563,7 @@ if typer is not None:
             typer.echo(
                 f"progress kg-repair-channels: "
                 f"channel={progress.channel_id} "
-                f"processed={progress.channel_story_processed}/{progress.channel_story_total} "
+                f"processed={progress.channel_message_processed}/{progress.channel_message_total} "
                 f"assignments={progress.assignments_created} "
                 f"nodes_created={progress.nodes_created} "
                 f"failures={progress.failures} "
@@ -772,7 +772,7 @@ if typer is not None:
         if kind not in {"person", "nation", "org", "place", "event", "theme"}:
             raise _exit_with_error("kg-node-show requires --kind to be one of person, nation, org, place, event, theme")
         try:
-            detail = _build_query_service(env_file).node_show_messages(kind=kind, slug=slug)
+            detail = _build_query_service(env_file).node_show(kind=kind, slug=slug)
         except (ConfigError, RuntimeError) as exc:
             raise _exit_with_error(str(exc))
         if detail is None:

@@ -4,20 +4,20 @@ import json
 import unittest
 from datetime import datetime, timezone
 
-from telegram_scraper.kg.extraction import OpenAISemanticExtractor, _batch_story_payloads
-from telegram_scraper.kg.models import StoryUnit
+from telegram_scraper.kg.extraction import OpenAISemanticExtractor
+from telegram_scraper.kg.models import RawMessage
 
 
-def build_story(story_id: str, text: str, *, english_text: str | None = None) -> StoryUnit:
-    timestamp = datetime(2026, 4, 10, 12, 0, tzinfo=timezone.utc)
-    return StoryUnit(
-        story_id=story_id,
+def _build_message(message_id: int, text: str, *, english_text: str | None = None) -> RawMessage:
+    return RawMessage(
         channel_id=100,
-        timestamp_start=timestamp,
-        timestamp_end=timestamp,
-        message_ids=(1,),
-        combined_text=text,
-        english_combined_text=english_text,
+        message_id=message_id,
+        timestamp=datetime(2026, 4, 10, 12, 0, tzinfo=timezone.utc),
+        sender_id=1,
+        sender_name="Alice",
+        text=text,
+        english_text=english_text,
+        raw_json={"id": message_id},
     )
 
 
@@ -38,66 +38,58 @@ class FakeClient:
 
 
 class ExtractionTests(unittest.TestCase):
-    def test_extract_stories_preserves_input_order_when_batch_keys_are_unordered(self):
+    def test_extract_message_returns_extraction_with_correct_ids(self):
         extractor = OpenAISemanticExtractor(api_key="sk-test", model="gpt-5-mini", batch_size=4)
         extractor._thread_local.client = FakeClient(
-            [
-                json.dumps(
-                    {
-                        "story-b": {"people": [{"name": "Bob"}]},
-                        "story-a": {"people": [{"name": "Alice"}]},
-                    }
-                )
-            ]
+            [json.dumps({"people": [{"name": "Alice", "summary": "", "aliases": [], "start_at": None, "end_at": None}]})]
         )
-        stories = [build_story("story-a", "Alpha"), build_story("story-b", "Beta")]
+        message = _build_message(42, "Alice spoke at the summit.")
 
-        results = extractor.extract_stories(stories)
+        result = extractor.extract_message(message)
 
-        self.assertEqual([result.story_id for result in results], ["story-a", "story-b"])
-        self.assertEqual(results[0].people[0].name, "Alice")
-        self.assertEqual(results[1].people[0].name, "Bob")
+        self.assertEqual(result.channel_id, 100)
+        self.assertEqual(result.message_id, 42)
+        self.assertEqual(result.people[0].name, "Alice")
 
-    def test_extract_stories_falls_back_to_per_story_when_batch_output_is_malformed(self):
+    def test_extract_message_falls_back_on_malformed_output(self):
+        extractor = OpenAISemanticExtractor(api_key="sk-test", model="gpt-5-mini", batch_size=4)
+        extractor._thread_local.client = FakeClient(["not json"])
+        message = _build_message(1, "Some text.")
+
+        result = extractor.extract_message(message)
+
+        self.assertEqual(result.channel_id, 100)
+        self.assertEqual(result.message_id, 1)
+        self.assertEqual(result.people, ())
+
+    def test_extract_messages_returns_results_in_input_order(self):
         extractor = OpenAISemanticExtractor(api_key="sk-test", model="gpt-5-mini", batch_size=4)
         fake_client = FakeClient(
             [
-                "not json",
-                json.dumps({"people": [{"name": "Alice"}]}),
-                json.dumps({"people": [{"name": "Bob"}]}),
+                json.dumps({"people": [{"name": "Alice", "summary": "", "aliases": [], "start_at": None, "end_at": None}]}),
+                json.dumps({"people": [{"name": "Bob", "summary": "", "aliases": [], "start_at": None, "end_at": None}]}),
             ]
         )
         extractor._thread_local.client = fake_client
-        stories = [build_story("story-a", "Alpha"), build_story("story-b", "Beta")]
+        messages = [_build_message(1, "Alice text"), _build_message(2, "Bob text")]
 
-        results = extractor.extract_stories(stories)
+        results = extractor.extract_messages(messages, max_workers=1)
 
-        self.assertEqual(fake_client.responses.calls[0]["model"], "gpt-5-mini")
-        self.assertEqual(len(fake_client.responses.calls), 3)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(results[0].message_id, 1)
         self.assertEqual(results[0].people[0].name, "Alice")
+        self.assertEqual(results[1].message_id, 2)
         self.assertEqual(results[1].people[0].name, "Bob")
 
-    def test_batch_story_payloads_split_by_batch_size_and_story_length_limit(self):
-        stories = [
-            build_story("story-a", "A" * 40),
-            build_story("story-b", "B" * 40),
-            build_story("story-c", "C" * 40),
-        ]
-
-        batches = _batch_story_payloads(stories, max_chars=12, max_batch_size=2)
-
-        self.assertEqual([len(batch) for batch in batches], [2, 1])
-        for batch in batches:
-            for _story, prepared_text in batch:
-                self.assertLessEqual(len(prepared_text), 12)
-
-    def test_extract_stories_prefers_english_combined_text_when_present(self):
+    def test_extract_message_prefers_english_text(self):
         extractor = OpenAISemanticExtractor(api_key="sk-test", model="gpt-5-mini", batch_size=4)
-        fake_client = FakeClient([json.dumps({"story-a": {"people": [{"name": "Alice"}]}})])
+        fake_client = FakeClient(
+            [json.dumps({"people": [{"name": "Alice", "summary": "", "aliases": [], "start_at": None, "end_at": None}]})]
+        )
         extractor._thread_local.client = fake_client
-        story = build_story("story-a", "سلام دنیا", english_text="Hello world")
+        message = _build_message(1, "سلام دنیا", english_text="Hello world")
 
-        extractor.extract_stories([story])
+        extractor.extract_message(message)
 
         request_payload = fake_client.responses.calls[0]["input"][1]["content"]
         self.assertIn("Hello world", request_payload)

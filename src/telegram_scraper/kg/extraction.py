@@ -10,21 +10,19 @@ from telegram_scraper.kg.models import (
     ExtractedSemanticNode,
     MessageSemanticExtraction,
     RawMessage,
-    StorySemanticExtraction,
-    StoryUnit,
 )
 
 
 # ============================================================
-# Shared text helpers (used by both story and message extractors).
+# Text helpers for message extraction.
 # ============================================================
 
 
-def preferred_story_text(story: StoryUnit) -> str:
-    return (story.english_combined_text or story.combined_text or "").strip()
+def preferred_message_text(message: RawMessage) -> str:
+    return (message.english_text or message.text or "").strip()
 
 
-def safe_story_text(text: str, *, max_chars: int) -> str:
+def safe_message_text(text: str, *, max_chars: int) -> str:
     stripped = (text or "").strip()
     if len(stripped) <= max_chars:
         return stripped
@@ -33,12 +31,8 @@ def safe_story_text(text: str, *, max_chars: int) -> str:
     return stripped[:head].rstrip() + "\n" + stripped[-tail:].lstrip()
 
 
-def preferred_message_text(message: RawMessage) -> str:
-    return (message.english_text or message.text or "").strip()
-
-
-# Alias for naming consistency; safe_story_text works on any text.
-safe_message_text = safe_story_text
+# Keep safe_story_text as alias for internal use (embedding text helper).
+safe_story_text = safe_message_text
 
 
 # ============================================================
@@ -122,8 +116,7 @@ MESSAGE_EXTRACTION_SYSTEM_PROMPT = (
 
 
 # ============================================================
-# Extractor class with both legacy (story) and new (message) methods.
-# Session 2 will delete extract_story / extract_stories and the batching helpers.
+# Extractor class — message-atomic API.
 # ============================================================
 
 
@@ -146,10 +139,6 @@ class OpenAISemanticExtractor:
         client = OpenAI(api_key=self.api_key)
         self._thread_local.client = client
         return client
-
-    # ------------------------------------------------------------
-    # New message-atomic API (structured output).
-    # ------------------------------------------------------------
 
     def extract_message(self, message: RawMessage) -> MessageSemanticExtraction:
         """Extract entities from a single message using OpenAI structured output."""
@@ -208,96 +197,6 @@ class OpenAISemanticExtractor:
         # matching the schema. json.loads is safe.
         return json.loads(response.output_text or "{}")
 
-    # ------------------------------------------------------------
-    # Legacy story API (to be removed in Session 2 of the refactor).
-    # ------------------------------------------------------------
-
-    def extract_story(self, story: StoryUnit) -> StorySemanticExtraction:
-        return self.extract_stories([story])[0]
-
-    def extract_stories(self, stories: Sequence[StoryUnit]) -> list[StorySemanticExtraction]:
-        if not stories:
-            return []
-        results: list[StorySemanticExtraction] = []
-        for batch in _batch_story_payloads(stories, max_chars=self.max_chars, max_batch_size=self.batch_size):
-            try:
-                results.extend(self._extract_batch(batch))
-            except Exception:
-                results.extend(self._extract_batch_fallback(batch))
-        return results
-
-    def _extract_batch(self, batch: Sequence[tuple[StoryUnit, str]]) -> list[StorySemanticExtraction]:
-        client = self._client()
-        story_payload = {
-            str(story.story_id): {
-                "story_id": str(story.story_id),
-                "text": prepared_text,
-            }
-            for story, prepared_text in batch
-        }
-        response = client.responses.create(
-            model=self.model,
-            input=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Extract semantic nodes from each news story. "
-                        "Return strict JSON keyed by story_id. "
-                        "Each value must be an object with keys events, people, nations, orgs, places, themes, primary_event. "
-                        "Each list item must be an object with name, summary, aliases, start_at, end_at. "
-                        "Use null for unknown values. "
-                        "If events are present, primary_event must equal exactly one event name."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": json.dumps(story_payload, ensure_ascii=True),
-                },
-            ],
-        )
-        payload = _parse_json_object(response.output_text or "")
-        extraction_map = _load_story_extractions(payload)
-        results: list[StorySemanticExtraction] = []
-        for story, _prepared_text in batch:
-            story_id = str(story.story_id)
-            if story_id not in extraction_map:
-                raise ValueError(f"missing extraction payload for story {story_id}")
-            results.append(_story_extraction_from_payload(story_id, extraction_map[story_id]))
-        return results
-
-    def _extract_batch_fallback(self, batch: Sequence[tuple[StoryUnit, str]]) -> list[StorySemanticExtraction]:
-        return [self._extract_single_story(story, prepared_text=prepared_text) for story, prepared_text in batch]
-
-    def _extract_single_story(self, story: StoryUnit, *, prepared_text: str | None = None) -> StorySemanticExtraction:
-        prepared_text = prepared_text or safe_story_text(
-            preferred_story_text(story) or "(media only telegram story)",
-            max_chars=self.max_chars,
-        )
-        try:
-            client = self._client()
-            response = client.responses.create(
-                model=self.model,
-                input=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "Extract semantic nodes from a news story. "
-                            "Return strict JSON with keys events, people, nations, orgs, places, themes, primary_event. "
-                            "Each list item must be an object with name, summary, aliases, start_at, end_at. "
-                            "Use null for unknown values. "
-                            "If events are present, primary_event must equal exactly one event name."
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": f"Story ID: {story.story_id}\n\nStory text:\n{prepared_text}",
-                    },
-                ],
-            )
-            return _story_extraction_from_payload(story.story_id, _parse_json_object(response.output_text or ""))
-        except Exception:
-            return StorySemanticExtraction(story_id=story.story_id)
-
 
 # ============================================================
 # Payload parsers.
@@ -327,23 +226,6 @@ def _parse_json_object(text: str) -> dict[str, Any]:
             return {}
 
 
-def _story_extraction_from_payload(story_id: str, payload: Any) -> StorySemanticExtraction:
-    try:
-        payload_dict = payload if isinstance(payload, dict) else {}
-        return StorySemanticExtraction(
-            story_id=str(story_id),
-            events=_load_nodes(payload_dict.get("events")),
-            people=_load_nodes(payload_dict.get("people")),
-            nations=_load_nodes(payload_dict.get("nations")),
-            orgs=_load_nodes(payload_dict.get("orgs")),
-            places=_load_nodes(payload_dict.get("places")),
-            themes=_load_nodes(payload_dict.get("themes")),
-            primary_event=_coerce_string(payload_dict.get("primary_event")),
-        )
-    except Exception:
-        return StorySemanticExtraction(story_id=str(story_id))
-
-
 def _message_extraction_from_payload(
     *,
     channel_id: int,
@@ -365,42 +247,6 @@ def _message_extraction_from_payload(
         )
     except Exception:
         return MessageSemanticExtraction(channel_id=channel_id, message_id=message_id)
-
-
-def _load_story_extractions(payload: Any) -> dict[str, dict[str, Any]]:
-    if not isinstance(payload, dict):
-        return {}
-    if "stories" in payload and isinstance(payload["stories"], dict):
-        payload = payload["stories"]
-    results: dict[str, dict[str, Any]] = {}
-    for story_id, extraction_payload in payload.items():
-        if isinstance(extraction_payload, dict):
-            results[str(story_id)] = extraction_payload
-    return results
-
-
-def _batch_story_payloads(
-    stories: Sequence[StoryUnit],
-    *,
-    max_chars: int,
-    max_batch_size: int,
-) -> list[list[tuple[StoryUnit, str]]]:
-    max_total_chars = max_chars * max_batch_size
-    batches: list[list[tuple[StoryUnit, str]]] = []
-    current: list[tuple[StoryUnit, str]] = []
-    current_chars = 0
-    for story in stories:
-        prepared_text = safe_story_text(preferred_story_text(story) or "(media only telegram story)", max_chars=max_chars)
-        story_chars = len(prepared_text)
-        if current and (len(current) >= max_batch_size or current_chars + story_chars > max_total_chars):
-            batches.append(current)
-            current = []
-            current_chars = 0
-        current.append((story, prepared_text))
-        current_chars += story_chars
-    if current:
-        batches.append(current)
-    return batches
 
 
 def _load_nodes(payload: Any) -> tuple[ExtractedSemanticNode, ...]:

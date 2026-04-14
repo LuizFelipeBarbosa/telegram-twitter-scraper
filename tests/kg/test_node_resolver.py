@@ -304,13 +304,13 @@ class TestResolveMessageIdempotent(unittest.TestCase):
         self.assertEqual(r2.node.article_count, 1, "article_count must stay 1 for duplicate message_key")
 
     def test_register_message_directly_is_idempotent(self) -> None:
-        state = _NodeSupportState(story_count=0)
+        state = _NodeSupportState(message_count=0)
         key = (7, 42)
         first = state.register_message(message_key=key, channel_id=7)
         second = state.register_message(message_key=key, channel_id=7)
         self.assertTrue(first)
         self.assertFalse(second)
-        self.assertEqual(state.story_count, 1)
+        self.assertEqual(state.message_count, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -349,11 +349,11 @@ class TestResolveMessageCrossChannelTracking(unittest.TestCase):
         self.assertEqual(r2.node.article_count, 2)
 
     def test_register_message_updates_channel_ids(self) -> None:
-        state = _NodeSupportState(story_count=0)
+        state = _NodeSupportState(message_count=0)
         state.register_message(message_key=(10, 1), channel_id=10)
         state.register_message(message_key=(20, 2), channel_id=20)
         self.assertEqual(state.channel_ids, {10, 20})
-        self.assertEqual(state.story_count, 2)
+        self.assertEqual(state.message_count, 2)
 
 
 # ---------------------------------------------------------------------------

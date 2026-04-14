@@ -38,7 +38,7 @@ class KGSettingsTests(unittest.TestCase):
         self.assertEqual(settings.embedding_model, "text-embedding-3-small")
         self.assertEqual(settings.semantic_model, "gpt-5-mini")
         self.assertEqual(settings.stream_key, "telegram:raw")
-        self.assertEqual(settings.consumer_group, "segmentation-workers")
+        self.assertEqual(settings.consumer_group, "kg-workers")
         self.assertEqual(settings.vector_dimension, 1536)
         self.assertEqual(settings.semantic_max_chars, 12000)
         self.assertEqual(settings.semantic_batch_size, 8)

@@ -4,7 +4,7 @@ from telegram_scraper.kg.config import KGSettings
 from telegram_scraper.kg.heat_phase import HeatPhaseThresholds
 from telegram_scraper.kg.models import (
     ChannelProfile,
-    CrossChannelMatch,
+    CrossChannelMessageMatch,
     DelimiterPattern,
     EventHierarchyRef,
     MediaRef,
@@ -13,17 +13,13 @@ from telegram_scraper.kg.models import (
     NodeHeatSnapshot,
     NodeListEntry,
     RawMessage,
-    StoryNodeAssignment,
-    StorySemanticExtraction,
-    StoryUnit,
     ThemeDailyStat,
-    ThemeHeatSnapshot,
     ThemeHistoryPoint,
 )
 
 __all__ = [
     "ChannelProfile",
-    "CrossChannelMatch",
+    "CrossChannelMessageMatch",
     "DelimiterPattern",
     "EventHierarchyRef",
     "HeatPhaseThresholds",
@@ -34,10 +30,6 @@ __all__ = [
     "NodeHeatSnapshot",
     "NodeListEntry",
     "RawMessage",
-    "StoryNodeAssignment",
-    "StorySemanticExtraction",
-    "StoryUnit",
     "ThemeDailyStat",
-    "ThemeHeatSnapshot",
     "ThemeHistoryPoint",
 ]

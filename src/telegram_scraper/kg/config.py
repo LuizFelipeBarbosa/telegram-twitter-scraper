@@ -46,7 +46,6 @@ class KGSettings:
     consumer_group: str
     cross_channel_threshold: float
     vector_dimension: int
-    segment_batch_size: int
     stream_retention_ms: int
     semantic_max_chars: int
     semantic_batch_size: int
@@ -78,10 +77,9 @@ class KGSettings:
             semantic_model=values.get("KG_SEMANTIC_MODEL", "gpt-5-mini").strip(),
             translation_model=values.get("KG_TRANSLATION_MODEL", "gpt-5-mini").strip(),
             stream_key=values.get("KG_STREAM_KEY", "telegram:raw").strip(),
-            consumer_group=values.get("KG_CONSUMER_GROUP", "segmentation-workers").strip(),
+            consumer_group=values.get("KG_CONSUMER_GROUP", "kg-workers").strip(),
             cross_channel_threshold=float(values.get("KG_CROSS_CHANNEL_THRESHOLD", "0.85")),
             vector_dimension=int(values.get("KG_VECTOR_DIMENSION", "1536")),
-            segment_batch_size=int(values.get("KG_SEGMENT_BATCH_SIZE", "25")),
             stream_retention_ms=int(values.get("KG_STREAM_RETENTION_MS", str(48 * 60 * 60 * 1000))),
             semantic_max_chars=int(values.get("KG_SEMANTIC_MAX_CHARS", "12000")),
             semantic_batch_size=max(1, int(values.get("KG_SEMANTIC_BATCH_SIZE", "8"))),

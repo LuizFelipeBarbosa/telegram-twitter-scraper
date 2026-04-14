@@ -5,7 +5,7 @@ from typing import Any, Literal, Sequence
 
 from telegram_scraper.kg.heat_phase import HeatPhaseThresholds
 from telegram_scraper.kg.models import NodeListEntry
-from telegram_scraper.kg.repository import PostgresStoryRepository
+from telegram_scraper.kg.repository import PostgresRepository
 from telegram_scraper.kg.services import KGQueryService
 
 
@@ -29,7 +29,7 @@ class VisualizationQueries:
         theme_heat_thresholds: HeatPhaseThresholds | None = None,
         event_heat_thresholds: HeatPhaseThresholds | None = None,
     ):
-        self.repository = PostgresStoryRepository(database_url)
+        self.repository = PostgresRepository(database_url)
         self.repository.ensure_schema()
         self.service = KGQueryService(self.repository)
         self.theme_heat_thresholds = theme_heat_thresholds
@@ -49,15 +49,6 @@ class VisualizationQueries:
         channel_ids = self._visible_channel_ids()
         return channel_ids, self._visible_node_ids(channel_ids=channel_ids)
 
-    @staticmethod
-    def _remap_related_node(item: dict[str, Any]) -> dict[str, Any]:
-        """Map legacy story-count field names from the model layer to message-count API names."""
-        if "shared_story_count" in item:
-            item["shared_message_count"] = item.pop("shared_story_count")
-        if "latest_story_at" in item:
-            item["latest_message_at"] = item.pop("latest_story_at")
-        return item
-
     def _filter_node_detail_payload(
         self,
         payload: dict[str, Any],
@@ -69,10 +60,10 @@ class VisualizationQueries:
         if parent_event and parent_event.get("node_id") not in visible_node_ids:
             payload["parent_event"] = None
 
-        # Related-entity buckets: filter by visibility and remap field names.
+        # Related-entity buckets: filter by visibility.
         for bucket in ("events", "people", "nations", "orgs", "places", "themes"):
             payload[bucket] = [
-                self._remap_related_node(item)
+                item
                 for item in payload.get(bucket, [])
                 if item.get("node_id") in visible_node_ids
             ]
@@ -248,8 +239,8 @@ class VisualizationQueries:
 
         ranked_nodes.sort(key=lambda item: (-float(item["score"]), str(item["display_name"]).lower()))
         ranked_nodes = ranked_nodes[:limit]
-        selected_entry_lookup = {row.node_id: row for row in selected_entries}
-        visible_entries = [selected_entry_lookup[str(node["node_id"])] for node in ranked_nodes if str(node["node_id"]) in selected_entry_lookup]
+        visible_node_id_set = {str(node["node_id"]) for node in ranked_nodes}
+        node_relations = self.repository.list_relations_for_nodes(sorted(visible_node_id_set))
         relations = [
             {
                 "source": relation.source_node_id,
@@ -257,7 +248,8 @@ class VisualizationQueries:
                 "type": relation.relation_type,
                 "score": relation.score,
             }
-            for relation in self.service.snapshot_relations(nodes=visible_entries, channel_ids=visible_channel_ids)
+            for relation in node_relations
+            if relation.source_node_id in visible_node_id_set and relation.target_node_id in visible_node_id_set
         ]
         return {"window": window, "nodes": ranked_nodes, "relations": relations}
 
@@ -286,7 +278,7 @@ class VisualizationQueries:
 
     def get_node_detail(self, *, kind: str, slug: str) -> dict[str, object]:
         visible_channel_ids, visible_node_ids = self._visibility()
-        detail = self.service.node_show_messages(kind=kind, slug=slug)
+        detail = self.service.node_show(kind=kind, slug=slug)
         if detail is None or detail.node_id not in visible_node_ids:
             raise KeyError(slug)
         return self._filter_node_detail_payload(

@@ -95,6 +95,9 @@ class FakeRepository:
         }
         return rows[kind]
 
+    def list_relations_for_nodes(self, node_ids) -> list[NodeRelation]:
+        return []
+
     def get_node_by_slug(self, *, kind, slug, status="active") -> Node | None:
         del status
         mapping = {
@@ -123,12 +126,11 @@ class FakeRepository:
 class FakeQueryService:
     def __init__(self, repository: FakeRepository):
         self.repository = repository
-        self.snapshot_relation_channel_ids = None
 
     def channels(self):
         return [
-            ChannelSummary(channel_id=1, channel_title="Rebuilt Channel", story_count=3),
-            ChannelSummary(channel_id=2, channel_title="Legacy Channel", story_count=4),
+            ChannelSummary(channel_id=1, channel_title="Rebuilt Channel", message_count=3),
+            ChannelSummary(channel_id=2, channel_title="Legacy Channel", message_count=4),
         ]
 
     def list_nodes(self, *, kind, limit=50, include_children=False):
@@ -152,19 +154,7 @@ class FakeQueryService:
             ),
         ]
 
-    def snapshot_relations(self, *, nodes, channel_ids=None):
-        self.snapshot_relation_channel_ids = tuple(channel_ids or ())
-        if {node.node_id for node in nodes} == {"visible-event"}:
-            return [
-                NodeRelation(
-                    source_node_id="visible-event",
-                    target_node_id="visible-theme",
-                    relation_type="related",
-                    score=2.0,
-                    shared_story_count=2,
-                )
-            ]
-        return []
+
 
     def theme_history(self, slug: str):
         if slug != "visible-theme":
@@ -182,7 +172,7 @@ class FakeQueryService:
             )
         ]
 
-    def node_show_messages(self, *, kind, slug, message_limit=20, message_offset=0):
+    def node_show(self, *, kind, slug, message_limit=20, message_offset=0):
         del kind, message_limit, message_offset
         if slug == "hidden-event":
             return NodeDetail(
@@ -211,7 +201,7 @@ class FakeQueryService:
                     summary=None,
                     article_count=2,
                     score=1.0,
-                    shared_story_count=1,
+                    shared_message_count=1,
                 ),
                 RelatedNode(
                     node_id="hidden-person",
@@ -221,7 +211,7 @@ class FakeQueryService:
                     summary=None,
                     article_count=2,
                     score=1.0,
-                    shared_story_count=1,
+                    shared_message_count=1,
                 ),
             ),
             messages=(
@@ -279,7 +269,7 @@ class VisualizationQueriesTests(unittest.TestCase):
     def _build_queries(self) -> tuple[VisualizationQueries, FakeQueryService]:
         repository = FakeRepository()
         service = FakeQueryService(repository)
-        with patch("telegram_scraper.viz_api.queries.PostgresStoryRepository", return_value=repository), patch(
+        with patch("telegram_scraper.viz_api.queries.PostgresRepository", return_value=repository), patch(
             "telegram_scraper.viz_api.queries.KGQueryService",
             return_value=service,
         ):
@@ -302,7 +292,6 @@ class VisualizationQueriesTests(unittest.TestCase):
         detail = queries.get_node_detail(kind="event", slug="visible-event")
 
         self.assertEqual([node["node_id"] for node in snapshot["nodes"]], ["visible-event"])
-        self.assertEqual(service.snapshot_relation_channel_ids, (1,))
         # Only message from channel 1 (visible) should remain; channel 2 is not a candidate.
         self.assertEqual([msg["message_id"] for msg in detail["messages"]], [101])
         self.assertEqual([person["node_id"] for person in detail["people"]], ["visible-person"])

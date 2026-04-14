@@ -3,14 +3,14 @@ from __future__ import annotations
 from telegram_scraper.kg.config import KGSettings
 from telegram_scraper.kg.embedder import OpenAIEmbedder
 from telegram_scraper.kg.extraction import OpenAISemanticExtractor
-from telegram_scraper.kg.repository import PostgresStoryRepository
+from telegram_scraper.kg.repository import PostgresRepository
 from telegram_scraper.kg.stream import RedisRawMessageStream
 from telegram_scraper.kg.translation import OpenAIMessageTranslator
 from telegram_scraper.kg.vector_store import PineconeVectorStore
 
 
-def build_repository(settings: KGSettings) -> PostgresStoryRepository:
-    return PostgresStoryRepository(settings.database_url)
+def build_repository(settings: KGSettings) -> PostgresRepository:
+    return PostgresRepository(settings.database_url)
 
 
 def build_stream(settings: KGSettings) -> RedisRawMessageStream:

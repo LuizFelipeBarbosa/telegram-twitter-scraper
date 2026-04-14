@@ -62,55 +62,12 @@ class RawMessage:
 
 
 @dataclass(frozen=True)
-class StoryMessage:
-    story_id: str
-    channel_id: int
-    message_id: int
-    position: int
-
-
-@dataclass(frozen=True)
-class StoryUnit:
-    story_id: str
-    channel_id: int
-    timestamp_start: datetime
-    timestamp_end: datetime
-    message_ids: tuple[int, ...]
-    combined_text: str
-    media_refs: tuple[MediaRef, ...] = ()
-    created_at: datetime | None = None
-    english_combined_text: str | None = None
-    translation_updated_at: datetime | None = None
-
-
-@dataclass(frozen=True)
 class ExtractedSemanticNode:
     name: str
     summary: str | None = None
     aliases: tuple[str, ...] = ()
     start_at: datetime | None = None
     end_at: datetime | None = None
-
-
-@dataclass(frozen=True)
-class StorySemanticExtraction:
-    story_id: str
-    events: tuple[ExtractedSemanticNode, ...] = ()
-    people: tuple[ExtractedSemanticNode, ...] = ()
-    nations: tuple[ExtractedSemanticNode, ...] = ()
-    orgs: tuple[ExtractedSemanticNode, ...] = ()
-    places: tuple[ExtractedSemanticNode, ...] = ()
-    themes: tuple[ExtractedSemanticNode, ...] = ()
-    primary_event: str | None = None
-
-
-@dataclass(frozen=True)
-class StorySemanticRecord:
-    story_id: str
-    extraction_payload: dict[str, Any] = field(default_factory=dict)
-    primary_event_node_id: str | None = None
-    processed_at: datetime | None = None
-    updated_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -139,26 +96,8 @@ class NodeRelation:
     target_node_id: str
     relation_type: str
     score: float
-    shared_story_count: int
-    latest_story_at: datetime | None = None
-
-
-@dataclass(frozen=True)
-class StoryNodeAssignment:
-    story_id: str
-    node_id: str
-    confidence: float
-    assigned_at: datetime | None = None
-    is_primary_event: bool = False
-
-
-@dataclass(frozen=True)
-class CrossChannelMatch:
-    story_id: str
-    matched_story_id: str
-    similarity_score: float
-    timestamp_delta_seconds: int | None = None
-    created_at: datetime | None = None
+    shared_message_count: int
+    latest_message_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -185,9 +124,6 @@ class NodeHeatSnapshot:
     phase: str | None = None
 
 
-ThemeHeatSnapshot = NodeHeatSnapshot
-
-
 @dataclass(frozen=True)
 class ThemeHistoryPoint:
     node_id: str
@@ -204,16 +140,7 @@ class ChannelSummary:
     channel_title: str
     channel_slug: str | None = None
     channel_username: str | None = None
-    story_count: int = 0
-
-
-@dataclass(frozen=True)
-class StoryEmbeddingRecord:
-    story_id: str
-    embedding: list[float]
-    channel_id: int
-    timestamp_start: datetime
-    node_ids: tuple[str, ...] = ()
+    message_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -230,7 +157,7 @@ class NodeCentroidRecord:
 @dataclass(frozen=True)
 class NodeSupportRecord:
     node_id: str
-    story_count: int
+    message_count: int
     channel_count: int
     has_cross_channel_match: bool
     channel_ids: tuple[int, ...] = ()
@@ -239,13 +166,6 @@ class NodeSupportRecord:
 @dataclass(frozen=True)
 class NodeMatch:
     node_id: str
-    similarity_score: float
-    metadata: dict[str, Any]
-
-
-@dataclass(frozen=True)
-class StoryMatch:
-    story_id: str
     similarity_score: float
     metadata: dict[str, Any]
 
@@ -283,21 +203,6 @@ class EventChildSummary(EventHierarchyRef):
 
 
 @dataclass(frozen=True)
-class NodeStory:
-    story_id: str
-    channel_id: int
-    channel_title: str
-    timestamp_start: datetime
-    timestamp_end: datetime
-    confidence: float
-    preview_text: str
-    combined_text: str
-    original_preview_text: str = ""
-    original_combined_text: str = ""
-    media_refs: tuple[MediaRef, ...] = ()
-
-
-@dataclass(frozen=True)
 class RelatedNode:
     node_id: str
     kind: NodeKind
@@ -306,8 +211,8 @@ class RelatedNode:
     summary: str | None
     article_count: int
     score: float
-    shared_story_count: int
-    latest_story_at: datetime | None = None
+    shared_message_count: int
+    latest_message_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -326,14 +231,11 @@ class NodeDetail:
     orgs: tuple[RelatedNode, ...] = ()
     places: tuple[RelatedNode, ...] = ()
     themes: tuple[RelatedNode, ...] = ()
-    stories: tuple[NodeStory, ...] = ()
-    # New message-atomic field. Populated by the new pipeline; old pipeline leaves empty.
     messages: tuple["NodeMessage", ...] = ()
 
 
 # ============================================================
-# Message-atomic pipeline types (replaces Story* types).
-# Session 2 of the refactor will remove the Story* variants.
+# Message-atomic pipeline types.
 # ============================================================
 
 

@@ -9,8 +9,6 @@ from telegram_scraper.kg.models import (
     MessageMatch,
     NodeCentroidRecord,
     NodeMatch,
-    StoryEmbeddingRecord,
-    StoryMatch,
 )
 
 
@@ -25,7 +23,7 @@ class PineconeVectorStore:
         self.theme_index_name = theme_index
         self.event_index_name = event_index
         self._cached_client = None
-        self._cached_story_index = None
+        self._cached_message_index = None
         self._cached_theme_index = None
         self._cached_event_index = None
 
@@ -39,10 +37,16 @@ class PineconeVectorStore:
         self._cached_client = Pinecone(api_key=self.api_key)
         return self._cached_client
 
-    def _story_index(self):
-        if self._cached_story_index is None:
-            self._cached_story_index = self._client().Index(self.story_index_name)
-        return self._cached_story_index
+    def _message_index(self):
+        """Return the Pinecone index used for per-message embeddings.
+
+        Reads from ``settings.pinecone_index_story`` (env var PINECONE_INDEX_STORY).
+        Renaming that env var is deferred; the internal name reflects the new
+        message-atomic semantics while the backing index name stays the same.
+        """
+        if self._cached_message_index is None:
+            self._cached_message_index = self._client().Index(self.story_index_name)
+        return self._cached_message_index
 
     def _theme_index(self):
         if self._cached_theme_index is None:
@@ -53,68 +57,6 @@ class PineconeVectorStore:
         if self._cached_event_index is None:
             self._cached_event_index = self._client().Index(self.event_index_name)
         return self._cached_event_index
-
-    def upsert_story_embeddings(self, records: Sequence[StoryEmbeddingRecord]) -> None:
-        if not records:
-            return
-        vectors = [
-            {
-                "id": str(record.story_id),
-                "values": record.embedding,
-                "metadata": {
-                    "channel_id": record.channel_id,
-                    "timestamp_start": int(record.timestamp_start.timestamp()),
-                    "node_ids": _stringify_ids(record.node_ids),
-                },
-            }
-            for record in records
-        ]
-        index = self._story_index()
-        for batch in _chunk_vectors_by_bytes(vectors, max_bytes=_UPSERT_MAX_BYTES):
-            index.upsert(vectors=batch)
-
-    def update_story_node_ids(self, story_id: str, node_ids: Sequence[str]) -> None:
-        self._story_index().update(id=str(story_id), set_metadata={"node_ids": _stringify_ids(node_ids)})
-
-    def fetch_story_embeddings(self, story_ids: Sequence[str]) -> dict[str, list[float]]:
-        if not story_ids:
-            return {}
-        vectors: dict[str, list[float]] = {}
-        index = self._story_index()
-        for batch in _chunked(_stringify_ids(story_ids), _FETCH_BATCH_SIZE):
-            response = index.fetch(ids=list(batch))
-            payload = _field(response, "vectors", {})
-            vectors.update({str(story_id): list(_field(vector, "values", [])) for story_id, vector in payload.items()})
-        return vectors
-
-    def query_story_embeddings(
-        self,
-        embedding: list[float],
-        *,
-        top_k: int,
-        exclude_channel_id: int | None = None,
-        timestamp_gte: datetime | None = None,
-    ) -> list[StoryMatch]:
-        filters: dict[str, Any] = {}
-        if exclude_channel_id is not None:
-            filters["channel_id"] = {"$ne": exclude_channel_id}
-        if timestamp_gte is not None:
-            filters["timestamp_start"] = {"$gte": int(timestamp_gte.timestamp())}
-        response = self._story_index().query(
-            vector=embedding,
-            top_k=top_k,
-            filter=filters or None,
-            include_metadata=True,
-        )
-        matches = _field(response, "matches", [])
-        return [
-            StoryMatch(
-                story_id=str(_field(match, "id", "")),
-                similarity_score=float(_field(match, "score", 0.0)),
-                metadata=dict(_field(match, "metadata", {}) or {}),
-            )
-            for match in matches
-        ]
 
     def upsert_theme_centroids(self, records: Sequence[NodeCentroidRecord]) -> None:
         self._upsert_centroids(self._theme_index(), records)
@@ -133,12 +75,6 @@ class PineconeVectorStore:
 
     def query_event_centroids(self, embedding: list[float], *, top_k: int) -> list[NodeMatch]:
         return self._query_centroids(self._event_index(), embedding, top_k=top_k)
-
-    def delete_story_embeddings(self, story_ids: Sequence[str]) -> None:
-        if not story_ids:
-            return
-        for batch in _chunked(_stringify_ids(story_ids), _FETCH_BATCH_SIZE):
-            self._story_index().delete(ids=list(batch))
 
     def delete_theme_centroids(self, node_ids: Sequence[str]) -> None:
         self._delete_centroids(self._theme_index(), node_ids)
@@ -213,7 +149,7 @@ class PineconeVectorStore:
             }
             for record in records
         ]
-        index = self._story_index()
+        index = self._message_index()
         for batch in _chunk_vectors_by_bytes(vectors, max_bytes=_UPSERT_MAX_BYTES):
             index.upsert(vectors=batch)
 
@@ -224,7 +160,7 @@ class PineconeVectorStore:
             return {}
         ids = [f"{channel_id}:{message_id}" for channel_id, message_id in keys]
         vectors: dict[tuple[int, int], list[float]] = {}
-        index = self._story_index()
+        index = self._message_index()
         for batch in _chunked(ids, _FETCH_BATCH_SIZE):
             response = index.fetch(ids=list(batch))
             payload = _field(response, "vectors", {})
@@ -248,7 +184,7 @@ class PineconeVectorStore:
             filters["channel_id"] = {"$ne": exclude_channel_id}
         if timestamp_gte is not None:
             filters["timestamp"] = {"$gte": int(timestamp_gte.timestamp())}
-        response = self._story_index().query(
+        response = self._message_index().query(
             vector=embedding,
             top_k=top_k,
             filter=filters or None,
@@ -281,12 +217,12 @@ class PineconeVectorStore:
             return
         ids = [f"{channel_id}:{message_id}" for channel_id, message_id in keys]
         for batch in _chunked(ids, _FETCH_BATCH_SIZE):
-            self._story_index().delete(ids=list(batch))
+            self._message_index().delete(ids=list(batch))
 
     def update_message_node_ids(
         self, *, channel_id: int, message_id: int, node_ids: Sequence[str]
     ) -> None:
-        self._story_index().update(
+        self._message_index().update(
             id=f"{channel_id}:{message_id}",
             set_metadata={"node_ids": _stringify_ids(node_ids)},
         )

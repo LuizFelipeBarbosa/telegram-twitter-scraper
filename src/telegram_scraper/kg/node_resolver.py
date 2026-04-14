@@ -11,11 +11,11 @@ from telegram_scraper.kg.config import KGSettings
 from telegram_scraper.kg.math_utils import cosine_similarity
 from telegram_scraper.kg.models import (
     ExtractedSemanticNode,
+    MessageSemanticExtraction,
     Node,
     NodeCentroidRecord,
     NodeKind,
     NodeSupportRecord,
-    StorySemanticExtraction,
 )
 from telegram_scraper.utils import ensure_utc
 
@@ -82,7 +82,7 @@ def _node_match_keys(kind: NodeKind, node: Node) -> set[str]:
     return keys
 
 
-def _kind_candidates(extraction: StorySemanticExtraction) -> dict[NodeKind, tuple[ExtractedSemanticNode, ...]]:
+def _kind_candidates(extraction: MessageSemanticExtraction) -> dict[NodeKind, tuple[ExtractedSemanticNode, ...]]:
     return {
         "event": extraction.events,
         "person": extraction.people,
@@ -111,13 +111,13 @@ def _dedupe_candidates(kind: NodeKind, candidates: Iterable[ExtractedSemanticNod
     return tuple(ordered)
 
 
-def iter_extraction_candidates(extraction: StorySemanticExtraction) -> Iterator[tuple[NodeKind, ExtractedSemanticNode]]:
+def iter_extraction_candidates(extraction: MessageSemanticExtraction) -> Iterator[tuple[NodeKind, ExtractedSemanticNode]]:
     for kind in NODE_KINDS:
         for candidate in _dedupe_candidates(kind, _kind_candidates(extraction)[kind]):
             yield kind, candidate
 
 
-def serialize_extraction(extraction: StorySemanticExtraction) -> dict[str, object]:
+def serialize_extraction(extraction: MessageSemanticExtraction) -> dict[str, object]:
     def _payload(items: Sequence[ExtractedSemanticNode]) -> list[dict[str, object]]:
         return [
             {
@@ -150,18 +150,17 @@ class ResolvedNode:
 
 @dataclass
 class _NodeSupportState:
-    story_count: int
+    message_count: int
     channel_ids: set[int] = field(default_factory=set)
     has_cross_channel_match: bool = False
-    pending_story_ids: set[str] = field(default_factory=set)
     pending_message_keys: set[tuple[int, int]] = field(default_factory=set)
 
     @classmethod
     def from_node(cls, node: Node, record: NodeSupportRecord | None) -> "_NodeSupportState":
         if record is None:
-            return cls(story_count=max(node.article_count, 0))
+            return cls(message_count=max(node.article_count, 0))
         return cls(
-            story_count=max(record.story_count, 0),
+            message_count=max(record.message_count, 0),
             channel_ids=set(record.channel_ids),
             has_cross_channel_match=record.has_cross_channel_match,
         )
@@ -170,26 +169,18 @@ class _NodeSupportState:
     def channel_count(self) -> int:
         return len(self.channel_ids)
 
-    def register_story(self, *, story_id: str, channel_id: int) -> bool:
-        is_new_story = story_id not in self.pending_story_ids
-        if is_new_story:
-            self.pending_story_ids.add(story_id)
-            self.story_count += 1
-        self.channel_ids.add(channel_id)
-        return is_new_story
-
     def register_message(self, *, message_key: tuple[int, int], channel_id: int) -> bool:
         """Register a single message as a support unit for this node.
 
         message_key = (channel_id, message_id).
-        Returns True if this is a new message for this node (bumps story_count),
+        Returns True if this is a new message for this node (bumps message_count),
         False if the message_key was already seen (idempotent within a batch).
         Adds channel_id to self.channel_ids regardless.
         """
         is_new_message = message_key not in self.pending_message_keys
         if is_new_message:
             self.pending_message_keys.add(message_key)
-            self.story_count += 1
+            self.message_count += 1
         self.channel_ids.add(channel_id)
         return is_new_message
 
@@ -221,51 +212,6 @@ class NodeResolver:
                 self.nodes_by_id[node.node_id] = node
                 self.node_support[node.node_id] = _NodeSupportState.from_node(node, support_records.get(node.node_id))
 
-    def resolve(
-        self,
-        *,
-        kind: NodeKind,
-        candidate: ExtractedSemanticNode,
-        embedding: list[float],
-        story_id: str,
-        channel_id: int,
-        story_timestamp: datetime,
-        activate_immediately: bool,
-    ) -> ResolvedNode:
-        existing = self._match_existing_node(kind=kind, candidate=candidate, embedding=embedding)
-        if existing is not None:
-            support = self._support_state(existing)
-            previous_story_count = support.story_count
-            is_new_story = support.register_story(story_id=story_id, channel_id=channel_id)
-            updated = self._apply_candidate(
-                existing,
-                candidate=candidate,
-                last_updated=story_timestamp,
-                article_count=support.story_count if is_new_story else existing.article_count,
-            )
-            updated = self._maybe_promote(updated, support=support, activate_immediately=activate_immediately)
-            self._store_node(updated)
-            if is_new_story:
-                self._upsert_centroid(updated, embedding=embedding, previous_count=max(previous_story_count, 0))
-            confidence = 0.99 if existing.normalized_name == _normalize_name(candidate.name) else 0.95
-            if kind in {"theme", "event"} and embedding:
-                confidence = max(confidence, self._similarity_for_node(updated, embedding=embedding))
-            return ResolvedNode(node=updated, confidence=confidence, created=False)
-
-        created = self._create_node(
-            kind=kind,
-            candidate=candidate,
-            story_timestamp=story_timestamp,
-            activate_immediately=activate_immediately,
-        )
-        support = self._support_state(created)
-        support.register_story(story_id=story_id, channel_id=channel_id)
-        created = replace(created, article_count=support.story_count)
-        created = self._maybe_promote(created, support=support, activate_immediately=activate_immediately)
-        self._store_node(created)
-        self._upsert_centroid(created, embedding=embedding, previous_count=0)
-        return ResolvedNode(node=created, confidence=1.0, created=True)
-
     def resolve_message(
         self,
         *,
@@ -289,18 +235,18 @@ class NodeResolver:
         existing = self._match_existing_node(kind=kind, candidate=candidate, embedding=embedding)
         if existing is not None:
             support = self._support_state(existing)
-            previous_story_count = support.story_count
+            previous_message_count = support.message_count
             is_new_message = support.register_message(message_key=message_key, channel_id=channel_id)
             updated = self._apply_candidate(
                 existing,
                 candidate=candidate,
                 last_updated=message_timestamp,
-                article_count=support.story_count if is_new_message else existing.article_count,
+                article_count=support.message_count if is_new_message else existing.article_count,
             )
             updated = self._maybe_promote(updated, support=support, activate_immediately=activate_immediately)
             self._store_node(updated)
             if is_new_message:
-                self._upsert_centroid(updated, embedding=embedding, previous_count=max(previous_story_count, 0))
+                self._upsert_centroid(updated, embedding=embedding, previous_count=max(previous_message_count, 0))
             confidence = 0.99 if existing.normalized_name == _normalize_name(candidate.name) else 0.95
             if kind in {"theme", "event"} and embedding:
                 confidence = max(confidence, self._similarity_for_node(updated, embedding=embedding))
@@ -314,7 +260,7 @@ class NodeResolver:
         )
         support = self._support_state(created)
         support.register_message(message_key=message_key, channel_id=channel_id)
-        created = replace(created, article_count=support.story_count)
+        created = replace(created, article_count=support.message_count)
         created = self._maybe_promote(created, support=support, activate_immediately=activate_immediately)
         self._store_node(created)
         self._upsert_centroid(created, embedding=embedding, previous_count=0)
@@ -589,7 +535,7 @@ class NodeResolver:
     def _maybe_promote(self, node: Node, *, support: _NodeSupportState, activate_immediately: bool) -> Node:
         if node.kind not in {"event", "theme"} or node.status == "active":
             return node
-        if activate_immediately or support.story_count >= 2 or support.channel_count >= 2 or support.has_cross_channel_match:
+        if activate_immediately or support.message_count >= 2 or support.channel_count >= 2 or support.has_cross_channel_match:
             return replace(node, status="active")
         return node
 
