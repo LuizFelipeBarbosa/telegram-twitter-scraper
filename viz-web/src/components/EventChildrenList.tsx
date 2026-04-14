@@ -178,7 +178,7 @@ function EventChildrenGraph({ parentDisplayName, visibleCount, childEvents }: Ev
               >
                 <div className="text-[0.8rem] font-medium leading-tight">{child.display_name}</div>
                 <div className="mt-1 text-[0.64rem] uppercase tracking-[0.08em] text-muted">
-                  {firstLocation(child) || "Unscoped"} · {child.article_count} stories
+                  {firstLocation(child) || "Unscoped"} · {child.article_count} messages
                 </div>
               </Link>
             );
@@ -315,7 +315,7 @@ export function EventChildrenList({ parentDisplayName, childEvents }: EventChild
                   onChange={(event) => updateSearchParam(searchParams, setSearchParams, SORT_PARAM, event.target.value)}
                 >
                   <option value="newest">Newest first</option>
-                  <option value="stories">Story count</option>
+                  <option value="stories">Message count</option>
                   <option value="location">Location A-Z</option>
                   <option value="organization">Organization A-Z</option>
                 </select>
@@ -358,7 +358,7 @@ export function EventChildrenList({ parentDisplayName, childEvents }: EventChild
                       </div>
 
                       <div className="text-right flex flex-col items-end gap-1 whitespace-nowrap">
-                        <div className="font-mono text-[0.68rem] text-muted">{child.article_count} stories</div>
+                        <div className="font-mono text-[0.68rem] text-muted">{child.article_count} messages</div>
                         {eventDate ? <div className="text-[0.68rem] text-muted">{eventDate}</div> : null}
                       </div>
                     </Link>

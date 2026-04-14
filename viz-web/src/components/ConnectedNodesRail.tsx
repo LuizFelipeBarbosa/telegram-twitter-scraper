@@ -56,7 +56,7 @@ function Section({ label, rows }: SectionProps) {
                   <div>
                     <div className="text-[0.8rem] font-medium">{row.display_name}</div>
                     <div className="font-mono text-[0.64rem] text-muted mt-0.5">
-                      {row.kind} · {row.shared_story_count} shared stories
+                      {row.kind} · {row.shared_message_count} shared messages
                     </div>
                   </div>
                   <div className="text-right">

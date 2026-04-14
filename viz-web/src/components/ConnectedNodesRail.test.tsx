@@ -21,14 +21,14 @@ const detail: NodeDetail = {
       display_name: "Jane Doe",
       article_count: 7,
       score: 0.82,
-      shared_story_count: 4,
+      shared_message_count: 4,
     },
   ],
   nations: [],
   orgs: [],
   places: [],
   themes: [],
-  stories: [],
+  messages: [],
 };
 
 describe("ConnectedNodesRail", () => {
@@ -50,7 +50,7 @@ describe("ConnectedNodesRail", () => {
       </MemoryRouter>,
     );
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
-    expect(screen.getByText(/4 shared stories/)).toBeInTheDocument();
+    expect(screen.getByText(/4 shared messages/)).toBeInTheDocument();
   });
 
   it("shows a muted empty copy for empty sections", () => {

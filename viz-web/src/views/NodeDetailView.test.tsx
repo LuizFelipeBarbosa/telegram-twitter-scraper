@@ -65,16 +65,15 @@ vi.stubGlobal(
             orgs: [],
             places: [],
             themes: [],
-            stories: [
+            messages: [
               {
-                story_id: "story-1",
                 channel_id: 1,
+                message_id: 101,
                 channel_title: "Signal Watch",
-                timestamp_start: "2026-04-08T12:00:00Z",
-                timestamp_end: "2026-04-08T12:03:00Z",
+                timestamp: "2026-04-08T12:00:00Z",
                 confidence: 0.82,
-                preview_text: "Alpha story preview",
-                combined_text: "Alpha story preview with the full body.",
+                text: "Alpha message preview",
+                english_text: "Alpha message preview",
                 media_refs: [],
               },
             ],
@@ -99,16 +98,15 @@ vi.stubGlobal(
             orgs: [],
             places: [],
             themes: [],
-            stories: [
+            messages: [
               {
-                story_id: "story-legacy",
                 channel_id: 7,
+                message_id: 201,
                 channel_title: "Legacy Feed",
-                timestamp_start: "2026-04-07T12:00:00Z",
-                timestamp_end: "2026-04-07T12:02:00Z",
+                timestamp: "2026-04-07T12:00:00Z",
                 confidence: 0.71,
-                preview_text: "Legacy story preview",
-                combined_text: "Legacy story body.",
+                text: "Legacy message preview",
+                english_text: "Legacy message preview",
                 media_refs: [],
               },
             ],
@@ -155,8 +153,8 @@ describe("NodeDetailView", () => {
     expect(within(graphRegion).getByLabelText("Graph node: Tel Aviv Coordination Strike")).toBeInTheDocument();
     expect(within(graphRegion).queryByLabelText("Graph node: Tel Aviv Interception Strike")).not.toBeInTheDocument();
 
-    await user.click(screen.getByText("Alpha story preview"));
-    expect(await screen.findByText("Alpha story preview with the full body.")).toBeInTheDocument();
+    await user.click(screen.getByText("Alpha message preview"));
+    expect(await screen.findByText("1:101")).toBeInTheDocument();
   });
 
   it("renders legacy event payloads that do not include hierarchy fields", async () => {
@@ -171,7 +169,7 @@ describe("NodeDetailView", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: "Operation Roaring Lion" })).toBeInTheDocument();
     expect(screen.queryByText("Sub-event explorer")).not.toBeInTheDocument();
-    await user.click(screen.getByText("Legacy story preview"));
-    expect(await screen.findByText("Legacy story body.")).toBeInTheDocument();
+    await user.click(screen.getByText("Legacy message preview"));
+    expect(await screen.findByText("7:201")).toBeInTheDocument();
   });
 });

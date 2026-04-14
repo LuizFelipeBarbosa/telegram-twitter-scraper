@@ -20,7 +20,7 @@ export function NodeTooltip({ x, y, node }: NodeTooltipProps) {
       <div className="mt-1 text-[0.72rem] text-paper/70">{KIND_LABEL[node.kind]}</div>
       <div className="mt-2 flex justify-between gap-2 text-[0.72rem] font-mono text-paper/85">
         <span>score {node.score.toFixed(2)}</span>
-        <span>{node.article_count} stories</span>
+        <span>{node.article_count} messages</span>
         {node.heat != null ? <span>heat {node.heat.toFixed(3)}</span> : null}
       </div>
       {node.summary ? <p className="mt-2 text-[0.72rem] text-paper/70">{node.summary}</p> : null}

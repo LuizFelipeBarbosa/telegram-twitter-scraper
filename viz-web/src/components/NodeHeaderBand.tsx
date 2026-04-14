@@ -21,7 +21,7 @@ export function NodeHeaderBand({ detail, phase }: NodeHeaderBandProps) {
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[0.76rem] text-muted">
           <span className="font-mono">{detail.slug}</span>
           <span>·</span>
-          <span>{detail.article_count} stories</span>
+          <span>{detail.article_count} messages</span>
           {detail.kind === "event" && childEvents.length > 0 ? (
             <>
               <span>·</span>

@@ -4,7 +4,7 @@ import { EmptyState } from "../components/EmptyState";
 import { EventChildrenList } from "../components/EventChildrenList";
 import { LoadingState } from "../components/LoadingState";
 import { NodeHeaderBand } from "../components/NodeHeaderBand";
-import { NodeStoriesList } from "../components/NodeStoriesList";
+import { NodeMessagesList } from "../components/NodeMessagesList";
 import { ThemeHistory } from "../components/ThemeHistory";
 import { Breadcrumbs } from "../layout/Breadcrumbs";
 import { useAsyncResource } from "../hooks/useAsyncResource";
@@ -55,7 +55,7 @@ export function NodeDetailView() {
       <div className="mx-5">
         <MetricsStrip>
           <MetricCell label="Kind" value={KIND_LABEL[detail.kind]} caption={detail.slug} />
-          <MetricCell label="Stories" value={detail.article_count} caption="across sources" />
+          <MetricCell label="Messages" value={detail.article_count} caption="across sources" />
           <MetricCell label="Connected" value={connectedCount} caption="related nodes" />
           {detail.kind === "theme" ? (
             <MetricCell label="Phase" value={themePhase ?? "—"} caption="current lifecycle" />
@@ -76,7 +76,7 @@ export function NodeDetailView() {
           {detail.kind === "event" ? (
             <EventChildrenList parentDisplayName={detail.display_name} childEvents={detail.child_events} />
           ) : null}
-          <NodeStoriesList stories={detail.stories} />
+          <NodeMessagesList messages={detail.messages} />
         </div>
         <div className="px-5 py-5">
           <ConnectedNodesRail detail={detail} />

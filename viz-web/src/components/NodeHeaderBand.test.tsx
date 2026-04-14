@@ -19,7 +19,7 @@ const theme: NodeDetail = {
   orgs: [],
   places: [],
   themes: [],
-  stories: [],
+  messages: [],
 };
 
 const event: NodeDetail = {
@@ -30,12 +30,12 @@ const event: NodeDetail = {
 };
 
 describe("NodeHeaderBand", () => {
-  it("renders eyebrow, display name, slug, and stories count", () => {
+  it("renders eyebrow, display name, slug, and messages count", () => {
     render(<NodeHeaderBand detail={theme} />);
     expect(screen.getByText(/NODE DETAIL · THEME/)).toBeInTheDocument();
     expect(screen.getByText("US election narratives")).toBeInTheDocument();
     expect(screen.getByText("election")).toBeInTheDocument();
-    expect(screen.getByText(/142 stories/)).toBeInTheDocument();
+    expect(screen.getByText(/142 messages/)).toBeInTheDocument();
   });
 
   it("shows a phase badge for theme nodes when provided", () => {

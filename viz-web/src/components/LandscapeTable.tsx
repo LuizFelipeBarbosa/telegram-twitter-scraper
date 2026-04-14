@@ -71,8 +71,8 @@ export function LandscapeTable({ nodes, hoveredNodeId, onHover, onRowClick, clas
       render: (node) => node.score.toFixed(2),
     },
     {
-      key: "stories",
-      header: "Stories",
+      key: "messages",
+      header: "Messages",
       numeric: true,
       sortable: true,
       sortValue: (node) => node.article_count,

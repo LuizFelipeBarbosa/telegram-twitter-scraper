@@ -1,4 +1,4 @@
-import type { ChannelSummary, GraphNodeRow, NodeDetail, SnapshotRelation, ThemeHistoryPoint, WindowKey } from "./types";
+import type { ChannelSummary, GraphNodeRow, GroupedMessagesResponse, NodeDetail, SnapshotRelation, ThemeHistoryPoint, WindowKey } from "./types";
 
 async function request<T>(path: string): Promise<T> {
   const response = await fetch(path);
@@ -64,7 +64,7 @@ function normalizeNodeDetail(detail: NodeDetail): NodeDetail {
     orgs: Array.isArray(detail.orgs) ? detail.orgs : [],
     places: Array.isArray(detail.places) ? detail.places : [],
     themes: Array.isArray(detail.themes) ? detail.themes : [],
-    stories: Array.isArray(detail.stories) ? detail.stories : [],
+    messages: Array.isArray(detail.messages) ? detail.messages : [],
   };
 }
 
@@ -101,6 +101,10 @@ export async function fetchSnapshot(params: {
 export async function fetchNodeDetail(kind: string, slug: string): Promise<NodeDetail> {
   const response = await request<NodeDetail>(`/api/nodes/${kind}/${slug}`);
   return normalizeNodeDetail(response);
+}
+
+export async function fetchGroupedMessages(kind: string, slug: string, window: WindowKey): Promise<GroupedMessagesResponse> {
+  return request(`/api/nodes/${kind}/${slug}/grouped?window=${window}`);
 }
 
 export async function fetchThemeHistory(slug: string): Promise<{

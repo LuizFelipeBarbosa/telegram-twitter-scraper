@@ -37,21 +37,34 @@ export interface ThemeHistoryPoint {
   centroid_drift: number;
 }
 
-export interface NodeStoryRow {
-  story_id: string;
+export interface MessageMediaRef {
+  media_type: string;
+  storage_path?: string | null;
+  mime_type?: string | null;
+  file_name?: string | null;
+}
+
+export interface NodeMessageRow {
   channel_id: number;
+  message_id: number;
   channel_title: string;
+  timestamp: string;
+  confidence: number;
+  text: string;
+  english_text?: string | null;
+  media_refs: MessageMediaRef[];
+}
+
+export interface MessageGroup {
+  group_id: string;
+  dominant_node_id: string;
+  messages: NodeMessageRow[];
   timestamp_start: string;
   timestamp_end: string;
-  confidence: number;
-  preview_text: string;
-  combined_text: string;
-  media_refs: Array<{
-    media_type: string;
-    storage_path?: string | null;
-    mime_type?: string | null;
-    file_name?: string | null;
-  }>;
+}
+
+export interface GroupedMessagesResponse {
+  groups: MessageGroup[];
 }
 
 export interface RelatedNodeRow {
@@ -62,8 +75,8 @@ export interface RelatedNodeRow {
   summary?: string | null;
   article_count: number;
   score: number;
-  shared_story_count: number;
-  latest_story_at?: string | null;
+  shared_message_count: number;
+  latest_message_at?: string | null;
 }
 
 export interface EventHierarchyRef {
@@ -98,7 +111,7 @@ export interface NodeDetail {
   orgs: RelatedNodeRow[];
   places: RelatedNodeRow[];
   themes: RelatedNodeRow[];
-  stories: NodeStoryRow[];
+  messages: NodeMessageRow[];
 }
 
 export interface NodeListRow {

@@ -31,7 +31,7 @@ export function LandscapePreviewPopover({ node, x, y, onClose, onNavigate }: Lan
       <Eyebrow>Pinned</Eyebrow>
       <h3 className="text-[1.05rem] leading-tight mt-1">{node.display_name}</h3>
       <div className="font-mono text-[0.64rem] text-muted mt-1">
-        {KIND_LABEL[node.kind]} · score {node.score.toFixed(2)} · {node.article_count} stories
+        {KIND_LABEL[node.kind]} · score {node.score.toFixed(2)} · {node.article_count} messages
       </div>
       {node.summary ? (
         <p className="mt-2 text-[0.76rem] text-ink/85 leading-snug">{node.summary}</p>
