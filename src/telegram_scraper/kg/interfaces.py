@@ -7,6 +7,7 @@ from telegram_scraper.kg.models import (
     ChannelProfile,
     ChannelSummary,
     CrossChannelMatch,
+    MessageSemanticExtraction,
     Node,
     NodeCentroidRecord,
     NodeDetail,
@@ -15,6 +16,7 @@ from telegram_scraper.kg.models import (
     NodeListEntry,
     NodeMatch,
     NodeRelation,
+    NodeSupportRecord,
     RawMessage,
     StoryEmbeddingRecord,
     StoryMatch,
@@ -35,6 +37,15 @@ class StoryRepository(Protocol):
     def get_channel_profile(self, channel_id: int) -> ChannelProfile | None: ...
 
     def list_channels(self) -> list[ChannelSummary]: ...
+
+    def list_candidate_channel_ids(self) -> list[int]: ...
+
+    def list_node_ids_for_channels(
+        self,
+        *,
+        channel_ids: Sequence[int],
+        status: str | None = "active",
+    ) -> list[str]: ...
 
     def upsert_raw_messages(self, messages: Sequence[RawMessage]) -> None: ...
 
@@ -90,7 +101,9 @@ class StoryRepository(Protocol):
         limit: int | None = None,
     ) -> list[Node]: ...
 
-    def get_node_by_slug(self, *, kind: NodeKind, slug: str) -> Node | None: ...
+    def get_node_by_slug(self, *, kind: NodeKind, slug: str, status: str | None = "active") -> Node | None: ...
+
+    def get_node_support_records(self, node_ids: Sequence[str]) -> list[NodeSupportRecord]: ...
 
     def save_node_relations(self, relations: Sequence[NodeRelation]) -> None: ...
 
@@ -186,9 +199,20 @@ class Embedder(Protocol):
 
 
 class SemanticExtractor(Protocol):
+    # Legacy story API (to be removed in Session 2 of the message-atomic refactor).
     def extract_story(self, story: StoryUnit) -> StorySemanticExtraction: ...
 
     def extract_stories(self, stories: Sequence[StoryUnit]) -> list[StorySemanticExtraction]: ...
+
+    # New message-atomic API (structured output).
+    def extract_message(self, message: RawMessage) -> MessageSemanticExtraction: ...
+
+    def extract_messages(
+        self,
+        messages: Sequence[RawMessage],
+        *,
+        max_workers: int | None = None,
+    ) -> list[MessageSemanticExtraction]: ...
 
 
 class MessageTranslator(Protocol):

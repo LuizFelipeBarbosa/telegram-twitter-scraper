@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Literal, Sequence
+from typing import Any, Literal, Sequence
 
 from telegram_scraper.kg.heat_phase import HeatPhaseThresholds
 from telegram_scraper.kg.models import NodeListEntry
@@ -35,6 +35,45 @@ class VisualizationQueries:
         self.theme_heat_thresholds = theme_heat_thresholds
         self.event_heat_thresholds = event_heat_thresholds
 
+    def _visible_channel_ids(self) -> tuple[int, ...]:
+        # Candidate assignments are the signature that a channel has been rebuilt
+        # under the staged resolver instead of the legacy one-shot node generator.
+        return tuple(self.repository.list_candidate_channel_ids())
+
+    def _visible_node_ids(self, *, channel_ids: Sequence[int]) -> set[str]:
+        if not channel_ids:
+            return set()
+        return set(self.repository.list_node_ids_for_channels(channel_ids=channel_ids, status="active"))
+
+    def _visibility(self) -> tuple[tuple[int, ...], set[str]]:
+        channel_ids = self._visible_channel_ids()
+        return channel_ids, self._visible_node_ids(channel_ids=channel_ids)
+
+    def _filter_node_detail_payload(
+        self,
+        payload: dict[str, Any],
+        *,
+        visible_channel_ids: set[int],
+        visible_node_ids: set[str],
+    ) -> dict[str, Any]:
+        parent_event = payload.get("parent_event")
+        if parent_event and parent_event.get("node_id") not in visible_node_ids:
+            payload["parent_event"] = None
+
+        for bucket in ("child_events", "events", "people", "nations", "orgs", "places", "themes"):
+            payload[bucket] = [
+                item
+                for item in payload.get(bucket, [])
+                if item.get("node_id") in visible_node_ids
+            ]
+
+        payload["stories"] = [
+            story
+            for story in payload.get("stories", [])
+            if story.get("channel_id") in visible_channel_ids
+        ]
+        return payload
+
     def thresholds_for(self, kind: str) -> HeatPhaseThresholds | None:
         if kind == "theme":
             return self.theme_heat_thresholds
@@ -43,12 +82,25 @@ class VisualizationQueries:
         return None
 
     def list_channels(self) -> dict[str, object]:
-        return {"channels": [asdict(channel) for channel in self.service.channels()]}
+        visible_channel_ids, _visible_node_ids = self._visibility()
+        visible_channel_id_set = set(visible_channel_ids)
+        return {
+            "channels": [
+                asdict(channel)
+                for channel in self.service.channels()
+                if channel.channel_id in visible_channel_id_set
+            ]
+        }
 
     def list_kind_nodes(self, *, kind: str, limit: int = 50, include_children: bool = False) -> dict[str, object]:
+        _visible_channel_ids, visible_node_ids = self._visibility()
         return {
             "kind": kind,
-            "nodes": [asdict(node) for node in self.service.list_nodes(kind=kind, limit=limit, include_children=include_children)],
+            "nodes": [
+                asdict(node)
+                for node in self.service.list_nodes(kind=kind, limit=limit, include_children=include_children)
+                if node.node_id in visible_node_ids
+            ],
         }
 
     def list_theme_heat(
@@ -59,23 +111,11 @@ class VisualizationQueries:
         limit: int = 50,
         offset: int = 0,
     ) -> dict[str, object]:
-        field_name = WINDOW_FIELD_MAP[window]
-        rows = self.repository.list_theme_heat(phase=phase)
-        paged = rows[offset : offset + limit]
-        themes = [
-            {
-                "node_id": row.node_id,
-                "slug": row.slug,
-                "display_name": row.display_name,
-                "article_count": row.article_count,
-                "heat": getattr(row, field_name),
-                "phase": row.phase,
-            }
-            for row in paged
-        ]
+        raw = self.list_node_heat(kind="theme", window=window, phase=phase, limit=limit, offset=offset)
+        themes = raw["nodes"]
         return {
-            "window": window,
-            "total": len(rows),
+            "window": raw["window"],
+            "total": raw["total"],
             "themes": themes,
             "topics": themes,
         }
@@ -92,8 +132,9 @@ class VisualizationQueries:
         from dataclasses import replace
         from telegram_scraper.kg.heat_phase import PhaseNotSupported, classify_phase
 
+        _visible_channel_ids, visible_node_ids = self._visibility()
         field_name = WINDOW_FIELD_MAP[window]
-        rows = self.repository.list_node_heat_rows(kind=kind)
+        rows = [row for row in self.repository.list_node_heat_rows(kind=kind) if row.node_id in visible_node_ids]
         thresholds = self.thresholds_for(kind)
         classified = [
             replace(row, phase=classify_phase(row, thresholds))
@@ -136,6 +177,7 @@ class VisualizationQueries:
     ) -> dict[str, object]:
         from telegram_scraper.kg.heat_phase import classify_phase
 
+        visible_channel_ids, visible_node_ids = self._visibility()
         selected_kinds = tuple(kinds or ("event", "theme"))
         ranked_nodes: list[dict[str, object]] = []
         selected_entries: list[NodeListEntry] = []
@@ -146,7 +188,11 @@ class VisualizationQueries:
             if phase is not None and thresholds is None:
                 continue  # non-phase kinds dropped when phase filter active
 
-            rows = self.repository.list_node_heat_rows(kind=kind)
+            rows = [
+                row
+                for row in self.repository.list_node_heat_rows(kind=kind)
+                if row.node_id in visible_node_ids
+            ]
 
             for row in rows:
                 classified_phase = classify_phase(row, thresholds)
@@ -192,11 +238,15 @@ class VisualizationQueries:
                 "type": relation.relation_type,
                 "score": relation.score,
             }
-            for relation in self.service.snapshot_relations(nodes=visible_entries)
+            for relation in self.service.snapshot_relations(nodes=visible_entries, channel_ids=visible_channel_ids)
         ]
         return {"window": window, "nodes": ranked_nodes, "relations": relations}
 
     def get_theme_history(self, slug: str) -> dict[str, object]:
+        _visible_channel_ids, visible_node_ids = self._visibility()
+        node = self.repository.get_node_by_slug(kind="theme", slug=slug)
+        if node is None or node.node_id not in visible_node_ids:
+            raise KeyError(slug)
         history = self.service.theme_history(slug)
         if not history:
             raise KeyError(slug)
@@ -216,7 +266,12 @@ class VisualizationQueries:
         }
 
     def get_node_detail(self, *, kind: str, slug: str) -> dict[str, object]:
+        visible_channel_ids, visible_node_ids = self._visibility()
         detail = self.service.node_show(kind=kind, slug=slug)
-        if detail is None:
+        if detail is None or detail.node_id not in visible_node_ids:
             raise KeyError(slug)
-        return asdict(detail)
+        return self._filter_node_detail_payload(
+            asdict(detail),
+            visible_channel_ids=set(visible_channel_ids),
+            visible_node_ids=visible_node_ids,
+        )

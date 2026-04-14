@@ -228,6 +228,15 @@ class NodeCentroidRecord:
 
 
 @dataclass(frozen=True)
+class NodeSupportRecord:
+    node_id: str
+    story_count: int
+    channel_count: int
+    has_cross_channel_match: bool
+    channel_ids: tuple[int, ...] = ()
+
+
+@dataclass(frozen=True)
 class NodeMatch:
     node_id: str
     similarity_score: float
@@ -318,3 +327,113 @@ class NodeDetail:
     places: tuple[RelatedNode, ...] = ()
     themes: tuple[RelatedNode, ...] = ()
     stories: tuple[NodeStory, ...] = ()
+    # New message-atomic field. Populated by the new pipeline; old pipeline leaves empty.
+    messages: tuple["NodeMessage", ...] = ()
+
+
+# ============================================================
+# Message-atomic pipeline types (replaces Story* types).
+# Session 2 of the refactor will remove the Story* variants.
+# ============================================================
+
+
+@dataclass(frozen=True)
+class MessageSemanticExtraction:
+    """Per-message LLM extraction output (replaces StorySemanticExtraction)."""
+
+    channel_id: int
+    message_id: int
+    events: tuple[ExtractedSemanticNode, ...] = ()
+    people: tuple[ExtractedSemanticNode, ...] = ()
+    nations: tuple[ExtractedSemanticNode, ...] = ()
+    orgs: tuple[ExtractedSemanticNode, ...] = ()
+    places: tuple[ExtractedSemanticNode, ...] = ()
+    themes: tuple[ExtractedSemanticNode, ...] = ()
+    primary_event: str | None = None
+
+
+@dataclass(frozen=True)
+class MessageSemanticRecord:
+    """Persisted extraction payload for a single message."""
+
+    channel_id: int
+    message_id: int
+    extraction_payload: dict[str, Any] = field(default_factory=dict)
+    primary_event_node_id: str | None = None
+    extracted_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class MessageEmbeddingRecord:
+    """Per-message embedding stored in Pinecone (replaces StoryEmbeddingRecord)."""
+
+    channel_id: int
+    message_id: int
+    embedding: list[float]
+    timestamp: datetime
+    node_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class MessageNodeAssignment:
+    """Links a message to a resolved node (replaces StoryNodeAssignment)."""
+
+    channel_id: int
+    message_id: int
+    node_id: str
+    confidence: float
+    assigned_at: datetime | None = None
+    is_primary_event: bool = False
+
+
+@dataclass(frozen=True)
+class MessageMatch:
+    """Pinecone query result for message embeddings (replaces StoryMatch)."""
+
+    channel_id: int
+    message_id: int
+    similarity_score: float
+    metadata: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class CrossChannelMessageMatch:
+    """Cross-channel message similarity match (replaces CrossChannelMatch)."""
+
+    channel_id: int
+    message_id: int
+    matched_channel_id: int
+    matched_message_id: int
+    similarity_score: float
+    timestamp_delta_seconds: int | None = None
+    created_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class NodeMessage:
+    """A message linked to a node, for node-detail rendering (replaces NodeStory)."""
+
+    channel_id: int
+    message_id: int
+    channel_title: str
+    timestamp: datetime
+    confidence: float
+    text: str
+    english_text: str | None = None
+    media_refs: tuple[MediaRef, ...] = ()
+
+
+@dataclass(frozen=True)
+class MessageGroup:
+    """Query-time grouping of messages assigned to the same dominant event-node.
+
+    This replaces the pre-computed StoryUnit abstraction. Produced on-demand
+    by KGQueryService.grouped_messages() — not persisted.
+    """
+
+    group_id: str  # deterministic: hash(dominant_node_id + time_bucket)
+    dominant_node_id: str
+    messages: tuple[NodeMessage, ...]
+    timestamp_start: datetime
+    timestamp_end: datetime

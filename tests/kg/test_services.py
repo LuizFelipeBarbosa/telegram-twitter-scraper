@@ -20,6 +20,7 @@ from telegram_scraper.kg.models import (
     NodeDetail,
     NodeListEntry,
     NodeRelation,
+    NodeSupportRecord,
     NodeStory,
     RawMessage,
     RelatedNode,
@@ -418,11 +419,36 @@ class FakeRepository:
         rows.sort(key=lambda node: (-node.article_count, node.slug))
         return rows[:limit] if limit is not None else rows
 
-    def get_node_by_slug(self, *, kind, slug):
+    def get_node_by_slug(self, *, kind, slug, status="active"):
         for node in self.nodes.values():
-            if node.kind == kind and node.slug == slug:
+            if node.kind == kind and node.slug == slug and (status is None or node.status == status):
                 return node
         return None
+
+    def get_node_support_records(self, node_ids):
+        story_ids_by_node: dict[str, set[str]] = {}
+        channel_ids_by_node: dict[str, set[int]] = {}
+        cross_story_ids = {
+            match.story_id
+            for match in self.cross_channel_matches
+        } | {
+            match.matched_story_id
+            for match in self.cross_channel_matches
+        }
+        for story_id, node_id in self.story_nodes:
+            story_ids_by_node.setdefault(node_id, set()).add(story_id)
+            channel_ids_by_node.setdefault(node_id, set()).add(self.stories[story_id].channel_id)
+        return [
+            NodeSupportRecord(
+                node_id=node_id,
+                story_count=len(story_ids_by_node.get(node_id, set())),
+                channel_count=len(channel_ids_by_node.get(node_id, set())),
+                has_cross_channel_match=bool(story_ids_by_node.get(node_id, set()) & cross_story_ids),
+                channel_ids=tuple(sorted(channel_ids_by_node.get(node_id, set()))),
+            )
+            for node_id in node_ids
+            if node_id in self.nodes
+        ]
 
     def save_node_relations(self, relations):
         for relation in relations:
@@ -793,6 +819,224 @@ class KGNodeServiceTests(unittest.TestCase):
         self.assertEqual(detail.themes[0].slug, "ceasefire-peace-negotiations")
         actors_count = len(detail.people) + len(detail.nations) + len(detail.orgs)
         self.assertEqual(actors_count, 3)
+
+    def test_theme_first_sight_stays_hidden_candidate(self):
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+        story = build_story("story-theme", channel_id=100, minute=0, combined_text="Ceasefire negotiations advance")
+        repository.save_story_units([story])
+        vector_store.upsert_story_embeddings([StoryEmbeddingRecord(story.story_id, [0.9, 0.1, 0.0], 100, story.timestamp_start)])
+
+        extractor = FakeExtractor(
+            {
+                "story-theme": StorySemanticExtraction(
+                    story_id="story-theme",
+                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
+                    people=(ExtractedSemanticNode(name="Donald Trump"),),
+                )
+            }
+        )
+
+        KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        ).process_stories([story])
+
+        hidden = repository.get_node_by_slug(kind="theme", slug="ceasefire-peace-negotiations", status=None)
+        assert hidden is not None
+        self.assertEqual(hidden.status, "candidate")
+        self.assertIsNone(repository.get_node_by_slug(kind="theme", slug="ceasefire-peace-negotiations"))
+        self.assertEqual(KGQueryService(repository).list_nodes(kind="theme"), [])
+        self.assertEqual(KGQueryService(repository).themes_now(), [])
+        self.assertIsNone(KGQueryService(repository).node_show(kind="theme", slug="ceasefire-peace-negotiations"))
+
+    def test_theme_promotes_after_second_supporting_story_without_changing_identity(self):
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+        story_a = build_story("story-a", channel_id=100, minute=0, combined_text="Ceasefire update one")
+        story_b = build_story("story-b", channel_id=100, minute=1, combined_text="Ceasefire update two")
+        repository.save_story_units([story_a, story_b])
+        vector_store.upsert_story_embeddings(
+            [
+                StoryEmbeddingRecord(story_a.story_id, [0.9, 0.1, 0.0], 100, story_a.timestamp_start),
+                StoryEmbeddingRecord(story_b.story_id, [0.9, 0.1, 0.0], 100, story_b.timestamp_start),
+            ]
+        )
+
+        extractor = FakeExtractor(
+            {
+                "story-a": StorySemanticExtraction(
+                    story_id="story-a",
+                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
+                ),
+                "story-b": StorySemanticExtraction(
+                    story_id="story-b",
+                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
+                ),
+            }
+        )
+
+        KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        ).process_stories([story_a, story_b])
+
+        theme = repository.get_node_by_slug(kind="theme", slug="ceasefire-peace-negotiations")
+        assert theme is not None
+        self.assertEqual(theme.status, "active")
+        self.assertEqual(theme.article_count, 2)
+        assigned_theme_ids = {
+            assignment.node_id
+            for assignment in repository.story_nodes.values()
+            if repository.nodes[assignment.node_id].kind == "theme"
+        }
+        self.assertEqual(assigned_theme_ids, {theme.node_id})
+        self.assertEqual(
+            [row.slug for row in KGQueryService(repository).list_nodes(kind="theme")],
+            ["ceasefire-peace-negotiations"],
+        )
+
+    def test_cross_channel_match_promotes_hidden_theme_with_single_supporting_story(self):
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+        story_a = build_story("story-a", channel_id=100, minute=0, combined_text="Ceasefire negotiations advance")
+        story_b = build_story("story-b", channel_id=200, minute=1, combined_text="Ceasefire negotiations advance")
+        repository.save_story_units([story_a, story_b])
+        vector_store.upsert_story_embeddings(
+            [
+                StoryEmbeddingRecord(story_a.story_id, [0.9, 0.1, 0.0], 100, story_a.timestamp_start),
+                StoryEmbeddingRecord(story_b.story_id, [0.9, 0.1, 0.0], 200, story_b.timestamp_start),
+            ]
+        )
+
+        extractor = FakeExtractor(
+            {
+                "story-a": StorySemanticExtraction(
+                    story_id="story-a",
+                    themes=(ExtractedSemanticNode(name="Ceasefire Peace Negotiations"),),
+                ),
+                "story-b": StorySemanticExtraction(
+                    story_id="story-b",
+                    people=(ExtractedSemanticNode(name="Donald Trump"),),
+                ),
+            }
+        )
+
+        result = KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        ).process_stories([story_a, story_b])
+
+        theme = repository.get_node_by_slug(kind="theme", slug="ceasefire-peace-negotiations")
+        assert theme is not None
+        self.assertEqual(theme.status, "active")
+        self.assertEqual(theme.article_count, 1)
+        self.assertGreater(result.cross_channel_matches, 0)
+
+    def test_generic_strike_events_resolve_directly_to_actor_cluster(self):
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+        story_tel_aviv = build_story("story-tel-aviv", channel_id=100, minute=0, combined_text="Iranian strike on Tel Aviv")
+        story_haifa = build_story("story-haifa", channel_id=100, minute=1, combined_text="Iranian strike on Haifa Port")
+        repository.save_story_units([story_tel_aviv, story_haifa])
+        vector_store.upsert_story_embeddings(
+            [
+                StoryEmbeddingRecord(story_tel_aviv.story_id, [0.0, 1.0, 0.0], 100, story_tel_aviv.timestamp_start),
+                StoryEmbeddingRecord(story_haifa.story_id, [0.0, 1.0, 0.0], 100, story_haifa.timestamp_start),
+            ]
+        )
+
+        extractor = FakeExtractor(
+            {
+                "story-tel-aviv": StorySemanticExtraction(
+                    story_id="story-tel-aviv",
+                    events=(ExtractedSemanticNode(name="Iranian strike on Tel Aviv"),),
+                    nations=(ExtractedSemanticNode(name="Iran"),),
+                    places=(ExtractedSemanticNode(name="Tel Aviv"),),
+                    primary_event="Iranian strike on Tel Aviv",
+                ),
+                "story-haifa": StorySemanticExtraction(
+                    story_id="story-haifa",
+                    events=(ExtractedSemanticNode(name="Iranian strike on Haifa Port"),),
+                    nations=(ExtractedSemanticNode(name="Iran"),),
+                    places=(ExtractedSemanticNode(name="Haifa"),),
+                    primary_event="Iranian strike on Haifa Port",
+                ),
+            }
+        )
+
+        KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        ).process_stories([story_tel_aviv, story_haifa])
+
+        events = repository.list_nodes(kind="event", status=None)
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].display_name, "Iranian strikes")
+        self.assertEqual(events[0].status, "active")
+        self.assertEqual(
+            {
+                assignment.node_id
+                for assignment in repository.story_nodes.values()
+                if repository.nodes[assignment.node_id].kind == "event"
+            },
+            {events[0].node_id},
+        )
+
+    def test_named_operation_events_activate_immediately_as_parent_style_nodes(self):
+        repository = FakeRepository()
+        vector_store = FakeVectorStore()
+        embedder = FakeEmbedder()
+        settings = build_settings()
+        story = build_story("story-operation", channel_id=100, minute=0, combined_text="Operation True Promise wave")
+        repository.save_story_units([story])
+        vector_store.upsert_story_embeddings([StoryEmbeddingRecord(story.story_id, [0.0, 1.0, 0.0], 100, story.timestamp_start)])
+
+        extractor = FakeExtractor(
+            {
+                "story-operation": StorySemanticExtraction(
+                    story_id="story-operation",
+                    events=(ExtractedSemanticNode(name="16th wave of Operation True Promise 4 retaliatory strikes"),),
+                    primary_event="16th wave of Operation True Promise 4 retaliatory strikes",
+                )
+            }
+        )
+
+        KGNodeProcessingService(
+            repository=repository,
+            vector_store=vector_store,
+            embedder=embedder,
+            extractor=extractor,
+            settings=settings,
+        ).process_stories([story])
+
+        operation = repository.get_node_by_slug(kind="event", slug="operation-true-promise-4")
+        assert operation is not None
+        self.assertEqual(operation.status, "active")
+        self.assertEqual(
+            [node.display_name for node in repository.list_nodes(kind="event", status=None)],
+            ["Operation True Promise 4"],
+        )
 
     def test_node_processing_merges_person_middle_initial_variants(self):
         repository = FakeRepository()

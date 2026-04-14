@@ -19,6 +19,7 @@ from telegram_scraper.kg.models import (
     NodeKind,
     NodeListEntry,
     NodeRelation,
+    NodeSupportRecord,
     NodeStory,
     RawMessage,
     RelatedNode,
@@ -244,6 +245,126 @@ SCHEMA_STATEMENTS = [
     """,
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_node_heat_view_node ON node_heat_view (node_id)",
     "CREATE INDEX IF NOT EXISTS idx_node_heat_view_kind ON node_heat_view (kind)",
+    # ============================================================
+    # Message-atomic pipeline tables (Session 1 of refactor).
+    # These coexist with story_* tables; Session 2 will drop the old ones.
+    # ============================================================
+    "ALTER TABLE raw_messages ADD COLUMN IF NOT EXISTS is_extracted BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE raw_messages ADD COLUMN IF NOT EXISTS is_embedded BOOLEAN NOT NULL DEFAULT FALSE",
+    "CREATE INDEX IF NOT EXISTS idx_raw_messages_extraction_pending ON raw_messages (channel_id, message_id) WHERE NOT is_extracted",
+    "CREATE INDEX IF NOT EXISTS idx_raw_messages_embedding_pending ON raw_messages (channel_id, message_id) WHERE NOT is_embedded",
+    """
+    CREATE TABLE IF NOT EXISTS message_embeddings (
+        channel_id BIGINT NOT NULL,
+        message_id BIGINT NOT NULL,
+        embedding_version TEXT NOT NULL DEFAULT 'text-embedding-3-small',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (channel_id, message_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS message_semantics (
+        channel_id BIGINT NOT NULL,
+        message_id BIGINT NOT NULL,
+        extraction_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+        primary_event_node_id UUID REFERENCES nodes(node_id) ON DELETE SET NULL,
+        extracted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (channel_id, message_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS message_nodes (
+        channel_id BIGINT NOT NULL,
+        message_id BIGINT NOT NULL,
+        node_id UUID NOT NULL REFERENCES nodes(node_id) ON DELETE CASCADE,
+        confidence DOUBLE PRECISION NOT NULL,
+        assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        is_primary_event BOOLEAN NOT NULL DEFAULT FALSE,
+        PRIMARY KEY (channel_id, message_id, node_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_message_nodes_node ON message_nodes (node_id)",
+    "CREATE INDEX IF NOT EXISTS idx_message_nodes_node_assigned_at ON message_nodes (node_id, assigned_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_message_nodes_node_primary ON message_nodes (node_id, is_primary_event)",
+    """
+    CREATE TABLE IF NOT EXISTS message_matches (
+        channel_id BIGINT NOT NULL,
+        message_id BIGINT NOT NULL,
+        matched_channel_id BIGINT NOT NULL,
+        matched_message_id BIGINT NOT NULL,
+        similarity_score DOUBLE PRECISION NOT NULL,
+        timestamp_delta_seconds INT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (channel_id, message_id, matched_channel_id, matched_message_id),
+        CHECK (NOT (channel_id = matched_channel_id AND message_id = matched_message_id))
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_message_matches_matched ON message_matches (matched_channel_id, matched_message_id)",
+    # Message-atomic materialized view for heat.
+    # Uses message_nodes joined to raw_messages.timestamp instead of story_nodes/story_units.
+    # Session 2 will replace node_heat_view with this one.
+    "DROP MATERIALIZED VIEW IF EXISTS message_heat_view CASCADE",
+    """
+    CREATE MATERIALIZED VIEW IF NOT EXISTS message_heat_view AS
+    WITH RECURSIVE
+    windows AS (
+        SELECT unnest(ARRAY[1, 3, 5, 7, 14, 31]) AS days
+    ),
+    window_totals AS (
+        SELECT w.days, COUNT(*) AS total
+        FROM windows w
+        JOIN raw_messages rm ON rm.timestamp >= NOW() - (w.days || ' days')::INTERVAL
+        GROUP BY w.days
+    ),
+    node_descendants AS (
+        SELECT node_id AS root_id, node_id AS descendant_id, 0 AS depth
+        FROM nodes
+        WHERE status = 'active'
+
+        UNION ALL
+
+        SELECT nd.root_id, n.node_id, nd.depth + 1
+        FROM node_descendants nd
+        JOIN nodes n ON n.parent_node_id = nd.descendant_id
+        WHERE n.status = 'active' AND nd.depth < 10
+    ),
+    window_counts AS (
+        SELECT
+            nd.root_id AS node_id,
+            w.days,
+            COUNT(DISTINCT (mn.channel_id, mn.message_id)) AS cnt
+        FROM node_descendants nd
+        JOIN message_nodes mn ON mn.node_id = nd.descendant_id
+        JOIN raw_messages rm
+            ON rm.channel_id = mn.channel_id AND rm.message_id = mn.message_id
+        CROSS JOIN windows w
+        WHERE rm.timestamp >= NOW() - (w.days || ' days')::INTERVAL
+        GROUP BY nd.root_id, w.days
+    ),
+    base AS (
+        SELECT
+            n.node_id,
+            n.kind,
+            n.slug,
+            n.display_name,
+            n.article_count,
+            COALESCE(MAX(CASE WHEN wc.days = 1  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_1d,
+            COALESCE(MAX(CASE WHEN wc.days = 3  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_3d,
+            COALESCE(MAX(CASE WHEN wc.days = 5  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_5d,
+            COALESCE(MAX(CASE WHEN wc.days = 7  THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_7d,
+            COALESCE(MAX(CASE WHEN wc.days = 14 THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_14d,
+            COALESCE(MAX(CASE WHEN wc.days = 31 THEN wc.cnt::DOUBLE PRECISION / NULLIF(wt.total, 0) END), 0) AS heat_31d
+        FROM nodes n
+        LEFT JOIN window_counts wc ON wc.node_id = n.node_id
+        LEFT JOIN window_totals wt ON wt.days = wc.days
+        WHERE n.status = 'active'
+        GROUP BY n.node_id, n.kind, n.slug, n.display_name, n.article_count
+    )
+    SELECT * FROM base
+    """,
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_message_heat_view_node ON message_heat_view (node_id)",
+    "CREATE INDEX IF NOT EXISTS idx_message_heat_view_kind ON message_heat_view (kind)",
 ]
 
 
@@ -368,6 +489,48 @@ class PostgresStoryRepository:
                 )
                 rows = cursor.fetchall()
         return [_channel_summary_from_row(row) for row in rows]
+
+    def list_candidate_channel_ids(self) -> list[int]:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT DISTINCT su.channel_id
+                    FROM story_nodes sn
+                    JOIN nodes n ON n.node_id = sn.node_id
+                    JOIN story_units su ON su.story_id = sn.story_id
+                    WHERE n.status = 'candidate'
+                    ORDER BY su.channel_id
+                    """
+                )
+                rows = cursor.fetchall()
+        return [int(row[0]) for row in rows]
+
+    def list_node_ids_for_channels(
+        self,
+        *,
+        channel_ids: Sequence[int],
+        status: str | None = "active",
+    ) -> list[str]:
+        if not channel_ids:
+            return []
+        query = """
+            SELECT DISTINCT sn.node_id
+            FROM story_nodes sn
+            JOIN story_units su ON su.story_id = sn.story_id
+            JOIN nodes n ON n.node_id = sn.node_id
+            WHERE su.channel_id = ANY(%s)
+        """
+        params: list[Any] = [list(channel_ids)]
+        if status is not None:
+            query += " AND n.status = %s"
+            params.append(status)
+        query += " ORDER BY sn.node_id"
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+        return [str(row[0]) for row in rows]
 
     def upsert_raw_messages(self, messages: Sequence[RawMessage]) -> None:
         if not messages:
@@ -1008,21 +1171,79 @@ class PostgresStoryRepository:
                 rows = cursor.fetchall()
         return [_node_from_row(row) for row in rows]
 
-    def get_node_by_slug(self, *, kind: NodeKind, slug: str) -> Node | None:
+    def get_node_by_slug(self, *, kind: NodeKind, slug: str, status: str | None = "active") -> Node | None:
+        query = """
+            SELECT node_id, kind, slug, display_name, canonical_name, normalized_name, summary,
+                   aliases, status, label_source, article_count, created_at, last_updated,
+                   event_start_at, event_end_at, parent_node_id
+            FROM nodes
+            WHERE kind = %s AND slug = %s
+        """
+        params: list[Any] = [kind, slug]
+        if status is not None:
+            query += " AND status = %s"
+            params.append(status)
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    query,
+                    params,
+                )
+                row = cursor.fetchone()
+        return _node_from_row(row) if row is not None else None
+
+    def get_node_support_records(self, node_ids: Sequence[str]) -> list[NodeSupportRecord]:
+        if not node_ids:
+            return []
         with self._connect() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT node_id, kind, slug, display_name, canonical_name, normalized_name, summary,
-                           aliases, status, label_source, article_count, created_at, last_updated,
-                           event_start_at, event_end_at, parent_node_id
-                    FROM nodes
-                    WHERE kind = %s AND slug = %s
+                    WITH story_support AS (
+                        SELECT
+                            sn.node_id,
+                            COUNT(DISTINCT sn.story_id)::INT AS story_count,
+                            COUNT(DISTINCT su.channel_id)::INT AS channel_count,
+                            ARRAY_AGG(DISTINCT su.channel_id ORDER BY su.channel_id) AS channel_ids
+                        FROM story_nodes sn
+                        JOIN story_units su ON su.story_id = sn.story_id
+                        WHERE sn.node_id = ANY(%s)
+                        GROUP BY sn.node_id
+                    ),
+                    cross_support AS (
+                        SELECT
+                            sn.node_id,
+                            BOOL_OR(cc.story_id IS NOT NULL) AS has_cross_channel_match
+                        FROM story_nodes sn
+                        LEFT JOIN cross_channel_story_matches cc
+                          ON cc.story_id = sn.story_id OR cc.matched_story_id = sn.story_id
+                        WHERE sn.node_id = ANY(%s)
+                        GROUP BY sn.node_id
+                    )
+                    SELECT
+                        n.node_id,
+                        COALESCE(ss.story_count, 0),
+                        COALESCE(ss.channel_count, 0),
+                        COALESCE(cs.has_cross_channel_match, FALSE),
+                        COALESCE(ss.channel_ids, ARRAY[]::BIGINT[])
+                    FROM nodes n
+                    LEFT JOIN story_support ss ON ss.node_id = n.node_id
+                    LEFT JOIN cross_support cs ON cs.node_id = n.node_id
+                    WHERE n.node_id = ANY(%s)
                     """,
-                    (kind, slug),
+                    (list(node_ids), list(node_ids), list(node_ids)),
                 )
-                row = cursor.fetchone()
-        return _node_from_row(row) if row is not None else None
+                rows = cursor.fetchall()
+        return [
+            NodeSupportRecord(
+                node_id=str(row[0]),
+                story_count=int(row[1] or 0),
+                channel_count=int(row[2] or 0),
+                has_cross_channel_match=bool(row[3]),
+                channel_ids=tuple(int(value) for value in (row[4] or ())),
+            )
+            for row in rows
+        ]
 
     def save_node_relations(self, relations: Sequence[NodeRelation]) -> None:
         if not relations:
@@ -1315,9 +1536,18 @@ class PostgresStoryRepository:
     def delete_nodes(self, node_ids: Sequence[str]) -> None:
         if not node_ids:
             return
+        node_id_list = list(node_ids)
         with self._connect() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM nodes WHERE node_id = ANY(%s)", (list(node_ids),))
+                cursor.execute(
+                    """
+                    UPDATE story_semantics
+                    SET primary_event_node_id = NULL
+                    WHERE primary_event_node_id = ANY(%s)
+                    """,
+                    (node_id_list,),
+                )
+                cursor.execute("DELETE FROM nodes WHERE node_id = ANY(%s)", (node_id_list,))
             connection.commit()
 
     def clear_semantic_state(self, *, channel_id: int | None = None) -> tuple[list[str], list[str], list[str]]:
@@ -1406,6 +1636,14 @@ class PostgresStoryRepository:
                     deleted_node_ids = [node_id for node_id, _kind in deleted_rows]
                     if deleted_node_ids:
                         cursor.execute("DELETE FROM theme_daily_stats WHERE node_id = ANY(%s)", (deleted_node_ids,))
+                        cursor.execute(
+                            """
+                            UPDATE story_semantics
+                            SET primary_event_node_id = NULL
+                            WHERE primary_event_node_id = ANY(%s)
+                            """,
+                            (deleted_node_ids,),
+                        )
                         cursor.execute("DELETE FROM nodes WHERE node_id = ANY(%s)", (deleted_node_ids,))
                 else:
                     deleted_rows = []
@@ -1478,7 +1716,7 @@ class PostgresStoryRepository:
                     SELECT tds.node_id, n.slug, n.display_name, tds.date, tds.article_count, tds.centroid_drift
                     FROM theme_daily_stats tds
                     JOIN nodes n ON n.node_id = tds.node_id
-                    WHERE n.kind = 'theme' AND n.slug = %s
+                    WHERE n.kind = 'theme' AND n.slug = %s AND n.status = 'active'
                     ORDER BY tds.date
                     """,
                     (slug,),

@@ -4,11 +4,9 @@ from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
-import hashlib
 import time
 import re
-from typing import Callable, Iterable, Literal, Sequence
-from uuid import uuid4
+from typing import Callable, Literal, Sequence
 
 from telegram_scraper.chat_discovery import discover_chats, filter_chats, resolve_chat
 from telegram_scraper.config import Settings
@@ -17,11 +15,16 @@ from telegram_scraper.telegram_client import TelegramAccountClient, TelegramMess
 
 from telegram_scraper.kg.extraction import preferred_story_text, safe_story_text
 from telegram_scraper.kg.event_hierarchy import (
+    ACTOR_ADJECTIVES,
     KGEventHierarchyService,
     _detect_generic_family,
     _extract_label_actor,
+    _extract_operation_parent_display,
+    _family_display,
     _normalize_place_scope,
+    _parse_launch_scope,
     _parse_place_scope,
+    _titleish,
     build_event_hierarchy_snapshot,
 )
 from telegram_scraper.kg.interfaces import Embedder, MessageTranslator, RawMessageStream, SemanticExtractor, StoryRepository, VectorStore
@@ -37,6 +40,7 @@ from telegram_scraper.kg.models import (
     NodeKind,
     NodeListEntry,
     NodeRelation,
+    NodeSupportRecord,
     NodeStory,
     RawMessage,
     RelatedNode,
@@ -49,6 +53,12 @@ from telegram_scraper.kg.models import (
     NodeHeatSnapshot,
     ThemeHistoryPoint,
 )
+from telegram_scraper.kg.node_resolver import (
+    NODE_KINDS,
+    NodeResolver,
+    iter_extraction_candidates,
+    serialize_extraction,
+)
 from telegram_scraper.kg.normalization import normalize_message_record
 from telegram_scraper.kg.segmentation import StorySegmenter, default_channel_profile
 from telegram_scraper.utils import ensure_utc
@@ -56,7 +66,6 @@ from telegram_scraper.utils import ensure_utc
 from telegram_scraper.kg.config import KGSettings
 
 
-NODE_KINDS: tuple[NodeKind, ...] = ("event", "person", "nation", "org", "place", "theme")
 ProjectionPolicy = Literal["per_batch", "end_of_run", "manual"]
 REPAIR_RAW_MESSAGE_FLUSH_SIZE = 500
 
@@ -120,16 +129,141 @@ def _normalize_name(value: str) -> str:
     return re.sub(r"\s+", " ", normalized).strip()
 
 
-def _slugify(value: str) -> str:
-    normalized = _normalize_name(value)
-    if not normalized:
-        return "node"
-    return normalized.replace(" ", "-")
+def _dedupe_aliases(*values: str) -> tuple[str, ...]:
+    seen: set[str] = set()
+    aliases: list[str] = []
+    for value in values:
+        stripped = value.strip()
+        normalized = _normalize_name(stripped)
+        if not stripped or not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        aliases.append(stripped)
+    return tuple(aliases)
 
 
-def _stable_hash(*parts: object) -> str:
-    raw = "||".join(str(part or "") for part in parts)
-    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:8]
+def _clean_candidate(candidate: ExtractedSemanticNode) -> ExtractedSemanticNode:
+    summary = candidate.summary.strip() if candidate.summary else None
+    return ExtractedSemanticNode(
+        name=candidate.name.strip(),
+        summary=summary or None,
+        aliases=_dedupe_aliases(*candidate.aliases),
+        start_at=candidate.start_at,
+        end_at=candidate.end_at,
+    )
+
+
+def _candidate_embedding_text(candidate: ExtractedSemanticNode, *, story: StoryUnit, max_chars: int) -> str:
+    context = _story_text(story).strip()
+    if len(context) > 800:
+        context = context[-800:]
+    parts = [candidate.name.strip()]
+    if candidate.summary:
+        parts.append(candidate.summary.strip())
+    if context:
+        parts.append(f"Context: {context}")
+    return _embedding_text("\n".join(part for part in parts if part), max_chars=max_chars)
+
+
+def _event_actor_from_extraction(
+    extraction: StorySemanticExtraction,
+    *,
+    normalized_label: str,
+) -> tuple[str, str] | None:
+    for item in extraction.nations:
+        for value in (item.name, *item.aliases):
+            normalized = _normalize_name(value)
+            if normalized and normalized in normalized_label:
+                return normalized, ACTOR_ADJECTIVES.get(normalized, value.strip())
+    for item in extraction.orgs:
+        for value in (item.name, *item.aliases):
+            normalized = _normalize_name(value)
+            if normalized and normalized in normalized_label:
+                return normalized, value.strip()
+    return None
+
+
+def _event_place_from_extraction(
+    extraction: StorySemanticExtraction,
+    *,
+    normalized_label: str,
+) -> tuple[str, str] | None:
+    for item in extraction.places:
+        for value in (item.name, *item.aliases):
+            normalized = _normalize_name(value)
+            if not normalized or normalized not in normalized_label:
+                continue
+            place_scope = _normalize_place_scope(value)
+            if place_scope is not None:
+                return place_scope
+    return None
+
+
+def _canonicalize_event_candidate(
+    candidate: ExtractedSemanticNode,
+    *,
+    extraction: StorySemanticExtraction,
+) -> tuple[ExtractedSemanticNode, bool]:
+    cleaned = _clean_candidate(candidate)
+    normalized_name = _normalize_name(cleaned.name)
+    if not normalized_name:
+        return cleaned, False
+
+    operation_display = _extract_operation_parent_display(cleaned.name)
+    if operation_display:
+        return (
+            ExtractedSemanticNode(
+                name=operation_display,
+                summary=cleaned.summary if _normalize_name(operation_display) == normalized_name else None,
+                aliases=_dedupe_aliases(*cleaned.aliases, cleaned.name if _normalize_name(operation_display) != normalized_name else ""),
+                start_at=cleaned.start_at,
+                end_at=cleaned.end_at,
+            ),
+            True,
+        )
+
+    family = _detect_generic_family(cleaned.name)
+    if family is None:
+        return cleaned, False
+
+    actor = _extract_label_actor(cleaned.name) or _event_actor_from_extraction(extraction, normalized_label=normalized_name)
+    if family in {"airstrike", "strike"} and actor is None:
+        return cleaned, False
+
+    source_label: str | None = None
+    place_scope: tuple[str, str] | None = None
+    if family == "launch":
+        source_scope, target_scope = _parse_launch_scope(cleaned.name)
+        if source_scope:
+            source_label = _titleish(source_scope)
+        if target_scope:
+            place_scope = _normalize_place_scope(target_scope)
+    if place_scope is None:
+        parsed_place = _parse_place_scope(cleaned.name)
+        if parsed_place:
+            place_scope = _normalize_place_scope(parsed_place)
+    if place_scope is None:
+        place_scope = _event_place_from_extraction(extraction, normalized_label=normalized_name)
+
+    display_name = _family_display(
+        family=family,
+        actor_label=actor[1] if actor is not None else None,
+        place_label=place_scope[1] if place_scope is not None else None,
+        source_label=source_label,
+    )
+    if not display_name:
+        return cleaned, False
+
+    return (
+        ExtractedSemanticNode(
+            name=display_name,
+            summary=None,
+            aliases=_dedupe_aliases(*cleaned.aliases, cleaned.name if _normalize_name(display_name) != normalized_name else ""),
+            start_at=cleaned.start_at,
+            end_at=cleaned.end_at,
+        ),
+        True,
+    )
 
 
 def _channel_title_for_story(channel_id: int, profile: ChannelProfile | None) -> str:
@@ -166,47 +300,6 @@ def _ordered_counter_labels(counter: Counter[str]) -> tuple[str, ...]:
             key=lambda item: (-item[1], item[0].lower()),
         )
     )
-
-
-def _person_middle_initial_variants(value: str) -> set[str]:
-    normalized = _normalize_name(value)
-    if not normalized:
-        return set()
-    tokens = normalized.split()
-    if len(tokens) < 3:
-        return set()
-    middle = tokens[1:-1]
-    if not middle or all(len(token) > 1 for token in middle):
-        return set()
-    collapsed = [tokens[0], *[token for token in middle if len(token) > 1], tokens[-1]]
-    collapsed = [token for token in collapsed if token]
-    if len(collapsed) < 2:
-        return set()
-    return {" ".join(collapsed)}
-
-
-def _match_keys_for_text(kind: NodeKind, value: str) -> set[str]:
-    normalized = _normalize_name(value)
-    if not normalized:
-        return set()
-    keys = {normalized}
-    if kind == "person":
-        keys.update(_person_middle_initial_variants(normalized))
-    return keys
-
-
-def _candidate_match_keys(kind: NodeKind, candidate: ExtractedSemanticNode) -> set[str]:
-    keys: set[str] = set()
-    for value in (candidate.name, *candidate.aliases):
-        keys.update(_match_keys_for_text(kind, value))
-    return keys
-
-
-def _node_match_keys(kind: NodeKind, node: Node) -> set[str]:
-    keys = _match_keys_for_text(kind, node.normalized_name)
-    for alias in node.aliases:
-        keys.update(_match_keys_for_text(kind, alias))
-    return keys
 
 
 def _implicit_parent_actor_keys(node: Node) -> set[str]:
@@ -319,76 +412,8 @@ def _build_event_child_summary(
     )
 
 
-def _candidate_text(candidate: ExtractedSemanticNode) -> str:
-    parts = [candidate.name.strip()]
-    if candidate.summary:
-        parts.append(candidate.summary.strip())
-    return "\n".join(part for part in parts if part)
-
-
-def _kind_candidates(extraction: StorySemanticExtraction) -> dict[NodeKind, tuple[ExtractedSemanticNode, ...]]:
-    return {
-        "event": extraction.events,
-        "person": extraction.people,
-        "nation": extraction.nations,
-        "org": extraction.orgs,
-        "place": extraction.places,
-        "theme": extraction.themes,
-    }
-
-
-def _dedupe_candidates(kind: NodeKind, candidates: Iterable[ExtractedSemanticNode]) -> tuple[ExtractedSemanticNode, ...]:
-    seen: set[str] = set()
-    ordered: list[ExtractedSemanticNode] = []
-    for candidate in candidates:
-        if kind == "person":
-            keys = _candidate_match_keys(kind, candidate)
-            if not keys or keys & seen:
-                continue
-            seen.update(keys)
-        else:
-            key = _normalize_name(candidate.name)
-            if not key or key in seen:
-                continue
-            seen.add(key)
-        ordered.append(candidate)
-    return tuple(ordered)
-
-
-def _serialize_extraction(extraction: StorySemanticExtraction) -> dict[str, object]:
-    def _payload(items: Sequence[ExtractedSemanticNode]) -> list[dict[str, object]]:
-        return [
-            {
-                "name": item.name,
-                "summary": item.summary,
-                "aliases": list(item.aliases),
-                "start_at": item.start_at.isoformat() if item.start_at is not None else None,
-                "end_at": item.end_at.isoformat() if item.end_at is not None else None,
-            }
-            for item in items
-        ]
-
-    return {
-        "events": _payload(extraction.events),
-        "people": _payload(extraction.people),
-        "nations": _payload(extraction.nations),
-        "orgs": _payload(extraction.orgs),
-        "places": _payload(extraction.places),
-        "themes": _payload(extraction.themes),
-        "primary_event": extraction.primary_event,
-    }
-
-
 def _canonical_pair(left: str, right: str) -> tuple[str, str]:
     return (left, right) if left < right else (right, left)
-
-
-def _name_overlap(left: str, right: str) -> float:
-    left_tokens = set(left.split())
-    right_tokens = set(right.split())
-    if not left_tokens or not right_tokens:
-        return 0.0
-    return len(left_tokens & right_tokens) / max(len(left_tokens), len(right_tokens))
 
 
 def _chunked(items: Sequence[StoryUnit], size: int) -> list[list[StoryUnit]]:
@@ -529,6 +554,7 @@ class _ProcessingState:
     node_cache: dict[NodeKind, dict[str, Node]]
     theme_centroids: dict[str, list[float]]
     event_centroids: dict[str, list[float]]
+    support_records: dict[str, NodeSupportRecord]
     pending_nodes: dict[str, Node]
     pending_assignments: list[StoryNodeAssignment]
     pending_semantics: list[StorySemanticRecord]
@@ -541,6 +567,15 @@ class _ProcessingState:
     cross_channel_matches: int = 0
     relations_created: int = 0
     theme_stats_written: int = 0
+
+
+@dataclass(frozen=True)
+class _PreparedCandidate:
+    kind: NodeKind
+    source_name: str
+    candidate: ExtractedSemanticNode
+    embedding: list[float]
+    activate_immediately: bool
 
 
 class KGBackfillService:
@@ -676,8 +711,13 @@ class KGNodeProjectionService:
     def rebuild_node_relations(self) -> int:
         story_nodes: dict[str, list[StoryNodeAssignment]] = {}
         story_units = {story.story_id: story for story in self.repository.list_story_units()}
+        active_node_ids = {node.node_id for node in self.repository.list_nodes(status="active")}
         for story_id in story_units:
-            assignments = self.repository.get_story_node_assignments(story_id)
+            assignments = [
+                assignment
+                for assignment in self.repository.get_story_node_assignments(story_id)
+                if assignment.node_id in active_node_ids
+            ]
             if assignments:
                 story_nodes[story_id] = assignments
 
@@ -823,6 +863,16 @@ class KGNodeProcessingService:
         failures = 0
         processed = 0
         state = self._initialize_processing_state(ordered_stories)
+        resolver = NodeResolver(
+            settings=self.settings,
+            node_cache=state.node_cache,
+            support_records=state.support_records,
+            theme_centroids=state.theme_centroids,
+            event_centroids=state.event_centroids,
+            pending_theme_centroids=state.pending_theme_centroids,
+            pending_event_centroids=state.pending_event_centroids,
+            utc_now=_utc_now,
+        )
         for extraction_batch in _chunked(
             ordered_stories,
             max(options.extraction_batch_size * max(options.extraction_workers, 1), 1),
@@ -834,6 +884,7 @@ class KGNodeProcessingService:
                     story=story,
                     extraction=extraction,
                     state=state,
+                    resolver=resolver,
                     enable_cross_channel_matching=options.enable_cross_channel_matching,
                 )
                 processed += 1
@@ -884,7 +935,7 @@ class KGNodeProcessingService:
 
     def _load_node_cache(self) -> dict[NodeKind, dict[str, Node]]:
         cache: dict[NodeKind, dict[str, Node]] = {kind: {} for kind in NODE_KINDS}
-        for node in self.repository.list_nodes():
+        for node in self.repository.list_nodes(status=None):
             cache[node.kind][node.node_id] = node
         return cache
 
@@ -910,6 +961,10 @@ class KGNodeProcessingService:
         node_cache = self._load_node_cache()
         theme_ids = tuple(node.node_id for node in node_cache["theme"].values())
         event_ids = tuple(node.node_id for node in node_cache["event"].values())
+        support_records = {
+            record.node_id: record
+            for record in self.repository.get_node_support_records(theme_ids + event_ids)
+        }
         return _ProcessingState(
             story_embeddings=story_embeddings,
             node_cache=node_cache,
@@ -922,6 +977,7 @@ class KGNodeProcessingService:
             pending_story_embeddings=pending_story_embeddings,
             pending_theme_centroids={},
             pending_event_centroids={},
+            support_records=support_records,
         )
 
     def _extract_stories(
@@ -966,53 +1022,107 @@ class KGNodeProcessingService:
         except Exception:
             return StorySemanticExtraction(story_id=story.story_id), True
 
+    def _prepare_story_candidates(
+        self,
+        *,
+        story: StoryUnit,
+        extraction: StorySemanticExtraction,
+    ) -> list[_PreparedCandidate]:
+        prepared: list[_PreparedCandidate] = []
+        embedding_texts: list[str] = []
+        embedding_indexes: list[int] = []
+
+        for kind, source_candidate in iter_extraction_candidates(extraction):
+            candidate = _clean_candidate(source_candidate)
+            activate_immediately = kind not in {"event", "theme"}
+            if kind == "event":
+                candidate, activate_immediately = _canonicalize_event_candidate(candidate, extraction=extraction)
+            elif kind == "theme":
+                activate_immediately = False
+
+            prepared.append(
+                _PreparedCandidate(
+                    kind=kind,
+                    source_name=source_candidate.name,
+                    candidate=candidate,
+                    embedding=[],
+                    activate_immediately=activate_immediately,
+                )
+            )
+            if kind in {"event", "theme"}:
+                embedding_indexes.append(len(prepared) - 1)
+                embedding_texts.append(
+                    _candidate_embedding_text(
+                        candidate,
+                        story=story,
+                        max_chars=self.settings.semantic_max_chars,
+                    )
+                )
+
+        embeddings = _safe_embed_texts(self.embedder, embedding_texts)
+        for index, embedding in zip(embedding_indexes, embeddings):
+            prepared[index] = replace(prepared[index], embedding=embedding)
+        return prepared
+
+    def _story_node_ids_for_support(self, *, story_id: str, state: _ProcessingState) -> list[str]:
+        pending = state.pending_story_embeddings.get(story_id)
+        if pending is not None and pending.node_ids:
+            return list(pending.node_ids)
+        return self.repository.list_story_node_ids(story_id)
+
     def _process_story(
         self,
         *,
         story: StoryUnit,
         extraction: StorySemanticExtraction,
         state: _ProcessingState,
+        resolver: NodeResolver,
         enable_cross_channel_matching: bool,
     ) -> None:
         embedding = state.story_embeddings.get(story.story_id, [])
         primary_event_key = _normalize_name(extraction.primary_event or "")
         if extraction.events and not primary_event_key:
             primary_event_key = _normalize_name(extraction.events[0].name)
+        prepared_candidates = self._prepare_story_candidates(story=story, extraction=extraction)
 
         assigned_node_ids: set[str] = set()
         assignments: list[StoryNodeAssignment] = []
         updated_nodes: list[Node] = []
         primary_event_node_id: str | None = None
 
-        for kind in NODE_KINDS:
-            for candidate in _dedupe_candidates(kind, _kind_candidates(extraction)[kind]):
-                node, confidence, created = self._resolve_candidate(
-                    story=story,
-                    kind=kind,
-                    candidate=candidate,
-                    embedding=embedding,
-                    state=state,
-                )
-                if node.node_id in assigned_node_ids:
-                    if kind == "event" and _normalize_name(candidate.name) == primary_event_key:
-                        primary_event_node_id = node.node_id
-                    continue
-                assigned_node_ids.add(node.node_id)
-                updated_nodes.append(node)
-                is_primary_event = kind == "event" and _normalize_name(candidate.name) == primary_event_key
-                if is_primary_event:
+        for prepared in prepared_candidates:
+            kind = prepared.kind
+            candidate = prepared.candidate
+            resolved = resolver.resolve(
+                kind=kind,
+                candidate=candidate,
+                embedding=prepared.embedding,
+                story_id=story.story_id,
+                channel_id=story.channel_id,
+                story_timestamp=story.timestamp_end,
+                activate_immediately=prepared.activate_immediately,
+            )
+            node = resolved.node
+            if node.node_id in assigned_node_ids:
+                if kind == "event" and _normalize_name(prepared.source_name) == primary_event_key:
                     primary_event_node_id = node.node_id
-                assignments.append(
-                    StoryNodeAssignment(
-                        story_id=story.story_id,
-                        node_id=node.node_id,
-                        confidence=confidence,
-                        assigned_at=_utc_now(),
-                        is_primary_event=is_primary_event,
-                    )
+                continue
+            assigned_node_ids.add(node.node_id)
+            updated_nodes.append(node)
+            is_primary_event = kind == "event" and _normalize_name(prepared.source_name) == primary_event_key
+            if is_primary_event:
+                primary_event_node_id = node.node_id
+            assignments.append(
+                StoryNodeAssignment(
+                    story_id=story.story_id,
+                    node_id=node.node_id,
+                    confidence=resolved.confidence,
+                    assigned_at=_utc_now(),
+                    is_primary_event=is_primary_event,
                 )
-                if created:
-                    state.nodes_created += 1
+            )
+            if resolved.created:
+                state.nodes_created += 1
 
         if not primary_event_node_id and extraction.events and assignments:
             node_lookup = {node.node_id: node for node in updated_nodes}
@@ -1029,7 +1139,7 @@ class KGNodeProcessingService:
         state.pending_semantics.append(
             StorySemanticRecord(
                 story_id=story.story_id,
-                extraction_payload=_serialize_extraction(extraction),
+                extraction_payload=serialize_extraction(extraction),
                 primary_event_node_id=primary_event_node_id,
                 processed_at=_utc_now(),
                 updated_at=_utc_now(),
@@ -1049,238 +1159,12 @@ class KGNodeProcessingService:
                 matches = self._build_cross_channel_matches(story=story, embedding=embedding)
                 state.pending_cross_channel_matches.extend(matches)
                 state.cross_channel_matches += len(matches)
-
-    def _resolve_candidate(
-        self,
-        *,
-        story: StoryUnit,
-        kind: NodeKind,
-        candidate: ExtractedSemanticNode,
-        embedding: list[float],
-        state: _ProcessingState,
-    ) -> tuple[Node, float, bool]:
-        existing = self._match_existing_node(kind=kind, candidate=candidate, embedding=embedding, state=state)
-        if existing is not None:
-            updated = self._apply_candidate(existing, candidate=candidate, last_updated=story.timestamp_end)
-            state.node_cache[kind][updated.node_id] = updated
-            self._upsert_centroid(
-                updated,
-                embedding=embedding,
-                previous_count=max(existing.article_count, 0),
-                state=state,
-            )
-            confidence = 0.99 if existing.normalized_name == _normalize_name(candidate.name) else 0.95
-            if kind in {"theme", "event"} and embedding:
-                confidence = max(confidence, self._similarity_for_node(updated, embedding=embedding, state=state))
-            return updated, confidence, False
-
-        slug = self._unique_slug(
-            kind=kind,
-            display_name=candidate.name,
-            node_cache=state.node_cache,
-            event_start_at=candidate.start_at,
-        )
-        created = Node(
-            node_id=str(uuid4()),
-            kind=kind,
-            slug=slug,
-            display_name=candidate.name.strip(),
-            canonical_name=candidate.name.strip(),
-            normalized_name=_normalize_name(candidate.name),
-            summary=candidate.summary,
-            aliases=tuple(dict.fromkeys(alias.strip() for alias in candidate.aliases if alias.strip())),
-            article_count=1,
-            created_at=_utc_now(),
-            last_updated=story.timestamp_end,
-            event_start_at=ensure_utc(candidate.start_at) if candidate.start_at is not None else None,
-            event_end_at=ensure_utc(candidate.end_at) if candidate.end_at is not None else None,
-        )
-        state.node_cache[kind][created.node_id] = created
-        self._upsert_centroid(created, embedding=embedding, previous_count=0, state=state)
-        return created, 1.0, True
-
-    def _match_existing_node(
-        self,
-        *,
-        kind: NodeKind,
-        candidate: ExtractedSemanticNode,
-        embedding: list[float],
-        state: _ProcessingState,
-    ) -> Node | None:
-        normalized_name = _normalize_name(candidate.name)
-        nodes = list(state.node_cache[kind].values())
-        if kind == "person":
-            candidate_keys = _candidate_match_keys(kind, candidate)
-            for node in nodes:
-                if candidate_keys & _node_match_keys(kind, node):
-                    return node
-        event_parent_ids = {
-            node.parent_node_id
-            for node in nodes
-            if kind == "event" and node.parent_node_id is not None
-        }
-        for node in nodes:
-            if node.normalized_name == normalized_name:
-                if kind != "event" or self._event_within_window(node=node, candidate=candidate):
-                    return node
-        for node in nodes:
-            aliases = {_normalize_name(alias) for alias in node.aliases}
-            if normalized_name in aliases:
-                if kind != "event" or self._event_within_window(node=node, candidate=candidate):
-                    return node
-        if kind == "theme" and embedding:
-            matched_node = self._best_centroid_match(
-                state.theme_centroids,
-                state.node_cache[kind],
-                embedding=embedding,
-                threshold=self.settings.theme_match_threshold,
-            )
-            if matched_node is not None:
-                return matched_node
-        if kind == "event" and embedding:
-            eligible_nodes = {
-                node_id: node
-                for node_id, node in state.node_cache[kind].items()
-                if node.label_source != "hierarchy_group" and node_id not in event_parent_ids
-            }
-            matched_node = self._best_centroid_match(
-                state.event_centroids,
-                eligible_nodes,
-                embedding=embedding,
-                threshold=self.settings.event_match_threshold,
-                event_candidate=candidate,
-            )
-            if (
-                matched_node is not None
-                and self._event_within_window(node=matched_node, candidate=candidate)
-                and _name_overlap(matched_node.normalized_name, normalized_name) >= 0.35
-            ):
-                return matched_node
-        return None
-
-    def _event_within_window(self, *, node: Node, candidate: ExtractedSemanticNode) -> bool:
-        if candidate.start_at is None or node.event_start_at is None:
-            return True
-        return abs((candidate.start_at.date() - node.event_start_at.date()).days) <= self.settings.event_match_window_days
-
-    def _apply_candidate(self, node: Node, *, candidate: ExtractedSemanticNode, last_updated: datetime) -> Node:
-        aliases = list(node.aliases)
-        existing_aliases = {_normalize_name(alias) for alias in aliases}
-        candidate_name = candidate.name.strip()
-        normalized_candidate_name = _normalize_name(candidate_name)
-        if candidate_name and normalized_candidate_name and normalized_candidate_name != node.normalized_name and normalized_candidate_name not in existing_aliases:
-            aliases.append(candidate_name)
-            existing_aliases.add(normalized_candidate_name)
-        for alias in candidate.aliases:
-            if _normalize_name(alias) not in existing_aliases and alias.strip():
-                aliases.append(alias.strip())
-                existing_aliases.add(_normalize_name(alias))
-        event_start = node.event_start_at
-        if candidate.start_at is not None:
-            candidate_start = ensure_utc(candidate.start_at) or candidate.start_at
-            event_start = candidate_start if event_start is None else min(event_start, candidate_start)
-        event_end = node.event_end_at
-        if candidate.end_at is not None:
-            candidate_end = ensure_utc(candidate.end_at) or candidate.end_at
-            event_end = candidate_end if event_end is None else max(event_end, candidate_end)
-        return replace(
-            node,
-            summary=node.summary or candidate.summary,
-            aliases=tuple(aliases),
-            article_count=node.article_count + 1,
-            last_updated=max(node.last_updated or last_updated, last_updated),
-            event_start_at=event_start,
-            event_end_at=event_end,
-        )
-
-    def _unique_slug(
-        self,
-        *,
-        kind: NodeKind,
-        display_name: str,
-        node_cache: dict[NodeKind, dict[str, Node]],
-        event_start_at: datetime | None,
-    ) -> str:
-        base = _slugify(display_name)
-        existing = {node.slug for node in node_cache[kind].values()}
-        if base not in existing:
-            return base
-        if kind == "event" and event_start_at is not None:
-            dated = f"{base}-{event_start_at.date().isoformat()}"
-            if dated not in existing:
-                return dated
-        return f"{base}-{_stable_hash(kind, display_name, event_start_at.isoformat() if event_start_at is not None else '')}"
-
-    def _best_centroid_match(
-        self,
-        centroids: dict[str, list[float]],
-        nodes: dict[str, Node],
-        *,
-        embedding: list[float],
-        threshold: float,
-        event_candidate: ExtractedSemanticNode | None = None,
-    ) -> Node | None:
-        best_node: Node | None = None
-        best_score = threshold
-        for node_id, centroid in centroids.items():
-            if not centroid:
-                continue
-            node = nodes.get(node_id)
-            if node is None:
-                continue
-            if event_candidate is not None and not self._event_within_window(node=node, candidate=event_candidate):
-                continue
-            similarity = cosine_similarity(centroid, embedding)
-            if similarity >= best_score:
-                best_score = similarity
-                best_node = node
-        return best_node
-
-    def _similarity_for_node(self, node: Node, *, embedding: list[float], state: _ProcessingState) -> float:
-        if node.kind == "theme":
-            current = state.theme_centroids.get(node.node_id, [])
-            return cosine_similarity(current, embedding)
-        if node.kind == "event":
-            current = state.event_centroids.get(node.node_id, [])
-            return cosine_similarity(current, embedding)
-        return 0.0
-
-    def _upsert_centroid(
-        self,
-        node: Node,
-        *,
-        embedding: list[float],
-        previous_count: int,
-        state: _ProcessingState,
-    ) -> None:
-        if not embedding or node.kind not in {"theme", "event"}:
-            return
-        if node.kind == "theme":
-            current = state.theme_centroids.get(node.node_id, [])
-        else:
-            current = state.event_centroids.get(node.node_id, [])
-        if current and previous_count > 0:
-            updated = [
-                (current[index] * previous_count + embedding[index]) / (previous_count + 1)
-                for index in range(len(current))
-            ]
-        else:
-            updated = embedding
-        record = NodeCentroidRecord(
-            node_id=node.node_id,
-            kind=node.kind,
-            embedding=updated,
-            display_name=node.display_name,
-            normalized_name=node.normalized_name,
-            event_start_at=node.event_start_at,
-            event_end_at=node.event_end_at,
-        )
-        if node.kind == "theme":
-            state.theme_centroids[node.node_id] = updated
-            state.pending_theme_centroids[node.node_id] = record
-        else:
-            state.event_centroids[node.node_id] = updated
-            state.pending_event_centroids[node.node_id] = record
+                if matches:
+                    support_node_ids = set(assigned_node_ids)
+                    for match in matches:
+                        support_node_ids.update(self._story_node_ids_for_support(story_id=match.matched_story_id, state=state))
+                    for node in resolver.register_cross_channel_support(node_ids=sorted(support_node_ids)):
+                        state.pending_nodes[node.node_id] = node
 
     def _build_cross_channel_matches(self, *, story: StoryUnit, embedding: list[float]) -> list[CrossChannelMatch]:
         matches = self.vector_store.query_story_embeddings(
@@ -2026,10 +1910,16 @@ class KGQueryService:
             stories=story_rows,
         )
 
-    def snapshot_relations(self, *, nodes: Sequence[NodeListEntry]) -> list[NodeRelation]:
+    def snapshot_relations(
+        self,
+        *,
+        nodes: Sequence[NodeListEntry],
+        channel_ids: Sequence[int] | None = None,
+    ) -> list[NodeRelation]:
         if not nodes:
             return []
         selected_ids = {node.node_id for node in nodes}
+        allowed_channel_ids = set(channel_ids or ())
         owners_by_assignment_node: dict[str, set[str]] = defaultdict(set)
         event_snapshot = build_event_hierarchy_snapshot(self.repository) if any(node.kind == "event" for node in nodes) else None
         bulk_node_ids: set[str] = set()
@@ -2057,12 +1947,16 @@ class KGQueryService:
         shared_counts: Counter[tuple[str, str]] = Counter()
         latest_story_at: dict[tuple[str, str], datetime | None] = {}
         for story_id, owner_ids in selected_by_story.items():
+            story = story_lookup.get(story_id)
+            if story is None:
+                continue
+            if allowed_channel_ids and story.channel_id not in allowed_channel_ids:
+                continue
             ordered_ids = sorted(owner_ids)
             for index, left_id in enumerate(ordered_ids):
                 for right_id in ordered_ids[index + 1 :]:
                     pair = _canonical_pair(left_id, right_id)
                     shared_counts[pair] += 1
-                    story = story_lookup.get(story_id)
                     current_latest = latest_story_at.get(pair)
                     if story is not None and (current_latest is None or story.timestamp_end > current_latest):
                         latest_story_at[pair] = story.timestamp_end
