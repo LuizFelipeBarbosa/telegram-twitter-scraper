@@ -10,6 +10,12 @@ from telegram_scraper.analysis.framing import (
     run_rhetoric_framing_analysis,
 )
 from telegram_scraper.analysis.lexical import LexicalShiftConfig, LexicalShiftResult, run_tfidf_shift_analysis
+from telegram_scraper.analysis.media_vs_text import (
+    MediaTextComparisonConfig,
+    MediaTextComparisonResult,
+    run_media_text_comparison_analysis,
+)
+from telegram_scraper.analysis.phrases import PhraseNetworkConfig, PhraseNetworkResult, run_phrase_network_analysis
 from telegram_scraper.analysis.reply_threading import (
     ReplyThreadingConfig,
     ReplyThreadingResult,
@@ -25,10 +31,14 @@ from telegram_scraper.analysis.topics import TopicModelingConfig, TopicModelingR
 __all__ = [
     "LexicalShiftConfig",
     "LexicalShiftResult",
+    "MediaTextComparisonConfig",
+    "MediaTextComparisonResult",
     "MessagingCadenceConfig",
     "MessagingCadenceResult",
     "NamedEntityConfig",
     "NamedEntityResult",
+    "PhraseNetworkConfig",
+    "PhraseNetworkResult",
     "ReplyThreadingConfig",
     "ReplyThreadingResult",
     "RhetoricFramingConfig",
@@ -37,8 +47,10 @@ __all__ = [
     "SentimentEmotionResult",
     "TopicModelingConfig",
     "TopicModelingResult",
+    "run_media_text_comparison_analysis",
     "run_messaging_cadence_analysis",
     "run_named_entity_analysis",
+    "run_phrase_network_analysis",
     "run_reply_threading_analysis",
     "run_rhetoric_framing_analysis",
     "run_sentiment_emotion_analysis",

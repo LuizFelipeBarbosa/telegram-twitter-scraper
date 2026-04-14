@@ -3,14 +3,15 @@
 This repository now has one supported purpose:
 
 - export Telegram account chats to Markdown plus a local SQLite message cache
-- inspect channel messages in a notebook-only workflow that fetches, translates, embeds, and analyzes messages entirely in memory
+- inspect channel messages in a notebook-only workflow that fetches, translates, embeds, and analyzes messages entirely in memory, including sentiment, topics, entities, cadence, rhetoric, reply threading, phrase networks, and media-vs-text comparisons
 
 The old frontend, visualization API, and KG ingestion/runtime stack have been removed.
 
 ## What Lives Here
 
 - `src/telegram_scraper/`: archive CLI, Telegram client, notebook helpers, local storage code, and reusable notebook analysis modules under `src/telegram_scraper/analysis/`
-- `notebooks/pipeline.ipynb`: the supported thin orchestration notebook workflow
+- `notebooks/pipeline.ipynb`: the supported thin orchestration notebook workflow, now covering Sections 1-14
+- `docs/`: analysis plans that correspond to the reusable notebook sections, including `docs/09_media_vs_text_comparison.md`
 - `tests/`: archive and notebook-helper tests
 
 ## Setup
@@ -109,10 +110,13 @@ That notebook:
 9. maps named-entity co-occurrence networks and ego graphs
 10. profiles messaging cadence with hourly heatmaps, spike tables, and media overlays
 11. classifies rhetorical framing over time, builds a first-half vs second-half frame reallocation view, and surfaces example messages for manual review
+12. analyzes reply threading and simple engagement proxies from `reply_to_message_id`
+13. builds bigram / trigram phrase tables, phrase networks, and temporal phrase-shift views
+14. compares media-bearing messages against text-only posts across timing, length, sentiment, topics, rhetoric, TF-IDF terms, and optional entity distributions
 
 It does not write to Postgres, Redis, or Pinecone.
 
-All notebook analysis dependencies used by Sections 6-11 are included in `uv sync --group dev`, including `transformers`, `torch`, `seaborn`, `plotly`, `umap-learn`, `hdbscan`, `nltk`, `scikit-learn`, `matplotlib`, `networkx`, `python-louvain`, `spacy`, `nbformat`, and `wordcloud`.
+All notebook analysis dependencies used by Sections 6-14 are included in `uv sync --group dev`, including `transformers`, `torch`, `seaborn`, `plotly`, `umap-learn`, `hdbscan`, `nltk`, `scikit-learn`, `matplotlib`, `networkx`, `python-louvain`, `spacy`, `nbformat`, `wordcloud`, and `scipy`.
 
 ## Tests
 

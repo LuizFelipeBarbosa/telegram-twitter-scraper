@@ -1,5 +1,7 @@
 # Plan 9 — Comparative Analysis: Media vs. Text-Only Messages
 
+> **Implementation status:** Implemented in `src/telegram_scraper/analysis/media_vs_text.py` and surfaced as **Section 14** in `notebooks/pipeline.ipynb`.
+>
 > **Dataset:** 1,200 messages from PressTV Telegram channel (757 with media, 443 text-only)
 > **Period:** April 6–14, 2026 (~8 days)
 > **Objective:** Analyze whether media-accompanied messages differ systematically in content, timing, and framing from text-only messages.
