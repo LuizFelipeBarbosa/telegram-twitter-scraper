@@ -117,25 +117,22 @@ class ThemeHistoryResponse(BaseModel):
     history: List[ThemeHistoryPointRow]
 
 
-class StoryMediaRef(BaseModel):
+class MessageMediaRef(BaseModel):
     media_type: str
     storage_path: Optional[str] = None
     mime_type: Optional[str] = None
     file_name: Optional[str] = None
 
 
-class NodeStoryRow(BaseModel):
-    story_id: str
+class NodeMessageRow(BaseModel):
     channel_id: int
+    message_id: int
     channel_title: str
-    timestamp_start: datetime
-    timestamp_end: datetime
+    timestamp: datetime
     confidence: float
-    preview_text: str
-    combined_text: str
-    original_preview_text: str = ""
-    original_combined_text: str = ""
-    media_refs: List[StoryMediaRef] = Field(default_factory=list)
+    text: str
+    english_text: Optional[str] = None
+    media_refs: List[MessageMediaRef] = Field(default_factory=list)
 
 
 class RelatedNodeRow(BaseModel):
@@ -146,8 +143,8 @@ class RelatedNodeRow(BaseModel):
     summary: Optional[str] = None
     article_count: int
     score: float
-    shared_story_count: int
-    latest_story_at: Optional[datetime] = None
+    shared_message_count: int
+    latest_message_at: Optional[datetime] = None
 
 
 class NodeDetailResponse(BaseModel):
@@ -165,7 +162,19 @@ class NodeDetailResponse(BaseModel):
     orgs: List[RelatedNodeRow] = Field(default_factory=list)
     places: List[RelatedNodeRow] = Field(default_factory=list)
     themes: List[RelatedNodeRow] = Field(default_factory=list)
-    stories: List[NodeStoryRow] = Field(default_factory=list)
+    messages: List[NodeMessageRow] = Field(default_factory=list)
+
+
+class MessageGroupResponse(BaseModel):
+    group_id: str
+    dominant_node_id: str
+    messages: List[NodeMessageRow]
+    timestamp_start: datetime
+    timestamp_end: datetime
+
+
+class GroupedMessagesResponse(BaseModel):
+    groups: List[MessageGroupResponse]
 
 
 class NodeListRow(BaseModel):

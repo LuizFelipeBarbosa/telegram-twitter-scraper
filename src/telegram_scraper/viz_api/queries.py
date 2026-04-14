@@ -49,6 +49,15 @@ class VisualizationQueries:
         channel_ids = self._visible_channel_ids()
         return channel_ids, self._visible_node_ids(channel_ids=channel_ids)
 
+    @staticmethod
+    def _remap_related_node(item: dict[str, Any]) -> dict[str, Any]:
+        """Map legacy story-count field names from the model layer to message-count API names."""
+        if "shared_story_count" in item:
+            item["shared_message_count"] = item.pop("shared_story_count")
+        if "latest_story_at" in item:
+            item["latest_message_at"] = item.pop("latest_story_at")
+        return item
+
     def _filter_node_detail_payload(
         self,
         payload: dict[str, Any],
@@ -60,18 +69,28 @@ class VisualizationQueries:
         if parent_event and parent_event.get("node_id") not in visible_node_ids:
             payload["parent_event"] = None
 
-        for bucket in ("child_events", "events", "people", "nations", "orgs", "places", "themes"):
+        # Related-entity buckets: filter by visibility and remap field names.
+        for bucket in ("events", "people", "nations", "orgs", "places", "themes"):
             payload[bucket] = [
-                item
+                self._remap_related_node(item)
                 for item in payload.get(bucket, [])
                 if item.get("node_id") in visible_node_ids
             ]
 
-        payload["stories"] = [
-            story
-            for story in payload.get("stories", [])
-            if story.get("channel_id") in visible_channel_ids
+        # child_events use EventChildSummary, not RelatedNode — no remap needed.
+        payload["child_events"] = [
+            item
+            for item in payload.get("child_events", [])
+            if item.get("node_id") in visible_node_ids
         ]
+
+        payload["messages"] = [
+            message
+            for message in payload.get("messages", [])
+            if message.get("channel_id") in visible_channel_ids
+        ]
+        # Drop the legacy stories field from the serialized dict if present.
+        payload.pop("stories", None)
         return payload
 
     def thresholds_for(self, kind: str) -> HeatPhaseThresholds | None:
@@ -267,7 +286,7 @@ class VisualizationQueries:
 
     def get_node_detail(self, *, kind: str, slug: str) -> dict[str, object]:
         visible_channel_ids, visible_node_ids = self._visibility()
-        detail = self.service.node_show(kind=kind, slug=slug)
+        detail = self.service.node_show_messages(kind=kind, slug=slug)
         if detail is None or detail.node_id not in visible_node_ids:
             raise KeyError(slug)
         return self._filter_node_detail_payload(
@@ -275,3 +294,24 @@ class VisualizationQueries:
             visible_channel_ids=set(visible_channel_ids),
             visible_node_ids=visible_node_ids,
         )
+
+    def get_grouped_messages(self, *, node_id: str, window: str = "1d") -> list[dict]:
+        visible_channel_ids = set(self._visible_channel_ids())
+        groups = self.service.grouped_messages(node_id=node_id, window=window)
+        result = []
+        for group in groups:
+            filtered_messages = [
+                msg
+                for msg in group.messages
+                if msg.channel_id in visible_channel_ids
+            ]
+            if not filtered_messages:
+                continue
+            result.append({
+                "group_id": group.group_id,
+                "dominant_node_id": group.dominant_node_id,
+                "messages": [asdict(msg) for msg in filtered_messages],
+                "timestamp_start": group.timestamp_start,
+                "timestamp_end": group.timestamp_end,
+            })
+        return result

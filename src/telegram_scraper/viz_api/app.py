@@ -10,6 +10,7 @@ from telegram_scraper.viz_api.queries import VisualizationQueries
 from telegram_scraper.viz_api.schemas import (
     ChannelsResponse,
     GraphSnapshotResponse,
+    GroupedMessagesResponse,
     HealthResponse,
     NodeDetailResponse,
     NodeListResponse,
@@ -187,8 +188,8 @@ def create_app(settings: KGSettings) -> FastAPI:
         except HTTPException as exc:
             raise HTTPException(status_code=404, detail="Theme not found") from exc
 
-    @app.get("/api/topics/{slug}/stories")
-    def topic_stories_alias(
+    @app.get("/api/topics/{slug}/messages")
+    def topic_messages_alias(
         slug: str,
         limit: int = Query(default=20, ge=1, le=100),
         offset: int = Query(default=0, ge=0),
@@ -197,13 +198,35 @@ def create_app(settings: KGSettings) -> FastAPI:
             detail = queries.get_node_detail(kind="theme", slug=slug)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Theme not found") from exc
-        stories = detail["stories"][offset : offset + limit]
+        messages = detail["messages"][offset : offset + limit]
         return {
             "topic_id": slug,
             "limit": limit,
             "offset": offset,
-            "total": len(detail["stories"]),
-            "stories": stories,
+            "total": len(detail["messages"]),
+            "messages": messages,
         }
+
+    _VALID_GROUPED_WINDOWS = {"1d", "3d", "7d", "14d", "31d"}
+
+    @app.get("/api/nodes/{kind}/{slug}/grouped", response_model=GroupedMessagesResponse)
+    def node_grouped_messages(
+        kind: str,
+        slug: str,
+        window: str = Query(default="1d"),
+    ) -> dict:
+        if window not in _VALID_GROUPED_WINDOWS:
+            from fastapi import HTTPException as _HTTPException
+            raise _HTTPException(
+                status_code=400,
+                detail=f"Invalid window '{window}'. Must be one of: {sorted(_VALID_GROUPED_WINDOWS)}",
+            )
+        try:
+            node_payload = queries.get_node_detail(kind=kind, slug=slug)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Node not found") from exc
+        node_id = node_payload["node_id"]
+        groups = queries.get_grouped_messages(node_id=node_id, window=window)
+        return {"groups": groups}
 
     return app

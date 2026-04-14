@@ -6,12 +6,13 @@ from unittest.mock import patch
 
 from telegram_scraper.kg.models import (
     ChannelSummary,
+    MessageGroup,
     Node,
     NodeDetail,
     NodeHeatSnapshot,
     NodeListEntry,
+    NodeMessage,
     NodeRelation,
-    NodeStory,
     RelatedNode,
 )
 from telegram_scraper.viz_api.queries import VisualizationQueries
@@ -181,8 +182,8 @@ class FakeQueryService:
             )
         ]
 
-    def node_show(self, *, kind, slug, story_limit=20, story_offset=0):
-        del kind, story_limit, story_offset
+    def node_show_messages(self, *, kind, slug, message_limit=20, message_offset=0):
+        del kind, message_limit, message_offset
         if slug == "hidden-event":
             return NodeDetail(
                 node_id="hidden-event",
@@ -223,29 +224,55 @@ class FakeQueryService:
                     shared_story_count=1,
                 ),
             ),
-            stories=(
-                NodeStory(
-                    story_id="story-1",
+            messages=(
+                NodeMessage(
                     channel_id=1,
+                    message_id=101,
                     channel_title="Rebuilt Channel",
-                    timestamp_start=datetime(2026, 4, 13, 12, 0, tzinfo=UTC),
-                    timestamp_end=datetime(2026, 4, 13, 12, 5, tzinfo=UTC),
+                    timestamp=datetime(2026, 4, 13, 12, 0, tzinfo=UTC),
                     confidence=0.9,
-                    preview_text="Visible story",
-                    combined_text="Visible story",
+                    text="Visible message",
                 ),
-                NodeStory(
-                    story_id="story-2",
+                NodeMessage(
                     channel_id=2,
+                    message_id=102,
                     channel_title="Legacy Channel",
-                    timestamp_start=datetime(2026, 4, 13, 13, 0, tzinfo=UTC),
-                    timestamp_end=datetime(2026, 4, 13, 13, 5, tzinfo=UTC),
+                    timestamp=datetime(2026, 4, 13, 13, 0, tzinfo=UTC),
                     confidence=0.8,
-                    preview_text="Legacy story",
-                    combined_text="Legacy story",
+                    text="Legacy message",
                 ),
             ),
         )
+
+    def grouped_messages(self, *, node_id: str, window: str = "1d"):
+        if node_id != "visible-event":
+            return []
+        return [
+            MessageGroup(
+                group_id="grp-abc123",
+                dominant_node_id="visible-event",
+                messages=(
+                    NodeMessage(
+                        channel_id=1,
+                        message_id=101,
+                        channel_title="Rebuilt Channel",
+                        timestamp=datetime(2026, 4, 13, 12, 0, tzinfo=UTC),
+                        confidence=0.9,
+                        text="Visible message",
+                    ),
+                    NodeMessage(
+                        channel_id=2,
+                        message_id=102,
+                        channel_title="Legacy Channel",
+                        timestamp=datetime(2026, 4, 13, 13, 0, tzinfo=UTC),
+                        confidence=0.8,
+                        text="Hidden channel message",
+                    ),
+                ),
+                timestamp_start=datetime(2026, 4, 13, 12, 0, tzinfo=UTC),
+                timestamp_end=datetime(2026, 4, 13, 13, 0, tzinfo=UTC),
+            ),
+        ]
 
 
 class VisualizationQueriesTests(unittest.TestCase):
@@ -276,8 +303,42 @@ class VisualizationQueriesTests(unittest.TestCase):
 
         self.assertEqual([node["node_id"] for node in snapshot["nodes"]], ["visible-event"])
         self.assertEqual(service.snapshot_relation_channel_ids, (1,))
-        self.assertEqual([story["story_id"] for story in detail["stories"]], ["story-1"])
+        # Only message from channel 1 (visible) should remain; channel 2 is not a candidate.
+        self.assertEqual([msg["message_id"] for msg in detail["messages"]], [101])
         self.assertEqual([person["node_id"] for person in detail["people"]], ["visible-person"])
+        # Legacy stories field must not appear in the payload.
+        self.assertNotIn("stories", detail)
+
+    def test_get_grouped_messages_filters_invisible_channels(self):
+        queries, _service = self._build_queries()
+
+        groups = queries.get_grouped_messages(node_id="visible-event", window="1d")
+
+        # Group should exist but only contain message from channel 1.
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(groups[0]["group_id"], "grp-abc123")
+        self.assertEqual(len(groups[0]["messages"]), 1)
+        self.assertEqual(groups[0]["messages"][0]["channel_id"], 1)
+
+    def test_get_grouped_messages_drops_empty_groups(self):
+        queries, _service = self._build_queries()
+
+        # node_id that returns no groups from fake service
+        groups = queries.get_grouped_messages(node_id="nonexistent-node", window="1d")
+
+        self.assertEqual(groups, [])
+
+    def test_related_node_fields_remapped_to_message_names(self):
+        queries, _service = self._build_queries()
+
+        detail = queries.get_node_detail(kind="event", slug="visible-event")
+
+        people = detail["people"]
+        self.assertEqual(len(people), 1)
+        self.assertIn("shared_message_count", people[0])
+        self.assertIn("latest_message_at", people[0])
+        self.assertNotIn("shared_story_count", people[0])
+        self.assertNotIn("latest_story_at", people[0])
 
     def test_hidden_theme_history_and_hidden_node_detail_raise_not_found(self):
         queries, _service = self._build_queries()

@@ -182,16 +182,49 @@ class FakeVisualizationQueries:
                     "summary": None,
                     "article_count": 3,
                     "score": 2.0,
-                    "shared_story_count": 2,
-                    "latest_story_at": "2026-04-08T00:00:00Z",
+                    "shared_message_count": 2,
+                    "latest_message_at": "2026-04-08T00:00:00Z",
                 }
             ],
             "nations": [],
             "orgs": [],
             "places": [],
             "themes": [],
-            "stories": [],
+            "messages": [
+                {
+                    "channel_id": 1,
+                    "message_id": 101,
+                    "channel_title": "Signal Watch",
+                    "timestamp": "2026-04-08T12:00:00Z",
+                    "confidence": 0.9,
+                    "text": "Test message text",
+                    "english_text": None,
+                    "media_refs": [],
+                }
+            ],
         }
+
+    def get_grouped_messages(self, *, node_id: str, window: str = "1d") -> list:
+        return [
+            {
+                "group_id": "grp-test",
+                "dominant_node_id": node_id,
+                "messages": [
+                    {
+                        "channel_id": 1,
+                        "message_id": 101,
+                        "channel_title": "Signal Watch",
+                        "timestamp": "2026-04-08T12:00:00Z",
+                        "confidence": 0.9,
+                        "text": "Test message text",
+                        "english_text": None,
+                        "media_refs": [],
+                    }
+                ],
+                "timestamp_start": "2026-04-08T12:00:00Z",
+                "timestamp_end": "2026-04-08T13:00:00Z",
+            }
+        ]
 
 
 class FakeCache:
@@ -291,6 +324,65 @@ class VisualizationApiTests(unittest.TestCase):
         kinds_present = {n["kind"] for n in nodes}
         self.assertNotIn("person", kinds_present,
                          "non-phase kinds should be dropped when phase filter is applied")
+
+    def test_node_detail_response_has_messages_not_stories(self):
+        client = self._build_client()
+        response = client.get("/api/nodes/event/hormuz-reclosure")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("messages", body)
+        self.assertNotIn("stories", body)
+        self.assertEqual(body["messages"][0]["message_id"], 101)
+
+    def test_node_detail_related_nodes_use_message_count_fields(self):
+        client = self._build_client()
+        response = client.get("/api/nodes/event/hormuz-reclosure")
+        self.assertEqual(response.status_code, 200)
+        people = response.json()["people"]
+        self.assertEqual(len(people), 1)
+        self.assertIn("shared_message_count", people[0])
+        self.assertIn("latest_message_at", people[0])
+        self.assertNotIn("shared_story_count", people[0])
+        self.assertNotIn("latest_story_at", people[0])
+
+    def test_topic_messages_alias_returns_messages(self):
+        client = self._build_client()
+        response = client.get("/api/topics/ceasefire/messages")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("messages", body)
+        self.assertNotIn("stories", body)
+        self.assertEqual(body["topic_id"], "ceasefire")
+
+    def test_topic_messages_alias_returns_404_when_missing(self):
+        client = self._build_client()
+        response = client.get("/api/topics/missing/messages")
+        self.assertEqual(response.status_code, 404)
+
+    def test_topic_stories_endpoint_no_longer_exists(self):
+        client = self._build_client()
+        response = client.get("/api/topics/ceasefire/stories")
+        self.assertEqual(response.status_code, 404)
+
+    def test_grouped_messages_endpoint_returns_groups(self):
+        client = self._build_client()
+        response = client.get("/api/nodes/event/hormuz-reclosure/grouped?window=1d")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("groups", body)
+        self.assertEqual(len(body["groups"]), 1)
+        self.assertEqual(body["groups"][0]["group_id"], "grp-test")
+        self.assertEqual(len(body["groups"][0]["messages"]), 1)
+
+    def test_grouped_messages_endpoint_rejects_invalid_window(self):
+        client = self._build_client()
+        response = client.get("/api/nodes/event/hormuz-reclosure/grouped?window=99d")
+        self.assertEqual(response.status_code, 400)
+
+    def test_grouped_messages_endpoint_returns_404_for_missing_node(self):
+        client = self._build_client()
+        response = client.get("/api/nodes/event/missing/grouped?window=1d")
+        self.assertEqual(response.status_code, 404)
 
 
 if __name__ == "__main__":
