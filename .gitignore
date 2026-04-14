@@ -8,8 +8,7 @@ __pycache__/
 *.session-journal
 /sessions/
 /logs/
+/tmp/
 *.egg-info/
 build/
 dist/
-viz-web/node_modules/
-viz-web/dist/
