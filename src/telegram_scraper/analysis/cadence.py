@@ -20,6 +20,7 @@ class MessagingCadenceConfig:
     preview_chars: int = 100
     calendar_cmap: str = "YlOrRd"
     rhythm_cmap: str = "YlGnBu"
+    media_smoothing_window: int = 0
 
 
 @dataclass(frozen=True)
@@ -507,6 +508,7 @@ def _build_volume_media_figure(
     cadence_summary_df: pd.DataFrame,
     *,
     channel_label: str,
+    config: MessagingCadenceConfig,
 ) -> Any:
     try:
         import matplotlib.dates as mdates
@@ -535,15 +537,38 @@ def _build_volume_media_figure(
     ax1.grid(axis="y", alpha=0.22)
 
     ax2 = ax1.twinx()
-    ax2.plot(
-        cadence_media_hourly_df["timestamp"],
-        cadence_media_hourly_df["media_pct"],
-        color="#1f77b4",
-        linewidth=2.2,
-        marker="o",
-        markersize=3.5,
-        label="Media share per hour",
-    )
+    smoothing_window = max(0, int(config.media_smoothing_window))
+    if smoothing_window > 0:
+        media_pct_smoothed = (
+            cadence_media_hourly_df["media_pct"]
+            .rolling(window=smoothing_window, min_periods=max(1, smoothing_window // 3), center=True)
+            .mean()
+        )
+        ax2.plot(
+            cadence_media_hourly_df["timestamp"],
+            cadence_media_hourly_df["media_pct"],
+            color="#1f77b4",
+            linewidth=0.9,
+            alpha=0.18,
+            label="Media share per hour (raw)",
+        )
+        ax2.plot(
+            cadence_media_hourly_df["timestamp"],
+            media_pct_smoothed,
+            color="#1f77b4",
+            linewidth=2.4,
+            label=f"Media share ({smoothing_window}h rolling mean)",
+        )
+    else:
+        ax2.plot(
+            cadence_media_hourly_df["timestamp"],
+            cadence_media_hourly_df["media_pct"],
+            color="#1f77b4",
+            linewidth=2.2,
+            marker="o",
+            markersize=3.5,
+            label="Media share per hour",
+        )
     ax2.axhline(
         overall_media_pct,
         color="#1f77b4",
@@ -606,6 +631,7 @@ def run_messaging_cadence_analysis(
         cadence_media_hourly_df,
         cadence_summary_df,
         channel_label=channel_label,
+        config=config,
     )
 
     return MessagingCadenceResult(

@@ -1,0 +1,2 @@
+channel,messages_analyzed,start,end,media_messages,text_only_messages,media_share_pct,text_bearing_messages,sentiment_available,topic_available,frame_available,entity_available,top_media_topic,top_text_only_topic,top_media_frame,top_text_only_frame
+PressTV,1200,2026-04-07 06:13:51+00:00,2026-04-14 16:59:41+00:00,762,438,63.5,945,True,True,False,True,Noise / Mixed,"Topic 2: leader, khamenei, islamic",,

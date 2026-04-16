@@ -1,0 +1,2 @@
+messages_analyzed,start,end,observed_days,average_messages_per_day,overall_media_pct,busiest_day,busiest_day_count,peak_hour,peak_hour_count
+1200,2026-04-07 06:13:51+00:00,2026-04-14 16:59:41+00:00,8,150.0,63.5,2026-04-09 00:00:00+00:00,185,2026-04-08 17:00:00+00:00,18

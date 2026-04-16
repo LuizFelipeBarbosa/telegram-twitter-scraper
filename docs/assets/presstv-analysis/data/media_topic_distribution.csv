@@ -1,0 +1,17 @@
+topic_label,segment_label,message_count,segment_total,message_share_pct,total_count,share_gap_pct_points,sort_order
+Noise / Mixed,Media,81,230,35.217,140,11.136,0
+Noise / Mixed,Text-only,59,245,24.082,140,11.136,0
+"Topic 2: leader, khamenei, islamic",Media,34,230,14.783,98,-11.34,1
+"Topic 2: leader, khamenei, islamic",Text-only,64,245,26.122,98,-11.34,1
+"Topic 16: israeli, southern, lebanon",Media,23,230,10.0,58,-4.286,2
+"Topic 16: israeli, southern, lebanon",Text-only,35,245,14.286,58,-4.286,2
+"Topic 11: talks, islamabad, iran-us",Media,28,230,12.174,39,7.684,3
+"Topic 11: talks, islamabad, iran-us",Text-only,11,245,4.49,39,7.684,3
+"Topic 5: strait, hormuz, strait hormuz",Media,24,230,10.435,36,5.537,4
+"Topic 5: strait, hormuz, strait hormuz",Text-only,12,245,4.898,36,5.537,4
+"Topic 23: iranian, nation, iranian nation",Media,18,230,7.826,35,0.887,5
+"Topic 23: iranian, nation, iranian nation",Text-only,17,245,6.939,35,0.887,5
+"Topic 15: gaza, israeli, people",Media,10,230,4.348,35,-5.856,6
+"Topic 15: gaza, israeli, people",Text-only,25,245,10.204,35,-5.856,6
+"Topic 18: occupied, palestine, occupied palestine",Media,12,230,5.217,34,-3.762,7
+"Topic 18: occupied, palestine, occupied palestine",Text-only,22,245,8.98,34,-3.762,7

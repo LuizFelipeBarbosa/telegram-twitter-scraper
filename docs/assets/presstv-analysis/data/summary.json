@@ -1,0 +1,405 @@
+{
+  "dataset": {
+    "messages_total": 1200,
+    "text_bearing_messages": 945,
+    "media_messages": 762,
+    "media_share_pct": 63.5,
+    "reply_messages": 171,
+    "start": "2026-04-07 06:13:51+00:00",
+    "end": "2026-04-14 16:59:41+00:00"
+  },
+  "sentiment": [
+    {
+      "messages_scored": 945,
+      "start": "2026-04-07 06:13:51+00:00",
+      "end": "2026-04-14 16:59:41+00:00",
+      "mean_sentiment": -0.25,
+      "dominant_emotion": "fear"
+    }
+  ],
+  "top_sentiments": [
+    {
+      "dominant_sentiment": "neutral",
+      "message_count": 558
+    },
+    {
+      "dominant_sentiment": "negative",
+      "message_count": 338
+    },
+    {
+      "dominant_sentiment": "positive",
+      "message_count": 49
+    }
+  ],
+  "top_emotions": [
+    {
+      "dominant_emotion": "fear",
+      "message_count": 446
+    },
+    {
+      "dominant_emotion": "anger",
+      "message_count": 172
+    },
+    {
+      "dominant_emotion": "neutral",
+      "message_count": 110
+    },
+    {
+      "dominant_emotion": "sadness",
+      "message_count": 96
+    },
+    {
+      "dominant_emotion": "joy",
+      "message_count": 96
+    },
+    {
+      "dominant_emotion": "disgust",
+      "message_count": 21
+    },
+    {
+      "dominant_emotion": "surprise",
+      "message_count": 4
+    }
+  ],
+  "top_topics": [
+    {
+      "topic_id": 2,
+      "topic_label": "Topic 2: leader, khamenei, islamic",
+      "message_count": 98,
+      "keyword_preview": "leader, khamenei, islamic",
+      "top_keywords": "leader, khamenei, islamic, ayatollah, leader islamic, revolution, islamic revolution, ali, day, seyyed"
+    },
+    {
+      "topic_id": 16,
+      "topic_label": "Topic 16: israeli, southern, lebanon",
+      "message_count": 58,
+      "keyword_preview": "israeli, southern, lebanon",
+      "top_keywords": "israeli, southern, lebanon, southern lebanon, airstrikes, airstrike, israeli airstrikes, beirut, town, israeli airstrike"
+    },
+    {
+      "topic_id": 11,
+      "topic_label": "Topic 11: talks, islamabad, iran-us",
+      "message_count": 39,
+      "keyword_preview": "talks, islamabad, iran-us",
+      "top_keywords": "talks, islamabad, iran-us, talks islamabad, iran, iran-us talks, iranian, delegation, iranian delegation, islamabad talks"
+    },
+    {
+      "topic_id": 5,
+      "topic_label": "Topic 5: strait, hormuz, strait hormuz",
+      "message_count": 36,
+      "keyword_preview": "strait, hormuz, strait hormuz",
+      "top_keywords": "strait, hormuz, strait hormuz, iran, russia, china, control, security, control strait, hormuz iran"
+    },
+    {
+      "topic_id": 23,
+      "topic_label": "Topic 23: iranian, nation, iranian nation",
+      "message_count": 35,
+      "keyword_preview": "iranian, nation, iranian nation",
+      "top_keywords": "iranian, nation, iranian nation, war, american, trump, war crimes, crimes, country, iran"
+    },
+    {
+      "topic_id": 15,
+      "topic_label": "Topic 15: gaza, israeli, people",
+      "message_count": 35,
+      "keyword_preview": "gaza, israeli, people",
+      "top_keywords": "gaza, israeli, people, lebanese, forces, killed, police, israeli forces, city, southern"
+    },
+    {
+      "topic_id": 7,
+      "topic_label": "Topic 7: irgc, corps, corps irgc",
+      "message_count": 34,
+      "keyword_preview": "irgc, corps, corps irgc",
+      "top_keywords": "irgc, corps, corps irgc, revolution guards, guards, guards corps, islamic revolution, revolution, islamic, force"
+    },
+    {
+      "topic_id": 18,
+      "topic_label": "Topic 18: occupied, palestine, occupied palestine",
+      "message_count": 34,
+      "keyword_preview": "occupied, palestine, occupied palestine",
+      "top_keywords": "occupied, palestine, occupied palestine, northern occupied, northern, air, hezbollah, missile, sirens, aviv"
+    },
+    {
+      "topic_id": 9,
+      "topic_label": "Topic 9: iran, senior, security",
+      "message_count": 31,
+      "keyword_preview": "iran, senior, security",
+      "top_keywords": "iran, senior, security, official, regime, maryam, israel, security official, senior security, maryam azarchehr"
+    },
+    {
+      "topic_id": 25,
+      "topic_label": "Topic 25: trump, war, iran",
+      "message_count": 29,
+      "keyword_preview": "trump, war, iran",
+      "top_keywords": "trump, war, iran, donald trump, donald, president, president donald, congress, iran war, office"
+    }
+  ],
+  "top_entities": [
+    {
+      "entity": "Iran",
+      "message_count": 458,
+      "entity_type": "GPE",
+      "top_surface_form": "Iran",
+      "surface_forms": "Iran, Islamic Republic",
+      "unique_surface_forms": 2,
+      "graph_degree": 79,
+      "weighted_degree": 1034.0,
+      "community_label": "C1"
+    },
+    {
+      "entity": "US",
+      "message_count": 393,
+      "entity_type": "GPE",
+      "top_surface_form": "US",
+      "surface_forms": "US, the United States, America, U.S., The United States",
+      "unique_surface_forms": 7,
+      "graph_degree": 69,
+      "weighted_degree": 920.0,
+      "community_label": "C1"
+    },
+    {
+      "entity": "Israeli",
+      "message_count": 227,
+      "entity_type": "NORP",
+      "top_surface_form": "Israeli",
+      "surface_forms": "Israeli",
+      "unique_surface_forms": 1,
+      "graph_degree": 47,
+      "weighted_degree": 493.0,
+      "community_label": "C2"
+    },
+    {
+      "entity": "Iranian",
+      "message_count": 150,
+      "entity_type": "NORP",
+      "top_surface_form": "Iranian",
+      "surface_forms": "Iranian",
+      "unique_surface_forms": 1,
+      "graph_degree": 41,
+      "weighted_degree": 330.0,
+      "community_label": "C4"
+    },
+    {
+      "entity": "Lebanon",
+      "message_count": 115,
+      "entity_type": "GPE",
+      "top_surface_form": "Lebanon",
+      "surface_forms": "Lebanon",
+      "unique_surface_forms": 1,
+      "graph_degree": 32,
+      "weighted_degree": 247.0,
+      "community_label": "C2"
+    },
+    {
+      "entity": "Trump",
+      "message_count": 90,
+      "entity_type": "PERSON",
+      "top_surface_form": "Trump",
+      "surface_forms": "Trump, Donald Trump",
+      "unique_surface_forms": 2,
+      "graph_degree": 20,
+      "weighted_degree": 164.0,
+      "community_label": "C1"
+    },
+    {
+      "entity": "Israel",
+      "message_count": 72,
+      "entity_type": "GPE",
+      "top_surface_form": "Israel",
+      "surface_forms": "Israel",
+      "unique_surface_forms": 1,
+      "graph_degree": 24,
+      "weighted_degree": 176.0,
+      "community_label": "C1"
+    },
+    {
+      "entity": "Tehran",
+      "message_count": 68,
+      "entity_type": "GPE",
+      "top_surface_form": "Tehran",
+      "surface_forms": "Tehran",
+      "unique_surface_forms": 1,
+      "graph_degree": 20,
+      "weighted_degree": 128.0,
+      "community_label": "C4"
+    },
+    {
+      "entity": "Islamabad",
+      "message_count": 64,
+      "entity_type": "GPE",
+      "top_surface_form": "Islamabad",
+      "surface_forms": "Islamabad",
+      "unique_surface_forms": 1,
+      "graph_degree": 20,
+      "weighted_degree": 182.0,
+      "community_label": "C1"
+    },
+    {
+      "entity": "Hezbollah",
+      "message_count": 47,
+      "entity_type": "ORG",
+      "top_surface_form": "Hezbollah",
+      "surface_forms": "Hezbollah",
+      "unique_surface_forms": 1,
+      "graph_degree": 11,
+      "weighted_degree": 89.0,
+      "community_label": "C2"
+    }
+  ],
+  "cadence": [
+    {
+      "messages_analyzed": 1200,
+      "start": "2026-04-07 06:13:51+00:00",
+      "end": "2026-04-14 16:59:41+00:00",
+      "observed_days": 8,
+      "average_messages_per_day": 150.0,
+      "overall_media_pct": 63.5,
+      "busiest_day": "2026-04-09 00:00:00+00:00",
+      "busiest_day_count": 185,
+      "peak_hour": "2026-04-08 17:00:00+00:00",
+      "peak_hour_count": 18
+    }
+  ],
+  "reply_summary": [
+    {
+      "messages_analyzed": 1200,
+      "reply_edges_total": 171,
+      "reply_edges_with_parent_in_dataset": 168,
+      "messages_that_are_replies": 171,
+      "messages_receiving_replies": 119,
+      "messages_receiving_replies_pct": 9.9,
+      "messages_replying_to_missing_parent": 3,
+      "largest_thread_size": 22,
+      "deepest_thread_depth": 7,
+      "max_reply_count": 8,
+      "median_first_reply_minutes": 95.6
+    }
+  ],
+  "media_summary": [
+    {
+      "channel": "PressTV",
+      "messages_analyzed": 1200,
+      "start": "2026-04-07 06:13:51+00:00",
+      "end": "2026-04-14 16:59:41+00:00",
+      "media_messages": 762,
+      "text_only_messages": 438,
+      "media_share_pct": 63.5,
+      "text_bearing_messages": 945,
+      "sentiment_available": true,
+      "topic_available": true,
+      "frame_available": false,
+      "entity_available": true,
+      "top_media_topic": "Noise / Mixed",
+      "top_text_only_topic": "Topic 2: leader, khamenei, islamic",
+      "top_media_frame": "",
+      "top_text_only_frame": ""
+    }
+  ],
+  "daily_sentiment": [
+    {
+      "date": "2026-04-07 00:00:00+00:00",
+      "messages": 108,
+      "mean_sentiment": -0.39583420600414415,
+      "dominant_emotion": "fear"
+    },
+    {
+      "date": "2026-04-08 00:00:00+00:00",
+      "messages": 139,
+      "mean_sentiment": -0.2078550074579489,
+      "dominant_emotion": "fear"
+    },
+    {
+      "date": "2026-04-09 00:00:00+00:00",
+      "messages": 135,
+      "mean_sentiment": -0.16589157170167676,
+      "dominant_emotion": "fear"
+    },
+    {
+      "date": "2026-04-10 00:00:00+00:00",
+      "messages": 129,
+      "mean_sentiment": -0.1931331846935227,
+      "dominant_emotion": "fear"
+    },
+    {
+      "date": "2026-04-11 00:00:00+00:00",
+      "messages": 132,
+      "mean_sentiment": -0.17902050442485648,
+      "dominant_emotion": "fear"
+    },
+    {
+      "date": "2026-04-12 00:00:00+00:00",
+      "messages": 110,
+      "mean_sentiment": -0.3051761301573027,
+      "dominant_emotion": "fear"
+    },
+    {
+      "date": "2026-04-13 00:00:00+00:00",
+      "messages": 115,
+      "mean_sentiment": -0.30274189767306264,
+      "dominant_emotion": "fear"
+    },
+    {
+      "date": "2026-04-14 00:00:00+00:00",
+      "messages": 77,
+      "mean_sentiment": -0.3245275818089676,
+      "dominant_emotion": "fear"
+    }
+  ],
+  "daily_topic_leaders": [
+    {
+      "date": "2026-04-07 00:00:00+00:00",
+      "top_topic": "Topic 23: iranian, nation, iranian nation",
+      "top_topic_share_pct": 19.444444444444446,
+      "second_topic": "Noise / Mixed",
+      "second_topic_share_pct": 14.814814814814813
+    },
+    {
+      "date": "2026-04-08 00:00:00+00:00",
+      "top_topic": "Noise / Mixed",
+      "top_topic_share_pct": 17.985611510791365,
+      "second_topic": "Topic 16: israeli, southern, lebanon",
+      "second_topic_share_pct": 11.510791366906476
+    },
+    {
+      "date": "2026-04-09 00:00:00+00:00",
+      "top_topic": "Topic 2: leader, khamenei, islamic",
+      "top_topic_share_pct": 33.33333333333333,
+      "second_topic": "Noise / Mixed",
+      "second_topic_share_pct": 11.851851851851853
+    },
+    {
+      "date": "2026-04-10 00:00:00+00:00",
+      "top_topic": "Noise / Mixed",
+      "top_topic_share_pct": 15.503875968992247,
+      "second_topic": "Topic 2: leader, khamenei, islamic",
+      "second_topic_share_pct": 13.178294573643413
+    },
+    {
+      "date": "2026-04-11 00:00:00+00:00",
+      "top_topic": "Topic 11: talks, islamabad, iran-us",
+      "top_topic_share_pct": 16.666666666666664,
+      "second_topic": "Noise / Mixed",
+      "second_topic_share_pct": 12.121212121212121
+    },
+    {
+      "date": "2026-04-12 00:00:00+00:00",
+      "top_topic": "Noise / Mixed",
+      "top_topic_share_pct": 20.0,
+      "second_topic": "Topic 11: talks, islamabad, iran-us",
+      "second_topic_share_pct": 8.181818181818182
+    },
+    {
+      "date": "2026-04-13 00:00:00+00:00",
+      "top_topic": "Noise / Mixed",
+      "top_topic_share_pct": 16.52173913043478,
+      "second_topic": "Topic 6: blockade, trump, strait",
+      "second_topic_share_pct": 11.304347826086957
+    },
+    {
+      "date": "2026-04-14 00:00:00+00:00",
+      "top_topic": "Topic 23: iranian, nation, iranian nation",
+      "top_topic_share_pct": 9.090909090909092,
+      "second_topic": "Topic 15: gaza, israeli, people",
+      "second_topic_share_pct": 9.090909090909092
+    }
+  ]
+}

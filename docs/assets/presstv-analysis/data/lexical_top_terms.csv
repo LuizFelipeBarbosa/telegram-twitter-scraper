@@ -1,0 +1,76 @@
+period_label,display_rank,term,term_label,plot_score,current_period_score,prior_period_score,status,score_source,is_current_top_term
+Apr 7–9,1,israeli,israeli,0.44621242658148097,0.44621242658148097,,baseline,current_period,True
+Apr 7–9,2,war,war,0.27423472050320186,0.27423472050320186,,baseline,current_period,True
+Apr 7–9,3,ceasefire,ceasefire,0.27423472050320186,0.27423472050320186,,baseline,current_period,True
+Apr 7–9,4,us,us,0.2091620749600692,0.2091620749600692,,baseline,current_period,True
+Apr 7–9,5,trump,trump,0.20451402884984543,0.20451402884984543,,baseline,current_period,True
+Apr 7–9,6,lebanon,lebanon,0.19056989051917417,0.19056989051917417,,baseline,current_period,True
+Apr 7–9,7,american,american,0.14408942941693656,0.14408942941693656,,baseline,current_period,True
+Apr 7–9,8,israel,israel,0.12084919886581776,0.12084919886581776,,baseline,current_period,True
+Apr 7–9,9,president,president,0.11620115275559399,0.11620115275559399,,baseline,current_period,True
+Apr 7–9,10,irgc,irgc,0.11620115275559399,0.11620115275559399,,baseline,current_period,True
+Apr 7–9,11,tehran,tehran,0.11155310664537024,0.11155310664537024,,baseline,current_period,True
+Apr 7–9,12,two,two,0.10690506053514648,0.10690506053514648,,baseline,current_period,True
+Apr 7–9,13,victory,victory,0.10233409726676318,0.10233409726676318,,baseline,current_period,True
+Apr 7–9,14,forces,forces,0.10225701442492272,0.10225701442492272,,baseline,current_period,True
+Apr 7–9,15,attacks,attacks,0.10225701442492272,0.10225701442492272,,baseline,current_period,True
+Apr 9–10,1,israeli,israeli,0.35093601806872066,0.35093601806872066,,recurring,current_period,True
+Apr 9–10,2,lebanon,lebanon,0.24432254422505867,0.24432254422505867,,recurring,current_period,True
+Apr 9–10,3,islamic,islamic,0.23543808807142017,0.23543808807142017,,recurring,current_period,True
+Apr 9–10,4,leader,leader,0.23543808807142017,0.23543808807142017,,recurring,current_period,True
+Apr 9–10,5,day,day,0.21322694768732392,0.21322694768732392,,recurring,current_period,True
+Apr 9–10,6,ayatollah,ayatollah,0.19545803538004694,0.19545803538004694,,new,current_period,True
+Apr 9–10,7,revolution,revolution,0.19101580730322767,0.19101580730322767,,new,current_period,True
+Apr 9–10,8,us,us,0.18657357922640844,0.18657357922640844,,recurring,current_period,True
+Apr 9–10,9,khamenei,khamenei,0.18657357922640844,0.18657357922640844,,new,current_period,True
+Apr 9–10,10,ceasefire,ceasefire,0.1821313511495892,0.1821313511495892,,recurring,current_period,True
+Apr 9–10,11,seyyed,seyyed,0.17768912307276993,0.17768912307276993,,new,current_period,True
+Apr 9–10,12,mourning,mourning,0.15436293611663848,0.15436293611663848,,new,current_period,True
+Apr 9–10,13,martyrdom,martyrdom,0.15103575461185445,0.15103575461185445,,new,current_period,True
+Apr 9–10,14,late,late,0.14670403089196646,0.14670403089196646,,new,current_period,True
+Apr 9–10,15,war,war,0.13326684230457744,0.13326684230457744,,recurring,current_period,True
+Apr 9–10,16,trump,trump ↓,0.20451402884984543,0.06219119307546948,0.20451402884984543,dropped,prior_period:Apr 7–9,False
+Apr 9–10,17,american,american ↓,0.14408942941693656,0.013326684230457745,0.14408942941693656,dropped,prior_period:Apr 7–9,False
+Apr 9–10,18,israel,israel ↓,0.12084919886581776,0.10217124576684272,0.12084919886581776,dropped,prior_period:Apr 7–9,False
+Apr 9–10,19,president,president ↓,0.11620115275559399,0.10661347384366196,0.11620115275559399,dropped,prior_period:Apr 7–9,False
+Apr 9–10,20,irgc,irgc ↓,0.11620115275559399,0.06219119307546948,0.11620115275559399,dropped,prior_period:Apr 7–9,False
+Apr 10–12,1,talks,talks,0.45540340775809435,0.45540340775809435,,recurring,current_period,True
+Apr 10–12,2,israeli,israeli,0.3066182216336793,0.3066182216336793,,recurring,current_period,True
+Apr 10–12,3,islamabad,islamabad,0.2956675708610479,0.2956675708610479,,new,current_period,True
+Apr 10–12,4,us,us,0.21901301545262805,0.21901301545262805,,recurring,current_period,True
+Apr 10–12,5,strait,strait,0.19163638852104956,0.19163638852104956,,new,current_period,True
+Apr 10–12,6,hormuz,hormuz,0.18616106313473385,0.18616106313473385,,new,current_period,True
+Apr 10–12,7,lebanon,lebanon,0.15878443620315535,0.15878443620315535,,recurring,current_period,True
+Apr 10–12,8,negotiations,negotiations,0.15878443620315535,0.15878443620315535,,new,current_period,True
+Apr 10–12,9,president,president,0.13688313465789254,0.13688313465789254,,recurring,current_period,True
+Apr 10–12,10,iran,iran,0.13688313465789254,0.13688313465789254,,new,current_period,True
+Apr 10–12,11,islamic,islamic,0.12593248388526113,0.12593248388526113,,recurring,current_period,True
+Apr 10–12,12,ceasefire,ceasefire,0.10950650772631403,0.10950650772631403,,recurring,current_period,True
+Apr 10–12,13,pakistan,pakistan,0.10950650772631403,0.10950650772631403,,new,current_period,True
+Apr 10–12,14,southern,southern,0.09855585695368263,0.09855585695368263,,recurring,current_period,True
+Apr 10–12,15,negotiators,negotiators,0.09443083762612851,0.09443083762612851,,new,current_period,True
+Apr 10–12,16,leader,leader ↓,0.23543808807142017,0.06022857924947272,0.23543808807142017,dropped,prior_period:Apr 9–10,False
+Apr 10–12,17,day,day ↓,0.21322694768732392,0.03832727770420991,0.21322694768732392,dropped,prior_period:Apr 9–10,False
+Apr 10–12,18,ayatollah,ayatollah ↓,0.19545803538004694,0.010950650772631403,0.19545803538004694,dropped,prior_period:Apr 9–10,False
+Apr 10–12,19,revolution,revolution ↓,0.19101580730322767,0.07117923002210412,0.19101580730322767,dropped,prior_period:Apr 9–10,False
+Apr 10–12,20,khamenei,khamenei ↓,0.18657357922640844,0.016425976158947104,0.18657357922640844,dropped,prior_period:Apr 9–10,False
+Apr 12–14,1,trump,trump,0.34091230225104446,0.34091230225104446,,new,current_period,True
+Apr 12–14,2,israeli,israeli,0.3156595391213375,0.3156595391213375,,recurring,current_period,True
+Apr 12–14,3,blockade,blockade,0.3052201728580351,0.3052201728580351,,new,current_period,True
+Apr 12–14,4,war,war,0.227274868167363,0.227274868167363,,recurring,current_period,True
+Apr 12–14,5,strait,strait,0.1893957234728025,0.1893957234728025,,recurring,current_period,True
+Apr 12–14,6,president,president,0.1893957234728025,0.1893957234728025,,recurring,current_period,True
+Apr 12–14,7,pope,pope,0.18532652624979815,0.18532652624979815,,new,current_period,True
+Apr 12–14,8,hormuz,hormuz,0.176769341907949,0.176769341907949,,recurring,current_period,True
+Apr 12–14,9,israel,israel,0.15151657877824198,0.15151657877824198,,new,current_period,True
+Apr 12–14,10,leo,leo,0.1467168332810902,0.1467168332810902,,new,current_period,True
+Apr 12–14,11,us,us,0.14520338799581525,0.14520338799581525,,recurring,current_period,True
+Apr 12–14,12,naval,naval,0.14307195602720396,0.14307195602720396,,new,current_period,True
+Apr 12–14,13,donald,donald,0.1136374340836815,0.1136374340836815,,new,current_period,True
+Apr 12–14,14,lebanon,lebanon,0.10732424330125474,0.10732424330125474,,recurring,current_period,True
+Apr 12–14,15,aggression,aggression,0.101011052518828,0.101011052518828,,new,current_period,True
+Apr 12–14,16,talks,talks ↓,0.45540340775809435,0.0772193859374159,0.45540340775809435,dropped,prior_period:Apr 10–12,False
+Apr 12–14,17,islamabad,islamabad ↓,0.2956675708610479,0.06944509860669425,0.2956675708610479,dropped,prior_period:Apr 10–12,False
+Apr 12–14,18,negotiations,negotiations ↓,0.15878443620315535,0.025252763129707,0.15878443620315535,dropped,prior_period:Apr 10–12,False
+Apr 12–14,19,iran,iran ↓,0.13688313465789254,0.037879144694560496,0.13688313465789254,dropped,prior_period:Apr 10–12,False
+Apr 12–14,20,islamic,islamic ↓,0.12593248388526113,0.06944509860669425,0.12593248388526113,dropped,prior_period:Apr 10–12,False

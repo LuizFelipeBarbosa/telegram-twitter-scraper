@@ -1,0 +1,3 @@
+segment_label,message_count,message_share_pct,text_messages,text_message_share_pct,media_only_messages,mean_text_length,median_text_length,mean_sentiment_score,median_sentiment_score,messages_with_topics,messages_with_frames
+Media,762,63.5,544,71.4,218,177.1,200.0,-0.266,-0.295,544,0
+Text-only,438,36.5,401,91.6,0,157.4,162.0,-0.227,-0.17,401,0

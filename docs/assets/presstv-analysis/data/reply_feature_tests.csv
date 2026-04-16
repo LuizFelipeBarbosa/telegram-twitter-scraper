@@ -1,0 +1,3 @@
+feature,test,statistic,p_value,group_a,group_a_n,group_a_median,group_b,group_b_n,group_b_median,note
+text_length,Mann-Whitney U,81835.5,5.971194427882423e-07,messages receiving replies,119,199.0,messages receiving no replies,1081,160.0,Compares text-length distributions between replied-to and unreplied messages.
+has_media × reply_received,Chi-square,0.3467034889864519,0.5559851631919305,has_media,762,10.37,no_media,438,9.13,group_*_median columns store reply rates (%) for the media contingency test.

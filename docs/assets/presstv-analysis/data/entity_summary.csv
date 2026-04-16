@@ -1,0 +1,759 @@
+entity,message_count,entity_type,top_surface_form,surface_forms,unique_surface_forms,graph_degree,weighted_degree,community_label
+Iran,458,GPE,Iran,"Iran, Islamic Republic",2,79,1034.0,C1
+US,393,GPE,US,"US, the United States, America, U.S., The United States",7,69,920.0,C1
+Israeli,227,NORP,Israeli,Israeli,1,47,493.0,C2
+Iranian,150,NORP,Iranian,Iranian,1,41,330.0,C4
+Lebanon,115,GPE,Lebanon,Lebanon,1,32,247.0,C2
+Trump,90,PERSON,Trump,"Trump, Donald Trump",2,20,164.0,C1
+Israel,72,GPE,Israel,Israel,1,24,176.0,C1
+Tehran,68,GPE,Tehran,Tehran,1,20,128.0,C4
+Islamabad,64,GPE,Islamabad,Islamabad,1,20,182.0,C1
+Hezbollah,47,ORG,Hezbollah,Hezbollah,1,11,89.0,C2
+American,42,NORP,American,American,1,17,106.0,C1
+Pakistan,38,GPE,Pakistan,Pakistan,1,14,114.0,C1
+Ayatollah Seyyed Ali Khamenei,32,PERSON,Ayatollah Seyyed Ali Khamenei,Ayatollah Seyyed Ali Khamenei,1,7,36.0,C4
+Hormuz,31,PERSON,Hormuz,Hormuz,1,8,52.0,C1
+Lebanese,30,NORP,Lebanese,Lebanese,1,10,61.0,C2
+IRGC,29,ORG,IRGC,IRGC,1,11,46.0,C5
+Iranians,29,NORP,Iranians,Iranians,1,9,40.0,C4
+Beirut,25,GPE,Beirut,Beirut,1,7,41.0,C2
+Zionist,23,NORP,Zionist,Zionist,1,10,56.0,C2
+Press TV's,22,ORG,Press TV's,"Press TV's, Press TV’s",2,10,44.0,C1
+Pakistani,19,NORP,Pakistani,Pakistani,1,11,57.0,C4
+Abbas Araghchi,16,PERSON,Abbas Araghchi,Abbas Araghchi,1,8,36.0,C1
+Washington,16,GPE,Washington,Washington,1,7,37.0,C1
+Masoud Pezeshkian,15,PERSON,Masoud Pezeshkian,Masoud Pezeshkian,1,5,30.0,C4
+Palestine,15,GPE,Palestine,Palestine,1,4,19.0,C2
+Pezeshkian,15,PERSON,Pezeshkian,Pezeshkian,1,7,35.0,C4
+Gaza,13,GPE,Gaza,Gaza,1,5,15.0,C2
+Netanyahu,13,PERSON,Netanyahu,Netanyahu,1,7,33.0,C1
+China,12,GPE,China,China,1,7,25.0,C6
+Qalibaf,12,PERSON,Qalibaf,Qalibaf,1,8,31.0,C1
+Iraq,11,GPE,Iraq,Iraq,1,4,11.0,C1
+Parliament,11,ORG,Parliament,Parliament,1,8,33.0,C1
+Isfahan,10,ORG,Isfahan,Isfahan,1,4,19.0,C3
+Jewish,10,NORP,Jewish,Jewish,1,7,31.0,C4
+Leo XIV,10,PERSON,Leo XIV,Leo XIV,1,5,18.0,C1
+Tel Aviv,10,GPE,Tel Aviv,Tel Aviv,1,6,16.0,C1
+the Islamic Republic,10,GPE,the Islamic Republic,the Islamic Republic,1,4,18.0,C4
+Ayatollah Khamenei,9,PERSON,Ayatollah Khamenei,Ayatollah Khamenei,1,2,8.0,C4
+Foreign Ministry,9,ORG,Foreign Ministry,Foreign Ministry,1,6,23.0,C1
+Naim Qassem,9,PERSON,Naim Qassem,Naim Qassem,1,4,21.0,C2
+Shehbaz Sharif,9,PERSON,Shehbaz Sharif,Shehbaz Sharif,1,9,35.0,C4
+UN,9,ORG,UN,"UN, the United Nations",2,4,20.0,C1
+the Iranian Armed Forces,9,ORG,the Iranian Armed Forces,the Iranian Armed Forces,1,4,16.0,C4
+Handala,8,ORG,Handala,Handala,1,2,4.0,C6
+Mohammad Reza Aref,8,PERSON,Mohammad Reza Aref,Mohammad Reza Aref,1,4,13.0,C1
+Russia,8,GPE,Russia,Russia,1,5,17.0,C6
+️ Footage,8,PERSON,️ Footage,️ Footage,1,6,14.0,C2
+Baghdad,7,GPE,Baghdad,Baghdad,1,6,18.0,C1
+Bahrain,7,GPE,Bahrain,Bahrain,1,6,15.0,C6
+Iraqi,7,NORP,Iraqi,Iraqi,1,6,13.0,C1
+JD Vance,7,PERSON,JD Vance,JD Vance,1,5,19.0,C1
+Mohammad Bagher Ghalibaf,7,PERSON,Mohammad Bagher Ghalibaf,Mohammad Bagher Ghalibaf,1,7,25.0,C4
+Mohammad Baqer Qalibaf,7,PERSON,Mohammad Baqer Qalibaf,Mohammad Baqer Qalibaf,1,7,21.0,C1
+Palestinian,7,NORP,Palestinian,Palestinian,1,2,6.0,C2
+Seyyed Abbas,7,PERSON,Seyyed Abbas,Seyyed Abbas,1,3,12.0,C1
+Yemen,7,GPE,Yemen,Yemen,1,4,16.0,C1
+Americans,6,NORP,Americans,Americans,1,4,15.0,C1
+Iraqis,6,NORP,Iraqis,Iraqis,1,5,15.0,C1
+Kuwait,6,GPE,Kuwait,Kuwait,1,3,9.0,C4
+Pope,6,PERSON,Pope,Pope,1,4,13.0,C1
+Press TV Exclusive,6,ORG,Press TV Exclusive,Press TV Exclusive,1,4,14.0,C1
+Qatar,6,GPE,Qatar,Qatar,1,3,12.0,C4
+Spain,6,GPE,Spain,Spain,1,4,14.0,C2
+the Islamic Republic of Iran,6,GPE,the Islamic Republic of Iran,the Islamic Republic of Iran,1,3,6.0,C4
+Ali Khamenei,5,PERSON,Ali Khamenei,Ali Khamenei,1,0,0.0,—
+Congress,5,ORG,Congress,Congress,1,3,11.0,C1
+France,5,GPE,France,France,1,1,2.0,C2
+French,5,NORP,French,French,1,2,4.0,C2
+Maryam Azarchehr,5,ORG,Maryam Azarchehr,Maryam Azarchehr,1,3,11.0,C1
+Max Blumenthal,5,PERSON,Max Blumenthal,Max Blumenthal,1,4,12.0,C1
+Nahariya,5,ORG,Nahariya,Nahariya,1,2,5.0,C2
+Seyyed Kamal Kharazi,5,PERSON,Seyyed Kamal Kharazi,Seyyed Kamal Kharazi,1,3,7.0,C4
+Turkish,5,NORP,Turkish,Turkish,1,2,5.0,C2
+UK,5,GPE,UK,UK,1,1,2.0,C1
+the Quds Force,5,ORG,the Quds Force,the Quds Force,1,4,10.0,C5
+Ali Akbar Velayati,4,PERSON,Ali Akbar Velayati,Ali Akbar Velayati,1,1,4.0,C1
+Baghaei,4,ORG,Baghaei,Baghaei,1,4,11.0,C1
+Benjamin Netanyahu,4,PERSON,Benjamin Netanyahu,Benjamin Netanyahu,1,4,13.0,C1
+Bushehr,4,GPE,Bushehr,Bushehr,1,2,5.0,C2
+Islamic Revolution Guards Corps,4,ORG,Islamic Revolution Guards Corps,Islamic Revolution Guards Corps,1,2,8.0,C5
+Nasir Kazmi,4,PERSON,Nasir Kazmi,Nasir Kazmi,1,5,16.0,C1
+Palestinians,4,NORP,Palestinians,Palestinians,1,2,5.0,C2
+Russian,4,NORP,Russian,Russian,1,2,6.0,C1
+Saudi Arabia,4,GPE,Saudi Arabia,Saudi Arabia,1,4,9.0,C6
+Spanish,4,NORP,Spanish,Spanish,1,2,4.0,C2
+Turkey,4,GPE,Turkey,Turkey,1,1,2.0,C2
+Yemeni,4,NORP,Yemeni,Yemeni,1,1,2.0,C1
+Army,3,ORG,Army,Army,1,1,3.0,C1
+Ayatollah Nouri Hamedani,3,PERSON,Ayatollah Nouri Hamedani,Ayatollah Nouri Hamedani,1,2,4.0,C4
+Enghelab Sq,3,PERSON,Enghelab Sq,Enghelab Sq,1,2,5.0,C4
+Exposé,3,PERSON,Exposé,Exposé,1,0,0.0,—
+Gaza City,3,GPE,Gaza City,Gaza City,1,2,4.0,C2
+IRGC Quds Force,3,ORG,IRGC Quds Force,IRGC Quds Force,1,2,4.0,C5
+India,3,GPE,India,India,1,2,4.0,C1
+Istanbul,3,GPE,Istanbul,Istanbul,1,2,5.0,C2
+Italy,3,GPE,Italy,Italy,1,2,4.0,C2
+Jahan Sq,3,PERSON,Jahan Sq,Jahan Sq,1,2,6.0,C3
+Jews,3,NORP,Jews,Jews,1,2,6.0,C4
+Kamal Kharrazi,3,PERSON,Kamal Kharrazi,Kamal Kharrazi,1,0,0.0,—
+Leader,3,ORG,Leader,Leader,1,0,0.0,—
+Mehdi Fazaeli,3,PERSON,Mehdi Fazaeli,Mehdi Fazaeli,1,3,8.0,C1
+Muslim,3,NORP,Muslim,Muslim,1,0,0.0,—
+Nabatieh,3,ORG,Nabatieh,Nabatieh,1,2,6.0,C2
+Naghsh-e,3,GPE,Naghsh-e,Naghsh-e,1,2,6.0,C3
+Navy,3,ORG,Navy,Navy,1,2,4.0,C5
+Oman,3,GPE,Oman,Oman,1,3,6.0,C2
+Pope Leo,3,PERSON,Pope Leo,Pope Leo,1,1,2.0,C1
+Qana,3,GPE,Qana,Qana,1,2,6.0,C2
+Reuters,3,ORG,Reuters,Reuters,1,2,4.0,C1
+Shahabiyeh,3,NORP,Shahabiyeh,Shahabiyeh,1,2,6.0,C2
+Sidon,3,GPE,Sidon,Sidon,1,3,7.0,C2
+Tadhg Hickey,3,PERSON,Tadhg Hickey,Tadhg Hickey,1,1,2.0,C1
+The Islamic Revolution Guards Corps,3,ORG,The Islamic Revolution Guards Corps,The Islamic Revolution Guards Corps,1,1,3.0,C5
+Tucker Carlson,3,PERSON,Tucker Carlson,Tucker Carlson,1,2,5.0,C1
+Tyre,3,GPE,Tyre,Tyre,1,2,5.0,C2
+US Air Force,3,ORG,US Air Force,US Air Force,1,0,0.0,—
+Urmia,3,GPE,Urmia,Urmia,1,1,2.0,C4
+Vienna,3,GPE,Vienna,Vienna,1,1,2.0,C1
+al-Quds,3,ORG,al-Quds,al-Quds,1,1,2.0,C2
+Afghanistan,2,GPE,Afghanistan,Afghanistan,1,0,0.0,—
+Al-Aqsa Mosque,2,ORG,Al-Aqsa Mosque,Al-Aqsa Mosque,1,0,0.0,—
+Al-Bazouriyeh,2,ORG,Al-Bazouriyeh,Al-Bazouriyeh,1,0,0.0,—
+Amir Saeid Iravani,2,PERSON,Amir Saeid Iravani,Amir Saeid Iravani,1,0,0.0,—
+Ansarullah,2,PERSON,Ansarullah,Ansarullah,1,0,0.0,—
+Arab,2,NORP,Arab,Arab,1,0,0.0,—
+Araghchi,2,GPE,Araghchi,Araghchi,1,0,0.0,—
+Armenian,2,NORP,Armenian,Armenian,1,0,0.0,—
+Asian,2,NORP,Asian,Asian,1,0,0.0,—
+Australia,2,GPE,Australia,Australia,1,0,0.0,—
+Ayatollah Seyyed,2,PERSON,Ayatollah Seyyed,Ayatollah Seyyed,1,0,0.0,—
+Bernat Lautaro,2,PERSON,Bernat Lautaro,Bernat Lautaro,1,0,0.0,—
+Bernie Sanders,2,PERSON,Bernie Sanders,Bernie Sanders,1,0,0.0,—
+Brazil,2,GPE,Brazil,Brazil,1,0,0.0,—
+Britain,2,GPE,Britain,Britain,1,0,0.0,—
+Bureij,2,PERSON,Bureij,Bureij,1,0,0.0,—
+CENTCOM,2,ORG,CENTCOM,CENTCOM,1,0,0.0,—
+Canada,2,GPE,Canada,Canada,1,0,0.0,—
+Chris Murphy,2,PERSON,Chris Murphy,Chris Murphy,1,0,0.0,—
+Christian,2,NORP,Christian,Christian,1,0,0.0,—
+Colombia,2,GPE,Colombia,Colombia,1,0,0.0,—
+Cynthia McKinney,2,PERSON,Cynthia McKinney,Cynthia McKinney,1,0,0.0,—
+Democratic,2,NORP,Democratic,Democratic,1,0,0.0,—
+Democrats,2,NORP,Democrats,Democrats,1,0,0.0,—
+Dieter Reinisch,2,PERSON,Dieter Reinisch,Dieter Reinisch,1,0,0.0,—
+European,2,NORP,European,European,1,0,0.0,—
+Geneva,2,GPE,Geneva,Geneva,1,0,0.0,—
+German,2,NORP,German,German,1,0,0.0,—
+Hakeem Jeffries,2,PERSON,Hakeem Jeffries,Hakeem Jeffries,1,0,0.0,—
+Hamas,2,ORG,Hamas,Hamas,1,0,0.0,—
+Herzi Halevi,2,PERSON,Herzi Halevi,Herzi Halevi,1,0,0.0,—
+Hormuz Strait,2,PERSON,Hormuz Strait,Hormuz Strait,1,0,0.0,—
+Hungary,2,GPE,Hungary,Hungary,1,0,0.0,—
+IRGC Navy,2,ORG,IRGC Navy,IRGC Navy,1,0,0.0,—
+Imam Khamenei,2,PERSON,Imam Khamenei,Imam Khamenei,1,0,0.0,—
+Imam Sayyid,2,PERSON,Imam Sayyid,Imam Sayyid,1,0,0.0,—
+Indonesia,2,GPE,Indonesia,Indonesia,1,0,0.0,—
+Irans,2,NORP,Irans,Irans,1,0,0.0,—
+Ireland,2,GPE,Ireland,Ireland,1,0,0.0,—
+Isfahan operation Information,2,ORG,Isfahan operation Information,Isfahan operation Information,1,0,0.0,—
+Ishaq Dar,2,PERSON,Ishaq Dar,Ishaq Dar,1,0,0.0,—
+Islamic,2,NORP,Islamic,Islamic,1,0,0.0,—
+Isra,2,GPE,Isra,Isra,1,0,0.0,—
+Joe Lauria,2,PERSON,Joe Lauria,Joe Lauria,1,0,0.0,—
+Jordan,2,GPE,Jordan,Jordan,1,0,0.0,—
+Kamal Sharaf,2,PERSON,Kamal Sharaf,Kamal Sharaf,1,0,0.0,—
+Kazem Gharibabadi,2,PERSON,Kazem Gharibabadi,Kazem Gharibabadi,1,0,0.0,—
+Kiryat Shmona,2,PERSON,Kiryat Shmona,Kiryat Shmona,1,0,0.0,—
+Kuwaiti,2,GPE,Kuwaiti,Kuwaiti,1,0,0.0,—
+L'Espresso,2,PERSON,L'Espresso,L'Espresso,1,0,0.0,—
+Leader of Islamic,2,ORG,Leader of Islamic,Leader of Islamic,1,0,0.0,—
+Leadership,2,PERSON,Leadership,Leadership,1,0,0.0,—
+London,2,GPE,London,London,1,0,0.0,—
+Macron,2,PERSON,Macron,Macron,1,0,0.0,—
+Majid Khademi,2,PERSON,Majid Khademi,Majid Khademi,1,0,0.0,—
+Marwa Osman,2,PERSON,Marwa Osman,Marwa Osman,1,0,0.0,—
+Mexico,2,GPE,Mexico,Mexico,1,0,0.0,—
+Moeen Amini,2,PERSON,Moeen Amini,Moeen Amini,1,0,0.0,—
+Mohsen Rezaei,2,PERSON,Mohsen Rezaei,Mohsen Rezaei,1,0,0.0,—
+Mojtaba Khamenei,2,PERSON,Mojtaba Khamenei,Mojtaba Khamenei,1,0,0.0,—
+NATO,2,ORG,NATO,NATO,1,0,0.0,—
+Nawar Faeq,2,PERSON,Nawar Faeq,Nawar Faeq,1,0,0.0,—
+New Delhi,2,GPE,New Delhi,New Delhi,1,0,0.0,—
+New York,2,GPE,New York,New York,1,0,0.0,—
+Nigeria,2,GPE,Nigeria,Nigeria,1,0,0.0,—
+Nizar Amedi,2,PERSON,Nizar Amedi,Nizar Amedi,1,0,0.0,—
+North Korea,2,GPE,North Korea,North Korea,1,0,0.0,—
+Olmeca,2,ORG,Olmeca,Olmeca,1,0,0.0,—
+PM Sánchez,2,GPE,PM Sánchez,PM Sánchez,1,0,0.0,—
+Pete Hegseth,2,PERSON,Pete Hegseth,Pete Hegseth,1,0,0.0,—
+Pope Leo XIV,2,PERSON,Pope Leo XIV,Pope Leo XIV,1,0,0.0,—
+Qom,2,GPE,Qom,Qom,1,0,0.0,—
+Red Crescent Society,2,ORG,Red Crescent Society,Red Crescent Society,1,0,0.0,—
+Reza Vedadi,2,PERSON,Reza Vedadi,Reza Vedadi,1,0,0.0,—
+Rome,2,GPE,Rome,Rome,1,0,0.0,—
+Saudi,2,NORP,Saudi,Saudi,1,0,0.0,—
+Scott Ritter,2,PERSON,Scott Ritter,Scott Ritter,1,0,0.0,—
+Shiyyah,2,GPE,Shiyyah,Shiyyah,1,0,0.0,—
+Skardu,2,GPE,Skardu,Skardu,1,0,0.0,—
+South Africa,2,GPE,South Africa,South Africa,1,0,0.0,—
+State,2,ORG,State,State,1,0,0.0,—
+Tabasco,2,GPE,Tabasco,Tabasco,1,0,0.0,—
+Tabriz,2,GPE,Tabriz,Tabriz,1,0,0.0,—
+UAE,2,GPE,UAE,UAE,1,0,0.0,—
+US Navy,2,ORG,US Navy,US Navy,1,0,0.0,—
+Western,2,NORP,Western,Western,1,0,0.0,—
+White House,2,ORG,White House,White House,1,0,0.0,—
+Yair Lapid,2,PERSON,Yair Lapid,Yair Lapid,1,0,0.0,—
+Yemenis,2,NORP,Yemenis,Yemenis,1,0,0.0,—
+Zionists,2,NORP,Zionists,Zionists,1,0,0.0,—
+the Catholic Church,2,ORG,the Catholic Church,the Catholic Church,1,0,0.0,—
+the IRGC Intelligence Organization,2,ORG,the IRGC Intelligence Organization,the IRGC Intelligence Organization,1,0,0.0,—
+the Islamic Revolution Guards Corps,2,ORG,the Islamic Revolution Guards Corps,the Islamic Revolution Guards Corps,1,0,0.0,—
+the Khatam Al-Anbiya Central Headquarters,2,ORG,the Khatam Al-Anbiya Central Headquarters,the Khatam Al-Anbiya Central Headquarters,1,0,0.0,—
+the Patriotic Union of Kurdistan,2,ORG,the Patriotic Union of Kurdistan,the Patriotic Union of Kurdistan,1,0,0.0,—
+the UN Security Council,2,ORG,the UN Security Council,the UN Security Council,1,0,0.0,—
+the United Arab Emirates,2,GPE,the United Arab Emirates,the United Arab Emirates,1,0,0.0,—
+🇮🇷,2,PERSON,🇮🇷,🇮🇷,1,0,0.0,—
+ABC,1,ORG,ABC,ABC,1,0,0.0,—
+AUROURA,1,ORG,AUROURA,AUROURA,1,0,0.0,—
+Abadan,1,GPE,Abadan,Abadan,1,0,0.0,—
+Abdolkarim Hosseinzadeh,1,PERSON,Abdolkarim Hosseinzadeh,Abdolkarim Hosseinzadeh,1,0,0.0,—
+Abdolnaser Hemmati,1,PERSON,Abdolnaser Hemmati,Abdolnaser Hemmati,1,0,0.0,—
+Abdolrahim Mousavi,1,PERSON,Abdolrahim Mousavi,Abdolrahim Mousavi,1,0,0.0,—
+Abdul Malik Al-Houthi,1,PERSON,Abdul Malik Al-Houthi,Abdul Malik Al-Houthi,1,0,0.0,—
+Abdul-Malik al-Houthi,1,PERSON,Abdul-Malik al-Houthi,Abdul-Malik al-Houthi,1,0,0.0,—
+Abuja,1,GPE,Abuja,Abuja,1,0,0.0,—
+Adelita Grijalva,1,PERSON,Adelita Grijalva,Adelita Grijalva,1,0,0.0,—
+Aerospace Force,1,ORG,Aerospace Force,Aerospace Force,1,0,0.0,—
+African,1,NORP,African,African,1,0,0.0,—
+Ahar,1,GPE,Ahar,Ahar,1,0,0.0,—
+Air Force Two,1,ORG,Air Force Two,Air Force Two,1,0,0.0,—
+Ajay Banga,1,PERSON,Ajay Banga,Ajay Banga,1,0,0.0,—
+Al Jazeera,1,ORG,Al Jazeera,Al Jazeera,1,0,0.0,—
+Al-Basta,1,NORP,Al-Basta,Al-Basta,1,0,0.0,—
+Al-Houthi,1,ORG,Al-Houthi,Al-Houthi,1,0,0.0,—
+Al-Manar TV,1,ORG,Al-Manar TV,Al-Manar TV,1,0,0.0,—
+Al-Mansouri,1,ORG,Al-Mansouri,Al-Mansouri,1,0,0.0,—
+Al-Quds,1,ORG,Al-Quds,Al-Quds,1,0,0.0,—
+Al-Udeid,1,ORG,Al-Udeid,Al-Udeid,1,0,0.0,—
+Alberto García,1,PERSON,Alberto García,Alberto García,1,0,0.0,—
+Alexander Stubb,1,PERSON,Alexander Stubb,Alexander Stubb,1,0,0.0,—
+Algeria,1,GPE,Algeria,Algeria,1,0,0.0,—
+Ali Abunimah,1,PERSON,Ali Abunimah,Ali Abunimah,1,0,0.0,—
+Ali Akbar Ahmadian,1,PERSON,Ali Akbar Ahmadian,Ali Akbar Ahmadian,1,0,0.0,—
+Ali Al Salem,1,ORG,Ali Al Salem,Ali Al Salem,1,0,0.0,—
+Ali Ghamsari,1,PERSON,Ali Ghamsari,Ali Ghamsari,1,0,0.0,—
+Ali Larijani,1,PERSON,Ali Larijani,Ali Larijani,1,0,0.0,—
+Ali Sayad Shirazi,1,PERSON,Ali Sayad Shirazi,Ali Sayad Shirazi,1,0,0.0,—
+Aliyev,1,PERSON,Aliyev,Aliyev,1,0,0.0,—
+Alon Mizrahi,1,ORG,Alon Mizrahi,Alon Mizrahi,1,0,0.0,—
+Al‑Mansouri,1,GPE,Al‑Mansouri,Al‑Mansouri,1,0,0.0,—
+Amini,1,PERSON,Amini,Amini,1,0,0.0,—
+Amir Irani,1,PERSON,Amir Irani,Amir Irani,1,0,0.0,—
+Analysis - Frozen,1,ORG,Analysis - Frozen,Analysis - Frozen,1,0,0.0,—
+Ankara,1,GPE,Ankara,Ankara,1,0,0.0,—
+Ansarallah,1,GPE,Ansarallah,Ansarallah,1,0,0.0,—
+Ansarullah Resistance Movement,1,ORG,Ansarullah Resistance Movement,Ansarullah Resistance Movement,1,0,0.0,—
+Anthony Ali,1,PERSON,Anthony Ali,Anthony Ali,1,0,0.0,—
+António Costa,1,PERSON,António Costa,António Costa,1,0,0.0,—
+António Guterres,1,PERSON,António Guterres,António Guterres,1,0,0.0,—
+Anwar Ibrahim,1,PERSON,Anwar Ibrahim,Anwar Ibrahim,1,0,0.0,—
+Aoun,1,PERSON,Aoun,Aoun,1,0,0.0,—
+Aref,1,PERSON,Aref,Aref,1,0,0.0,—
+Armed Forces,1,ORG,Armed Forces,Armed Forces,1,0,0.0,—
+Asaluyeh,1,NORP,Asaluyeh,Asaluyeh,1,0,0.0,—
+Assyrians,1,NORP,Assyrians,Assyrians,1,0,0.0,—
+Australian,1,NORP,Australian,Australian,1,0,0.0,—
+Austria,1,GPE,Austria,Austria,1,0,0.0,—
+Axis of Resistance,1,ORG,Axis of Resistance,Axis of Resistance,1,0,0.0,—
+Ayatollah Ali Khamenei,1,PERSON,Ayatollah Ali Khamenei,Ayatollah Ali Khamenei,1,0,0.0,—
+Ayatollah Khamenei's,1,PERSON,Ayatollah Khamenei's,Ayatollah Khamenei's,1,0,0.0,—
+Ayatollah Makarem Shirazi,1,PERSON,Ayatollah Makarem Shirazi,Ayatollah Makarem Shirazi,1,0,0.0,—
+Ayatollah Naser,1,PERSON,Ayatollah Naser,Ayatollah Naser,1,0,0.0,—
+Ayatollah Sadegh Larijani,1,PERSON,Ayatollah Sadegh Larijani,Ayatollah Sadegh Larijani,1,0,0.0,—
+Ayatollah Seyed Mojtaba Khamenei,1,PERSON,Ayatollah Seyed Mojtaba Khamenei,Ayatollah Seyed Mojtaba Khamenei,1,0,0.0,—
+Ayatollah Seyyed Ali Khamenei Danjuma Abdullahi,1,PERSON,Ayatollah Seyyed Ali Khamenei Danjuma Abdullahi,Ayatollah Seyyed Ali Khamenei Danjuma Abdullahi,1,0,0.0,—
+Ayatollah Seyyed Moj,1,PERSON,Ayatollah Seyyed Moj,Ayatollah Seyyed Moj,1,0,0.0,—
+Azadi,1,PERSON,Azadi,Azadi,1,0,0.0,—
+Azerbaijani,1,NORP,Azerbaijani,Azerbaijani,1,0,0.0,—
+B1 Bridge US,1,ORG,B1 Bridge US,B1 Bridge US,1,0,0.0,—
+Baalbek,1,PERSON,Baalbek,Baalbek,1,0,0.0,—
+Bab El-Mandeb Strait,1,PERSON,Bab El-Mandeb Strait,Bab El-Mandeb Strait,1,0,0.0,—
+Bab al-Mandab,1,PERSON,Bab al-Mandab,Bab al-Mandab,1,0,0.0,—
+Badrud,1,GPE,Badrud,Badrud,1,0,0.0,—
+Bahasa,1,GPE,Bahasa,Bahasa,1,0,0.0,—
+Basra,1,GPE,Basra,Basra,1,0,0.0,—
+Bekaa,1,PERSON,Bekaa,Bekaa,1,0,0.0,—
+Belgium,1,GPE,Belgium,Belgium,1,0,0.0,—
+Benj,1,PERSON,Benj,Benj,1,0,0.0,—
+Beqaa,1,GPE,Beqaa,Beqaa,1,0,0.0,—
+Biden,1,PERSON,Biden,Biden,1,0,0.0,—
+Bishkek,1,GPE,Bishkek,Bishkek,1,0,0.0,—
+Bogota,1,GPE,Bogota,Bogota,1,0,0.0,—
+Bogotá,1,PERSON,Bogotá,Bogotá,1,0,0.0,—
+Boroujerdi,1,ORG,Boroujerdi,Boroujerdi,1,0,0.0,—
+Brazilian,1,NORP,Brazilian,Brazilian,1,0,0.0,—
+British,1,NORP,British,British,1,0,0.0,—
+Brooklyn,1,GPE,Brooklyn,Brooklyn,1,0,0.0,—
+Bush,1,PERSON,Bush,Bush,1,0,0.0,—
+Bushra Shaikh,1,PERSON,Bushra Shaikh,Bushra Shaikh,1,0,0.0,—
+CBS,1,ORG,CBS,CBS,1,0,0.0,—
+CBS News,1,ORG,CBS News,CBS News,1,0,0.0,—
+CEASEFIRE,1,ORG,CEASEFIRE,CEASEFIRE,1,0,0.0,—
+CIA,1,ORG,CIA,CIA,1,0,0.0,—
+CIVILIZATION American,1,ORG,CIVILIZATION American,CIVILIZATION American,1,0,0.0,—
+CNN,1,ORG,CNN,CNN,1,0,0.0,—
+Cabinet,1,ORG,Cabinet,Cabinet,1,0,0.0,—
+California,1,GPE,California,California,1,0,0.0,—
+Canadian,1,NORP,Canadian,Canadian,1,0,0.0,—
+Caracas,1,GPE,Caracas,Caracas,1,0,0.0,—
+Carter,1,PERSON,Carter,Carter,1,0,0.0,—
+Catholic,1,NORP,Catholic,Catholic,1,0,0.0,—
+Catholics,1,NORP,Catholics,Catholics,1,0,0.0,—
+Central Bank,1,ORG,Central Bank,Central Bank,1,0,0.0,—
+Central Bank Abdolnasser Hemmati,1,ORG,Central Bank Abdolnasser Hemmati,Central Bank Abdolnasser Hemmati,1,0,0.0,—
+Chaaitiyeh,1,GPE,Chaaitiyeh,Chaaitiyeh,1,0,0.0,—
+Chamar,1,GPE,Chamar,Chamar,1,0,0.0,—
+Chicago,1,GPE,Chicago,Chicago,1,0,0.0,—
+Choukin,1,ORG,Choukin,Choukin,1,0,0.0,—
+Chris Coons,1,PERSON,Chris Coons,Chris Coons,1,0,0.0,—
+Christians,1,NORP,Christians,Christians,1,0,0.0,—
+Citizens,1,ORG,Citizens,Citizens,1,0,0.0,—
+Civilized Iran,1,PERSON,Civilized Iran,Civilized Iran,1,0,0.0,—
+Commission on National Security and Foreign Policy,1,ORG,Commission on National Security and Foreign Policy,Commission on National Security and Foreign Policy,1,0,0.0,—
+Consortium News,1,ORG,Consortium News,Consortium News,1,0,0.0,—
+Continuation of,1,ORG,Continuation of,Continuation of,1,0,0.0,—
+Conversation - Israeli,1,NORP,Conversation - Israeli,Conversation - Israeli,1,0,0.0,—
+Conversation - US Strait,1,ORG,Conversation - US Strait,Conversation - US Strait,1,0,0.0,—
+Costa Rica,1,GPE,Costa Rica,Costa Rica,1,0,0.0,—
+Costa Rica's,1,GPE,Costa Rica's,Costa Rica's,1,0,0.0,—
+Czech,1,NORP,Czech,Czech,1,0,0.0,—
+Córdoba,1,GPE,Córdoba,Córdoba,1,0,0.0,—
+DESTROY Trump,1,ORG,DESTROY Trump,DESTROY Trump,1,0,0.0,—
+Dahieh,1,PERSON,Dahieh,Dahieh,1,0,0.0,—
+Damavand,1,ORG,Damavand,Damavand,1,0,0.0,—
+Daytime,1,PERSON,Daytime,Daytime,1,0,0.0,—
+Defence,1,ORG,Defence,Defence,1,0,0.0,—
+Defense,1,ORG,Defense,Defense,1,0,0.0,—
+Defense Council,1,ORG,Defense Council,Defense Council,1,0,0.0,—
+Deir Antara,1,GPE,Deir Antara,Deir Antara,1,0,0.0,—
+Deir Qanoun,1,GPE,Deir Qanoun,Deir Qanoun,1,0,0.0,—
+Dimona,1,GPE,Dimona,Dimona,1,0,0.0,—
+Dmitry Medvedev,1,PERSON,Dmitry Medvedev,Dmitry Medvedev,1,0,0.0,—
+Don Beyer,1,PERSON,Don Beyer,Don Beyer,1,0,0.0,—
+Donald Tru,1,PERSON,Donald Tru,Donald Tru,1,0,0.0,—
+Doueir,1,GPE,Doueir,Doueir,1,0,0.0,—
+Dovid Weiss,1,PERSON,Dovid Weiss,Dovid Weiss,1,0,0.0,—
+Duris,1,PERSON,Duris,Duris,1,0,0.0,—
+EU,1,ORG,EU,EU,1,0,0.0,—
+East Azarbaijan Province,1,GPE,East Azarbaijan Province,East Azarbaijan Province,1,0,0.0,—
+Ebl al-Saqi,1,GPE,Ebl al-Saqi,Ebl al-Saqi,1,0,0.0,—
+Ebrahim Azizi,1,PERSON,Ebrahim Azizi,Ebrahim Azizi,1,0,0.0,—
+Ed Markey,1,PERSON,Ed Markey,Ed Markey,1,0,0.0,—
+Education Ministry,1,ORG,Education Ministry,Education Ministry,1,0,0.0,—
+Eilat,1,ORG,Eilat,Eilat,1,0,0.0,—
+Elham Kadkhodaee,1,PERSON,Elham Kadkhodaee,Elham Kadkhodaee,1,0,0.0,—
+Elias Farhat,1,PERSON,Elias Farhat,Elias Farhat,1,0,0.0,—
+Elijah Magnier,1,PERSON,Elijah Magnier,Elijah Magnier,1,0,0.0,—
+Elizabeth Warren,1,PERSON,Elizabeth Warren,Elizabeth Warren,1,0,0.0,—
+Embassy,1,GPE,Embassy,Embassy,1,0,0.0,—
+Emir Sheikh,1,PERSON,Emir Sheikh,Emir Sheikh,1,0,0.0,—
+Erdoğan,1,PERSON,Erdoğan,Erdoğan,1,0,0.0,—
+Eric Swalwell,1,PERSON,Eric Swalwell,Eric Swalwell,1,0,0.0,—
+Esmaeil Baghaei,1,PERSON,Esmaeil Baghaei,Esmaeil Baghaei,1,0,0.0,—
+Esmaeil Qaani,1,PERSON,Esmaeil Qaani,Esmaeil Qaani,1,0,0.0,—
+Esmail Baghaei,1,PERSON,Esmail Baghaei,Esmail Baghaei,1,0,0.0,—
+Esmail Qaani,1,PERSON,Esmail Qaani,Esmail Qaani,1,0,0.0,—
+Ex-Iran FM,1,ORG,Ex-Iran FM,Ex-Iran FM,1,0,0.0,—
+Expediency Discernment Council,1,ORG,Expediency Discernment Council,Expediency Discernment Council,1,0,0.0,—
+Explainer,1,PERSON,Explainer,Explainer,1,0,0.0,—
+FM Araghchi,1,ORG,FM Araghchi,FM Araghchi,1,0,0.0,—
+Fatemeh Mohajerani,1,PERSON,Fatemeh Mohajerani,Fatemeh Mohajerani,1,0,0.0,—
+Fighters,1,PERSON,Fighters,Fighters,1,0,0.0,—
+Finland,1,GPE,Finland,Finland,1,0,0.0,—
+Foad Izadi,1,PERSON,Foad Izadi,Foad Izadi,1,0,0.0,—
+Fox News,1,ORG,Fox News,Fox News,1,0,0.0,—
+Freedom Flotilla,1,PERSON,Freedom Flotilla,Freedom Flotilla,1,0,0.0,—
+Gaza Strip,1,GPE,Gaza Strip,Gaza Strip,1,0,0.0,—
+George Galloway,1,PERSON,George Galloway,George Galloway,1,0,0.0,—
+Georgia,1,GPE,Georgia,Georgia,1,0,0.0,—
+Germany,1,GPE,Germany,Germany,1,0,0.0,—
+Ghada Al-Daikh,1,PERSON,Ghada Al-Daikh,Ghada Al-Daikh,1,0,0.0,—
+Ghada Al-Dayekh,1,PERSON,Ghada Al-Dayekh,Ghada Al-Dayekh,1,0,0.0,—
+Gharibabadi,1,PERSON,Gharibabadi,Gharibabadi,1,0,0.0,—
+Gholamhossein Mohseni-Ejei,1,ORG,Gholamhossein Mohseni-Ejei,Gholamhossein Mohseni-Ejei,1,0,0.0,—
+Gisha,1,PERSON,Gisha,Gisha,1,0,0.0,—
+Gisoo Misha Ahmadi,1,ORG,Gisoo Misha Ahmadi,Gisoo Misha Ahmadi,1,0,0.0,—
+Gladys Quesada,1,PERSON,Gladys Quesada,Gladys Quesada,1,0,0.0,—
+Gorgan,1,PERSON,Gorgan,Gorgan,1,0,0.0,—
+Gospel,1,PERSON,Gospel,Gospel,1,0,0.0,—
+Greg Simons,1,PERSON,Greg Simons,Greg Simons,1,0,0.0,—
+Hacker,1,ORG,Hacker,Hacker,1,0,0.0,—
+Hakan Fidan,1,PERSON,Hakan Fidan,Hakan Fidan,1,0,0.0,—
+Hamedan,1,GPE,Hamedan,Hamedan,1,0,0.0,—
+Hammami Lalezar,1,PERSON,Hammami Lalezar,Hammami Lalezar,1,0,0.0,—
+Hassen Seria,1,ORG,Hassen Seria,Hassen Seria,1,0,0.0,—
+Hermes,1,GPE,Hermes,Hermes,1,0,0.0,—
+Hezbollah Hezbollah,1,PERSON,Hezbollah Hezbollah,Hezbollah Hezbollah,1,0,0.0,—
+Hezbollah Resistance,1,PERSON,Hezbollah Resistance:,Hezbollah Resistance:,1,0,0.0,—
+Hillary Clinton,1,PERSON,Hillary Clinton,Hillary Clinton,1,0,0.0,—
+HormuzIran,1,ORG,HormuzIran,HormuzIran,1,0,0.0,—
+Hossein Mohebi,1,PERSON,Hossein Mohebi,Hossein Mohebi,1,0,0.0,—
+House,1,ORG,House,House,1,0,0.0,—
+Hussein al-Bukhaiti,1,PERSON,Hussein al-Bukhaiti,Hussein al-Bukhaiti,1,0,0.0,—
+IAEA,1,ORG,IAEA,IAEA,1,0,0.0,—
+IMF,1,ORG,IMF,IMF,1,0,0.0,—
+IOF,1,ORG,IOF,IOF,1,0,0.0,—
+IRGC Aerospace,1,ORG,IRGC Aerospace,IRGC Aerospace,1,0,0.0,—
+IRGC Ground Force,1,ORG,IRGC Ground Force,IRGC Ground Force,1,0,0.0,—
+IRGC Public Relations,1,ORG,IRGC Public Relations,IRGC Public Relations,1,0,0.0,—
+IRGC Quds,1,ORG,IRGC Quds,IRGC Quds,1,0,0.0,—
+IRGC Tehran,1,ORG,IRGC Tehran,IRGC Tehran,1,0,0.0,—
+IRGC The Islamic Revolution Guards Corps,1,ORG,IRGC The Islamic Revolution Guards Corps,IRGC The Islamic Revolution Guards Corps,1,0,0.0,—
+IRGC intelligence's,1,ORG,IRGC intelligence's,IRGC intelligence's,1,0,0.0,—
+IRGC) Ground Force,1,ORG,IRGC) Ground Force,IRGC) Ground Force,1,0,0.0,—
+Ilam,1,ORG,Ilam,Ilam,1,0,0.0,—
+Illinois,1,GPE,Illinois,Illinois,1,0,0.0,—
+Imam Hussein Shrine Foundation,1,ORG,Imam Hussein Shrine Foundation,Imam Hussein Shrine Foundation,1,0,0.0,—
+Indian,1,NORP,Indian,Indian,1,0,0.0,—
+Indonesian,1,NORP,Indonesian,Indonesian,1,0,0.0,—
+Inflation Kristalina Georgieva,1,PERSON,Inflation Kristalina Georgieva,Inflation Kristalina Georgieva,1,0,0.0,—
+International Law,1,PERSON,International Law,International Law,1,0,0.0,—
+Intl,1,ORG,Intl,Intl,1,0,0.0,—
+Iran Firmly Rejects Temporary Ceasefire The Permanent Representative,1,ORG,Iran Firmly Rejects Temporary Ceasefire The Permanent Representative,Iran Firmly Rejects Temporary Ceasefire The Permanent Representative,1,0,0.0,—
+Iran Foreign Ministry,1,ORG,Iran Foreign Ministry,Iran Foreign Ministry,1,0,0.0,—
+Iran's Army,1,ORG,Iran’s Army,Iran’s Army,1,0,0.0,—
+Iran's Army Navy,1,ORG,Iran’s Army Navy,Iran’s Army Navy,1,0,0.0,—
+Iran's Emergency Organization,1,ORG,Iran’s Emergency Organization,Iran’s Emergency Organization,1,0,0.0,—
+Iran's Human Rights Headquarters,1,ORG,Iran’s Human Rights Headquarters,Iran’s Human Rights Headquarters,1,0,0.0,—
+Iranian Army Commanders,1,ORG,Iranian Army Commanders,Iranian Army Commanders,1,0,0.0,—
+Iranian Navy,1,ORG,Iranian Navy,Iranian Navy,1,0,0.0,—
+Irish,1,NORP,Irish,Irish,1,0,0.0,—
+Isfahan Province,1,GPE,Isfahan Province,Isfahan Province,1,0,0.0,—
+Islam,1,NORP,Islam,Islam,1,0,0.0,—
+Islamab,1,GPE,Islamab,Islamab,1,0,0.0,—
+Islamic Jihad,1,ORG,Islamic Jihad,Islamic Jihad,1,0,0.0,—
+Islamic Resistance,1,ORG,Islamic Resistance,Islamic Resistance,1,0,0.0,—
+Islamophobic,1,ORG,Islamophobic,Islamophobic,1,0,0.0,—
+Israe,1,NORP,Israe,Israe,1,0,0.0,—
+Israel Press TV's,1,ORG,Israel Press TV's,Israel Press TV's,1,0,0.0,—
+Italian,1,NORP,Italian,Italian,1,0,0.0,—
+Jamkaran Mosque,1,PERSON,Jamkaran Mosque,Jamkaran Mosque,1,0,0.0,—
+Jared Kushner,1,PERSON,Jared Kushner,Jared Kushner,1,0,0.0,—
+Jeddah,1,GPE,Jeddah,Jeddah,1,0,0.0,—
+Jeffrey Sachs,1,PERSON,Jeffrey Sachs,Jeffrey Sachs,1,0,0.0,—
+Jesus A,1,PERSON,Jesus A,Jesus A,1,0,0.0,—
+Jibchit,1,ORG,Jibchit,Jibchit,1,0,0.0,—
+Jim McGovern,1,PERSON,Jim McGovern,Jim McGovern,1,0,0.0,—
+Joe Emersberger,1,PERSON,Joe Emersberger,Joe Emersberger,1,0,0.0,—
+Joe Kent,1,PERSON,Joe Kent,Joe Kent,1,0,0.0,—
+Johann Wadephul,1,PERSON,Johann Wadephul,Johann Wadephul,1,0,0.0,—
+John Bosnitch,1,PERSON,John Bosnitch,John Bosnitch,1,0,0.0,—
+John Brennan,1,PERSON,John Brennan,John Brennan,1,0,0.0,—
+John Mearsheimer,1,PERSON,John Mearsheimer,John Mearsheimer,1,0,0.0,—
+Joseph Aoun,1,PERSON,Joseph Aoun,Joseph Aoun,1,0,0.0,—
+José Manuel Albares,1,PERSON,José Manuel Albares,José Manuel Albares,1,0,0.0,—
+Kamal,1,GPE,Kamal,Kamal,1,0,0.0,—
+Kamal Sharaf's,1,PERSON,Kamal Sharaf's,Kamal Sharaf's,1,0,0.0,—
+Karachi,1,GPE,Karachi,Karachi,1,0,0.0,—
+Karaj,1,GPE,Karaj,Karaj,1,0,0.0,—
+Karen Kwiatkowski,1,PERSON,Karen Kwiatkowski,Karen Kwiatkowski,1,0,0.0,—
+Kashan,1,GPE,Kashan,Kashan,1,0,0.0,—
+Keir Starmer,1,PERSON,Keir Starmer,Keir Starmer,1,0,0.0,—
+Kermanshah,1,ORG,Kermanshah,Kermanshah,1,0,0.0,—
+Kerry,1,PERSON,Kerry,Kerry,1,0,0.0,—
+Kfar Rumman,1,PERSON,Kfar Rumman,Kfar Rumman,1,0,0.0,—
+Kha,1,PERSON,Kha,Kha,1,0,0.0,—
+Khamenei,1,PERSON,Khamenei,Khamenei,1,0,0.0,—
+Kharrazi Iran's,1,PERSON,Kharrazi Iran’s,Kharrazi Iran’s,1,0,0.0,—
+Khatam al-Anbiya,1,PERSON,Khatam al-Anbiya,Khatam al-Anbiya,1,0,0.0,—
+Khatam al-Anbiya Central Headquarters,1,PERSON,Khatam al-Anbiya Central Headquarters,Khatam al-Anbiya Central Headquarters,1,0,0.0,—
+Khatoun Salma,1,PERSON,Khatoun Salma,Khatoun Salma,1,0,0.0,—
+Khawaja Asif,1,PERSON,Khawaja Asif,Khawaja Asif,1,0,0.0,—
+Khawaja Muhammad Asif,1,PERSON,Khawaja Muhammad Asif,Khawaja Muhammad Asif,1,0,0.0,—
+Khodaei,1,ORG,Khodaei,Khodaei,1,0,0.0,—
+Khorramshahr,1,GPE,Khorramshahr,Khorramshahr,1,0,0.0,—
+Kim Jong Un's,1,PERSON,Kim Jong Un's,Kim Jong Un's,1,0,0.0,—
+Kim Jong-un,1,PERSON,Kim Jong-un,Kim Jong-un,1,0,0.0,—
+Kpler,1,PERSON,Kpler,Kpler,1,0,0.0,—
+Kushner,1,ORG,Kushner,Kushner,1,0,0.0,—
+Labbaik ya Khamenei,1,PERSON,Labbaik ya Khamenei,Labbaik ya Khamenei,1,0,0.0,—
+Lar,1,GPE,Lar,Lar,1,0,0.0,—
+Le Monde,1,ORG,Le Monde,Le Monde,1,0,0.0,—
+Leader of the Islamic Revolution,1,ORG,"Leader of the Islamic Revolution,","Leader of the Islamic Revolution,",1,0,0.0,—
+Leb,1,PERSON,Leb,Leb,1,0,0.0,—
+Lebanon Belgian FM Maxime Prévot,1,ORG,Lebanon Belgian FM Maxime Prévot,Lebanon Belgian FM Maxime Prévot,1,0,0.0,—
+Lebanon Red Crescent,1,ORG,Lebanon Red Crescent,Lebanon Red Crescent,1,0,0.0,—
+Leo XI,1,PERSON,Leo XI,Leo XI,1,0,0.0,—
+Leo XIV's,1,PERSON,Leo XIV’s,Leo XIV’s,1,0,0.0,—
+Leyla Keshavarzi,1,PERSON,Leyla Keshavarzi,Leyla Keshavarzi,1,0,0.0,—
+Louis XIV,1,PERSON,Louis XIV,Louis XIV,1,0,0.0,—
+MAGA,1,ORG,MAGA,MAGA,1,0,0.0,—
+Mahshahr,1,GPE,Mahshahr,Mahshahr,1,0,0.0,—
+Makarem Shirazi,1,PERSON,Makarem Shirazi,Makarem Shirazi,1,0,0.0,—
+Malaga,1,GPE,Malaga,Malaga,1,0,0.0,—
+Malaysia Invention Olympiad,1,ORG,Malaysia Invention Olympiad,Malaysia Invention Olympiad,1,0,0.0,—
+Malaysian,1,NORP,Malaysian,Malaysian,1,0,0.0,—
+Malcolm Nance,1,PERSON,Malcolm Nance,Malcolm Nance,1,0,0.0,—
+Malekshahi County,1,GPE,Malekshahi County,Malekshahi County,1,0,0.0,—
+Management of Strait of,1,ORG,Management of Strait of,Management of Strait of,1,0,0.0,—
+Manouchehr Mottaki,1,PERSON,Manouchehr Mottaki,Manouchehr Mottaki,1,0,0.0,—
+Marandi,1,PERSON,Marandi,Marandi,1,0,0.0,—
+Marda,1,GPE,Marda,Marda,1,0,0.0,—
+Marjeyoun District,1,GPE,Marjeyoun District,Marjeyoun District,1,0,0.0,—
+Marjorie Taylor Greene,1,PERSON,Marjorie Taylor Greene,Marjorie Taylor Greene,1,0,0.0,—
+Mark Carney,1,PERSON,Mark Carney,Mark Carney,1,0,0.0,—
+Maryam Azarcheher,1,ORG,Maryam Azarcheher,Maryam Azarcheher,1,0,0.0,—
+Mashghara,1,GPE,Mashghara,Mashghara,1,0,0.0,—
+Mashhad,1,PERSON,Mashhad,Mashhad,1,0,0.0,—
+Media Basij Organization,1,ORG,Media Basij Organization,Media Basij Organization,1,0,0.0,—
+Melania Trump's,1,PERSON,Melania Trump’s,Melania Trump’s,1,0,0.0,—
+Melania Trump's Epstein,1,PERSON,Melania Trump’s Epstein,Melania Trump’s Epstein,1,0,0.0,—
+Merah Putih,1,PERSON,Merah Putih,Merah Putih,1,0,0.0,—
+Metropolitan,1,GPE,Metropolitan,Metropolitan,1,0,0.0,—
+Metula,1,GPE,Metula,Metula,1,0,0.0,—
+Mianeh,1,GPE,Mianeh,Mianeh,1,0,0.0,—
+MidEastream Watch,1,PERSON,MidEastream Watch,MidEastream Watch,1,0,0.0,—
+Mike Quigley,1,PERSON,Mike Quigley,Mike Quigley,1,0,0.0,—
+Mikhail Ulyanov,1,PERSON,Mikhail Ulyanov,Mikhail Ulyanov,1,0,0.0,—
+Minas Al Jabbour,1,PERSON,Minas Al Jabbour,Minas Al Jabbour,1,0,0.0,—
+Minas Al-Jabbour,1,PERSON,Minas Al-Jabbour,Minas Al-Jabbour,1,0,0.0,—
+Ministry of Defense,1,ORG,Ministry of Defense,Ministry of Defense,1,0,0.0,—
+MisEastream,1,ORG,MisEastream,MisEastream,1,0,0.0,—
+Moein Amini,1,PERSON,Moein Amini,Moein Amini,1,0,0.0,—
+Mohamed ElBaradei,1,PERSON,Mohamed ElBaradei,Mohamed ElBaradei,1,0,0.0,—
+Mohammad Bagher Qalibaf,1,PERSON,Mohammad Bagher Qalibaf,Mohammad Bagher Qalibaf,1,0,0.0,—
+Mohammad Baqer,1,PERSON,Mohammad Baqer,Mohammad Baqer,1,0,0.0,—
+Mohammad Erfan Khodaei,1,PERSON,Mohammad Erfan Khodaei,Mohammad Erfan Khodaei,1,0,0.0,—
+Mohammad Karami,1,PERSON,Mohammad Karami,Mohammad Karami,1,0,0.0,—
+Mohammad Reza Raouf Sheibani,1,PERSON,Mohammad Reza Raouf Sheibani,Mohammad Reza Raouf Sheibani,1,0,0.0,—
+Mohammad-Baqer Qalibaf,1,PERSON,Mohammad-Baqer Qalibaf,Mohammad-Baqer Qalibaf,1,0,0.0,—
+Mohammed bin Salman,1,PERSON,Mohammed bin Salman,Mohammed bin Salman,1,0,0.0,—
+Morale,1,PERSON,Morale,Morale,1,0,0.0,—
+Motee Abu Musabeh,1,ORG,Motee Abu Musabeh,Motee Abu Musabeh,1,0,0.0,—
+Mousavi,1,PERSON,Mousavi,Mousavi,1,0,0.0,—
+Munir Ahmed,1,PERSON,Munir Ahmed,Munir Ahmed,1,0,0.0,—
+N,1,ORG,N,N,1,0,0.0,—
+Nabatieh Al-Fawqa,1,PERSON,Nabatieh Al-Fawqa,Nabatieh Al-Fawqa,1,0,0.0,—
+Nancy Pelosi,1,PERSON,Nancy Pelosi,Nancy Pelosi,1,0,0.0,—
+Narmak A,1,ORG,Narmak A,Narmak A,1,0,0.0,—
+National Security Commission,1,ORG,National Security Commission,National Security Commission,1,0,0.0,—
+New Israeli,1,NORP,New Israeli,New Israeli,1,0,0.0,—
+New York Times,1,ORG,New York Times,New York Times,1,0,0.0,—
+New York's,1,GPE,New York’s,New York’s,1,0,0.0,—
+Nizar Amidi,1,PERSON,Nizar Amidi,Nizar Amidi,1,0,0.0,—
+Obama,1,PERSON,Obama,Obama,1,0,0.0,—
+Omani,1,NORP,Omani,Omani,1,0,0.0,—
+Operation True Promise 4,1,ORG,Operation True Promise 4,Operation True Promise 4,1,0,0.0,—
+Orban,1,ORG,Orban,Orban,1,0,0.0,—
+Orthodox Easter,1,ORG,Orthodox Easter,Orthodox Easter,1,0,0.0,—
+PUK,1,ORG,PUK,PUK,1,0,0.0,—
+Pakista,1,ORG,Pakista,Pakista,1,0,0.0,—
+Palestine Action,1,ORG,Palestine Action,Palestine Action,1,0,0.0,—
+Paramadina Univers,1,ORG,Paramadina Univers,Paramadina Univers,1,0,0.0,—
+Paris,1,GPE,Paris,Paris,1,0,0.0,—
+Patrick Henningsen,1,PERSON,Patrick Henningsen,Patrick Henningsen,1,0,0.0,—
+Pedro Sanchez,1,PERSON,Pedro Sanchez,Pedro Sanchez,1,0,0.0,—
+Pentagon,1,ORG,Pentagon,Pentagon,1,0,0.0,—
+Persian Gu,1,PERSON,Persian Gu,Persian Gu,1,0,0.0,—
+Pete Hegseth's,1,PERSON,Pete Hegseth’s,Pete Hegseth’s,1,0,0.0,—
+Peter Humi,1,PERSON,Peter Humi,Peter Humi,1,0,0.0,—
+Peter Magyar,1,PERSON,Peter Magyar,Peter Magyar,1,0,0.0,—
+Petr Macinka,1,PERSON,Petr Macinka,Petr Macinka,1,0,0.0,—
+Pew Research Center,1,ORG,Pew Research Center,Pew Research Center,1,0,0.0,—
+Polarization: Horizontal (H,1,ORG,Polarization: Horizontal (H,Polarization: Horizontal (H,1,0,0.0,—
+"Political Science, University of Chicago",1,ORG,"Political Science, University of Chicago","Political Science, University of Chicago",1,0,0.0,—
+Pope Leo's,1,PERSON,Pope Leo's ',Pope Leo's ',1,0,0.0,—
+Portuguese,1,NORP,Portuguese,Portuguese,1,0,0.0,—
+Powerful Armed Forces,1,ORG,Powerful Armed Forces,Powerful Armed Forces,1,0,0.0,—
+Pramila Jayapal,1,PERSON,Pramila Jayapal,Pramila Jayapal,1,0,0.0,—
+Press TV Iran,1,ORG,Press TV Iran,Press TV Iran,1,0,0.0,—
+Pretoria,1,GPE,Pretoria,Pretoria,1,0,0.0,—
+Prince Sultan Air Base,1,ORG,Prince Sultan Air Base,Prince Sultan Air Base,1,0,0.0,—
+Putin,1,PERSON,Putin,Putin,1,0,0.0,—
+Qaani,1,PERSON,Qaani,Qaani,1,0,0.0,—
+Qalibaf Iran's,1,PERSON,Qalibaf Iran’s,Qalibaf Iran’s,1,0,0.0,—
+Qalibaf Iranian Parliament,1,ORG,Qalibaf Iranian Parliament,Qalibaf Iranian Parliament,1,0,0.0,—
+Qazvin province,1,GPE,Qazvin province,Qazvin province,1,0,0.0,—
+Ramin Mazaheri,1,PERSON,Ramin Mazaheri,Ramin Mazaheri,1,0,0.0,—
+Raphael Warnock,1,PERSON,Raphael Warnock,Raphael Warnock,1,0,0.0,—
+Ras Laffan,1,PERSON,Ras Laffan,Ras Laffan,1,0,0.0,—
+Rashida Tlaib,1,PERSON,Rashida Tlaib,Rashida Tlaib,1,0,0.0,—
+Red Crescent,1,ORG,Red Crescent,Red Crescent,1,0,0.0,—
+Reports Yousof Azizi,1,PERSON,Reports Yousof Azizi,Reports Yousof Azizi,1,0,0.0,—
+Republican,1,NORP,Republican,Republican,1,0,0.0,—
+Resistance Axis,1,PERSON,Resistance Axis,Resistance Axis,1,0,0.0,—
+Revolutio,1,PERSON,Revolutio,Revolutio,1,0,0.0,—
+Reza Talaei-Nik,1,PERSON,Reza Talaei-Nik,Reza Talaei-Nik,1,0,0.0,—
+Ritaj Rehan,1,PERSON,Ritaj Rehan,Ritaj Rehan,1,0,0.0,—
+Rizwan Saeed Sheikh,1,PERSON,Rizwan Saeed Sheikh,Rizwan Saeed Sheikh,1,0,0.0,—
+Robert Garcia,1,PERSON,Robert Garcia,Robert Garcia,1,0,0.0,—
+Robert Pape,1,PERSON,Robert Pape,Robert Pape,1,0,0.0,—
+Robert Pape Wayne,1,PERSON,Robert Pape Wayne,Robert Pape Wayne,1,0,0.0,—
+Ronnie Kasrils,1,PERSON,Ronnie Kasrils,Ronnie Kasrils,1,0,0.0,—
+Rural Affairs,1,ORG,Rural Affairs,Rural Affairs,1,0,0.0,—
+SULB,1,ORG,SULB,SULB,1,0,0.0,—
+Saada,1,GPE,Saada,Saada,1,0,0.0,—
+Saadatabad,1,GPE,Saadatabad,Saadatabad,1,0,0.0,—
+Sadiq Al-Nabulsi,1,PERSON,Sadiq Al-Nabulsi,Sadiq Al-Nabulsi,1,0,0.0,—
+Saeed Khatibzadeh,1,PERSON,Saeed Khatibzadeh,Saeed Khatibzadeh,1,0,0.0,—
+Safed,1,PERSON,Safed,Safed,1,0,0.0,—
+Samer Hakim,1,PERSON,Samer Hakim,Samer Hakim,1,0,0.0,—
+Samuel Geddes,1,PERSON,Samuel Geddes,Samuel Geddes,1,0,0.0,—
+Sana'a,1,ORG,Sana’a,Sana’a,1,0,0.0,—
+Sari,1,ORG,Sari,Sari,1,0,0.0,—
+Sawt al-Farah,1,PERSON,Sawt al-Farah,Sawt al-Farah,1,0,0.0,—
+Sayyed Mohammad Marandi,1,PERSON,Sayyed Mohammad Marandi,Sayyed Mohammad Marandi,1,0,0.0,—
+School of Public and,1,ORG,School of Public and,School of Public and,1,0,0.0,—
+"Science, Research and Technology",1,ORG,"Science, Research and Technology","Science, Research and Technology",1,0,0.0,—
+Security Council,1,ORG,Security Council,Security Council,1,0,0.0,—
+Sergey Lavrov,1,PERSON,Sergey Lavrov,Sergey Lavrov,1,0,0.0,—
+Seyed Abbas Araghchi,1,PERSON,Seyed Abbas Araghchi,Seyed Abbas Araghchi,1,0,0.0,—
+Seyed Mohammad Marandi,1,PERSON,Seyed Mohammad Marandi,Seyed Mohammad Marandi,1,0,0.0,—
+Seyyed Kamal Kharrazi,1,PERSON,Seyyed Kamal Kharrazi,Seyyed Kamal Kharrazi,1,0,0.0,—
+Seyyed Majid Ibn Reza,1,PERSON,Seyyed Majid Ibn Reza,Seyyed Majid Ibn Reza,1,0,0.0,—
+Seyyed Majid Mousavi,1,PERSON,Seyyed Majid Mousavi,Seyyed Majid Mousavi,1,0,0.0,—
+Seyyed Mojtaba Khamenei,1,PERSON,Seyyed Mojtaba Khamenei,Seyyed Mojtaba Khamenei,1,0,0.0,—
+Shahbaz Sharif,1,PERSON,Shahbaz Sharif,Shahbaz Sharif,1,0,0.0,—
+Shajareh Tayyebeh School,1,ORG,Shajareh Tayyebeh School,Shajareh Tayyebeh School,1,0,0.0,—
+Sharif University of,1,ORG,Sharif University of,Sharif University of,1,0,0.0,—
+Shia,1,NORP,Shia,Shia,1,0,0.0,—
+Shiraz,1,GPE,Shiraz,Shiraz,1,0,0.0,—
+Sizdah Bedar,1,PERSON,Sizdah Bedar,Sizdah Bedar,1,0,0.0,—
+Slogan,1,NORP,Slogan,Slogan,1,0,0.0,—
+Smotrich's,1,PERSON,Smotrich’s,Smotrich’s,1,0,0.0,—
+South Korea's,1,GPE,South Korea’s,South Korea’s,1,0,0.0,—
+South Lebanon,1,GPE,South Lebanon,South Lebanon,1,0,0.0,—
+Special Forces,1,ORG,Special Forces,Special Forces,1,0,0.0,—
+Speech Al-Houthi,1,PERSON,Speech Al-Houthi,Speech Al-Houthi,1,0,0.0,—
+Srifa,1,GPE,Srifa,Srifa,1,0,0.0,—
+St. Mary,1,GPE,St. Mary,St. Mary,1,0,0.0,—
+Steve Witkoff,1,PERSON,Steve Witkoff,Steve Witkoff,1,0,0.0,—
+Stra,1,ORG,Stra,Stra,1,0,0.0,—
+Supreme national security council,1,ORG,Supreme national security council,Supreme national security council,1,0,0.0,—
+Susan Khalil,1,PERSON,Susan Khalil,Susan Khalil,1,0,0.0,—
+Suspension of Operations,1,ORG,Suspension of Operations,Suspension of Operations,1,0,0.0,—
+Suzanne Khalil,1,PERSON,Suzanne Khalil,Suzanne Khalil,1,0,0.0,—
+Sydney,1,GPE,Sydney,Sydney,1,0,0.0,—
+Syed Muaz Shah,1,PERSON,Syed Muaz Shah,Syed Muaz Shah,1,0,0.0,—
+Synagogue,1,GPE,Synagogue,Synagogue,1,0,0.0,—
+Syria,1,GPE,Syria,Syria,1,0,0.0,—
+THE GLOBAL ENERGY CRISIS TRUMP HAS,1,ORG,THE GLOBAL ENERGY CRISIS TRUMP HAS,THE GLOBAL ENERGY CRISIS TRUMP HAS,1,0,0.0,—
+Tabriz-Hashtrood,1,PERSON,Tabriz-Hashtrood,Tabriz-Hashtrood,1,0,0.0,—
+Takht-Ravanchi,1,PERSON,Takht-Ravanchi,Takht-Ravanchi,1,0,0.0,—
+Tamim bin Hamad Al Th,1,PERSON,Tamim bin Hamad Al Th,Tamim bin Hamad Al Th,1,0,0.0,—
+Tayri,1,GPE,Tayri,Tayri,1,0,0.0,—
+Tebnine,1,GPE,Tebnine,Tebnine,1,0,0.0,—
+Tebnine Hospital,1,ORG,Tebnine Hospital,Tebnine Hospital,1,0,0.0,—
+Tel Aviv's,1,GPE,Tel Aviv's,Tel Aviv's,1,0,0.0,—
+Texas,1,GPE,Texas,Texas,1,0,0.0,—
+The Bushehr Nuclear Power Plant,1,ORG,The Bushehr Nuclear Power Plant,The Bushehr Nuclear Power Plant,1,0,0.0,—
+The International Union of Muslim Scholars,1,ORG,The International Union of Muslim Scholars,The International Union of Muslim Scholars,1,0,0.0,—
+The Iranian Red Crescent Society,1,ORG,The Iranian Red Crescent Society,The Iranian Red Crescent Society,1,0,0.0,—
+The Islamic Revolution Guard Corps,1,ORG,The Islamic Revolution Guard Corps,The Islamic Revolution Guard Corps,1,0,0.0,—
+The National Iranian Oil Refining and Distribution Company,1,ORG,The National Iranian Oil Refining and Distribution Company,The National Iranian Oil Refining and Distribution Company,1,0,0.0,—
+The New York Times,1,ORG,The New York Times,The New York Times,1,0,0.0,—
+The US Senate,1,ORG,The US Senate,The US Senate,1,0,0.0,—
+The White House,1,ORG,The White House,The White House,1,0,0.0,—
+Tibnin,1,GPE,Tibnin,Tibnin,1,0,0.0,—
+Tony Gonzales,1,PERSON,Tony Gonzales,Tony Gonzales,1,0,0.0,—
+Trafalgar Square,1,PERSON,Trafalgar Square,Trafalgar Square,1,0,0.0,—
+Triton,1,ORG,Triton,Triton,1,0,0.0,—
+Trump's,1,ORG,Trump’s,Trump’s,1,0,0.0,—
+Trump's war rhetoric,1,ORG,Trump’s war rhetoric,Trump’s war rhetoric,1,0,0.0,—
+Trumps,1,PERSON,Trumps,Trumps,1,0,0.0,—
+Truth Social,1,ORG,Truth Social,Truth Social,1,0,0.0,—
+U.S. Marine,1,ORG,U.S. Marine,U.S. Marine,1,0,0.0,—
+UAE Infrastructure The Handala,1,ORG,UAE Infrastructure The Handala,UAE Infrastructure The Handala,1,0,0.0,—
+UN Security Council,1,ORG,UN Security Council,UN Security Council,1,0,0.0,—
+UNESCO,1,ORG,UNESCO,UNESCO,1,0,0.0,—
+US Destroyer,1,PERSON,US Destroyer,US Destroyer,1,0,0.0,—
+US Preside,1,ORG,US Preside,US Preside,1,0,0.0,—
+USA,1,GPE,USA,USA,1,0,0.0,—
+US‑Israeli,1,NORP,US‑Israeli,US‑Israeli,1,0,0.0,—
+Ultimate,1,ORG,Ultimate,Ultimate,1,0,0.0,—
+Ummah,1,GPE,Ummah,Ummah,1,0,0.0,—
+Uncle Majid,1,PERSON,Uncle Majid,Uncle Majid,1,0,0.0,—
+University of Cordoba,1,ORG,University of Cordoba,University of Cordoba,1,0,0.0,—
+Uzbekistan,1,NORP,Uzbekistan,Uzbekistan,1,0,0.0,—
+VP Vance,1,ORG,VP Vance,VP Vance,1,0,0.0,—
+Vali-Asr Sq,1,ORG,Vali-Asr Sq,Vali-Asr Sq,1,0,0.0,—
+Velayati,1,ORG,Velayati,Velayati,1,0,0.0,—
+Venezuelan,1,NORP,Venezuelan,Venezuelan,1,0,0.0,—
+Viet,1,ORG,Viet,Viet,1,0,0.0,—
+Viewpoint,1,GPE,Viewpoint,Viewpoint,1,0,0.0,—
+Viktor Orban,1,PERSON,Viktor Orban,Viktor Orban,1,0,0.0,—
+Viktor Orbán,1,PERSON,Viktor Orbán,Viktor Orbán,1,0,0.0,—
+Virginia Beach,1,GPE,Virginia Beach,Virginia Beach,1,0,0.0,—
+Vladimir Putin,1,PERSON,Vladimir Putin,Vladimir Putin,1,0,0.0,—
+Wadi Araba,1,GPE,Wadi Araba,Wadi Araba,1,0,0.0,—
+War (Crimes,1,ORG,War (Crimes)',War (Crimes)',1,0,0.0,—
+Wash,1,PERSON,Wash,Wash,1,0,0.0,—
+Witkoff,1,ORG,Witkoff,Witkoff,1,0,0.0,—
+World Bank,1,ORG,World Bank,World Bank,1,0,0.0,—
+Yahyaabad,1,ORG,Yahyaabad,Yahyaabad,1,0,0.0,—
+Yair Golan,1,PERSON,Yair Golan,Yair Golan,1,0,0.0,—
+Yerevan,1,PERSON,Yerevan,Yerevan,1,0,0.0,—
+Yosef Lifshiz,1,PERSON,Yosef Lifshiz,Yosef Lifshiz,1,0,0.0,—
+Zainab Zakaria,1,PERSON,Zainab Zakaria,Zainab Zakaria,1,0,0.0,—
+Zakzaky,1,PERSON,Zakzaky,Zakzaky,1,0,0.0,—
+Zefta,1,GPE,Zefta,Zefta,1,0,0.0,—
+Zionism,1,NORP,Zionism,Zionism,1,0,0.0,—
+al-Aqsa Mosque,1,ORG,al-Aqsa Mosque,al-Aqsa Mosque,1,0,0.0,—
+al-Aqsa Mosque Iran's,1,ORG,al-Aqsa Mosque Iran’s,al-Aqsa Mosque Iran’s,1,0,0.0,—
+begin impea,1,PERSON,begin impea,begin impea,1,0,0.0,—
+discu,1,GPE,discu,discu,1,0,0.0,—
+ex-Israeli,1,NORP,ex-Israeli,ex-Israeli,1,0,0.0,—
+fig,1,PERSON,fig,fig,1,0,0.0,—
+health ministry,1,ORG,health ministry,health ministry,1,0,0.0,—
+mainta,1,GPE,mainta,mainta,1,0,0.0,—
+n't,1,GPE,n’t,n’t,1,0,0.0,—
+pro-Israel,1,PERSON,pro-Israel,pro-Israel,1,0,0.0,—
+senate,1,ORG,senate,senate,1,0,0.0,—
+smo,1,ORG,smo,smo,1,0,0.0,—
+"the ""Haboush Highway",1,ORG,"the ""Haboush Highway","the ""Haboush Highway",1,0,0.0,—
+the 'Palestine Action,1,ORG,the 'Palestine Action',the 'Palestine Action',1,0,0.0,—
+the Al-Aqsa Mosque,1,ORG,the Al-Aqsa Mosque,the Al-Aqsa Mosque,1,0,0.0,—
+the Bab al-Mandab,1,ORG,the Bab al-Mandab,the Bab al-Mandab,1,0,0.0,—
+the Biological Weapons Convention,1,ORG,the Biological Weapons Convention,the Biological Weapons Convention,1,0,0.0,—
+the Church of the Holy Sepulchre,1,ORG,the Church of the Holy Sepulchre,the Church of the Holy Sepulchre,1,0,0.0,—
+the Emirate of Fujairah,1,GPE,the Emirate of Fujairah,the Emirate of Fujairah,1,0,0.0,—
+the European Council,1,ORG,the European Council,the European Council,1,0,0.0,—
+the Fajr Petrochemical Complex,1,ORG,the Fajr Petrochemical Complex,the Fajr Petrochemical Complex,1,0,0.0,—
+the Haifa Naval Base,1,ORG,the Haifa Naval Base,the Haifa Naval Base,1,0,0.0,—
+the IRGC Aerospace Force,1,ORG,the IRGC Aerospace Force,the IRGC Aerospace Force,1,0,0.0,—
+the Iranian Foreign Ministry,1,ORG,the Iranian Foreign Ministry,the Iranian Foreign Ministry,1,0,0.0,—
+the Iranian Parliament's,1,ORG,the Iranian Parliament's,the Iranian Parliament's,1,0,0.0,—
+the Iranian Pasteur Institute,1,ORG,the Iranian Pasteur Institute,the Iranian Pasteur Institute,1,0,0.0,—
+the Iranian Red Crescent,1,ORG,the Iranian Red Crescent,the Iranian Red Crescent,1,0,0.0,—
+the Iranian Red Crescent Society,1,ORG,the Iranian Red Crescent Society,the Iranian Red Crescent Society,1,0,0.0,—
+the Islamabad Negotiations Has,1,ORG,the Islamabad Negotiations Has,the Islamabad Negotiations Has,1,0,0.0,—
+the Islamic Movement,1,ORG,the Islamic Movement,the Islamic Movement,1,0,0.0,—
+the Islamic Republic of Iran's,1,GPE,the Islamic Republic of Iran’s,the Islamic Republic of Iran’s,1,0,0.0,—
+the Islamic Republic's,1,GPE,the Islamic Republic’s,the Islamic Republic’s,1,0,0.0,—
+the Islamic Resistance in Iraq The Islamic Resistance in Iraq,1,ORG,the Islamic Resistance in Iraq The Islamic Resistance in Iraq,the Islamic Resistance in Iraq The Islamic Resistance in Iraq,1,0,0.0,—
+"the Israeli ""Hermes",1,ORG,"the Israeli ""Hermes","the Israeli ""Hermes",1,0,0.0,—
+the Lavan Oil Refinery,1,ORG,the Lavan Oil Refinery,the Lavan Oil Refinery,1,0,0.0,—
+the Martyr of Resistance,1,ORG,the Martyr of Resistance,the Martyr of Resistance,1,0,0.0,—
+the National Security Committee,1,ORG,the National Security Committee,the National Security Committee,1,0,0.0,—
+the Strategic Council on Foreign Relations,1,ORG,the Strategic Council on Foreign Relations,the Strategic Council on Foreign Relations,1,0,0.0,—
+the Supreme National Security Council,1,ORG,the Supreme National Security Council,the Supreme National Security Council,1,0,0.0,—
+the Taekwondo Federation,1,ORG,the Taekwondo Federation,the Taekwondo Federation,1,0,0.0,—
+the US Army,1,ORG,the US Army,the US Army,1,0,0.0,—
+the US Central Command,1,ORG,the US Central Command,the US Central Command,1,0,0.0,—
+the US Navy,1,ORG,the US Navy,the US Navy,1,0,0.0,—
+the United,1,GPE,the United,the United,1,0,0.0,—
+the United Arab Emir,1,GPE,the United Arab Emir,the United Arab Emir,1,0,0.0,—
+the United State,1,GPE,the United State,the United State,1,0,0.0,—
+the West Bank,1,GPE,the West Bank,the West Bank,1,0,0.0,—
+the White House,1,ORG,the White House,the White House,1,0,0.0,—
+the World Bank,1,ORG,the World Bank,the World Bank,1,0,0.0,—
+thei,1,PERSON,thei,thei,1,0,0.0,—
+tim,1,PERSON,tim,tim,1,0,0.0,—
+🇬 Islamic Movement,1,ORG,🇬 Islamic Movement,🇬 Islamic Movement,1,0,0.0,—
+🇮🇩 Good,1,PERSON,🇮🇩 Good,🇮🇩 Good,1,0,0.0,—
+🇮🇷 Press TV's,1,ORG,🇮🇷 Press TV's,🇮🇷 Press TV's,1,0,0.0,—
+🇰🇮,1,PERSON,🇰🇮,🇰🇮,1,0,0.0,—
+🇸,1,PERSON,🇸,🇸,1,0,0.0,—
