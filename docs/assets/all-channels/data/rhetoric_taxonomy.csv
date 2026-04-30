@@ -1,0 +1,9 @@
+frame_slug,frame_label,candidate_label,description,signal_words,color,sort_order
+fear_threat,Fear / Threat,fear and threat warning,"Warnings about attacks, destruction, danger, or safety risks.","threaten, strike, destroy, danger",#d62728,1
+us_vs_them_othering,Us-vs-Them / Othering,us versus them othering,Language that pits groups against each other or marks an enemy out-group.,"regime, enemy, they want to, against our",#9467bd,2
+call_to_action,Call to Action,call to action,"Urges readers, governments, or groups to do something.","must, should, urges, demands",#ff7f0e,3
+victimhood_injustice,Victimhood / Injustice,victimhood and injustice,"Portrays a group as wronged, harmed, or unfairly treated.","innocent, civilians, crime, massacre",#e377c2,4
+authority_appeal,Authority Appeal,authority appeal and official quote,"Uses officials, leaders, or experts to lend credibility.","according to, stated, the minister said",#1f77b4,5
+factual_neutral,Factual / Neutral,factual neutral reporting,Straight news reporting with limited emotional loading.,"reported, according to reports, official statement",#7f7f7f,6
+conspiracy_suspicion,Conspiracy / Suspicion,conspiracy and suspicion,"Implies hidden agendas, manipulation, or covert plans.","reveals, secret, plot, behind the scenes",#8c564b,7
+triumphalism_strength,Triumphalism / Strength,triumphalism and strength,"Celebrates power, resilience, capability, or victory.","powerful, resistance, victory, capable",#2ca02c,8

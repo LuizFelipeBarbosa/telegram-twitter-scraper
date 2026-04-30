@@ -1,0 +1,2 @@
+messages_analyzed,reply_edges_total,reply_edges_with_parent_in_dataset,messages_that_are_replies,messages_receiving_replies,messages_receiving_replies_pct,messages_replying_to_missing_parent,largest_thread_size,deepest_thread_depth,max_reply_count,median_first_reply_minutes
+6000,145,140,145,116,1.9,5,9,5,7,92.8

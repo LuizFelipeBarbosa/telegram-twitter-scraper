@@ -1,14 +1,16 @@
 # Plan 3 — Word Frequency & TF-IDF Shifts
 
-> **Dataset:** 940 text-bearing messages from PressTV Telegram channel
-> **Period:** April 6–14, 2026 (~8 days)
-> **Objective:** Surface the vocabulary that distinguishes each phase of the 8-day period and track how the lexicon evolves.
+> **Dataset:** text-bearing messages exported by a channel-specific pipeline notebook (e.g. `notebooks/pipeline_<slug>.ipynb` or `CHANNEL_RESULTS[slug]["df_text"]` from the multi-channel pipeline).
+> **Period:** whatever window the export covers; the temporal binning below adapts to any range of days or weeks.
+> **Objective:** Surface the vocabulary that distinguishes each phase of the export window and track how the lexicon evolves.
+>
+> _Illustrative sample values in this plan are drawn from a prior PressTV run (940 text-bearing messages, April 6–14 2026, ~8 days). Substitute your own channel's counts and window when applying the plan._
 
 ---
 
 ## Goal
 
-Identify which words are *distinctively important* in each time period — not just frequent, but uniquely characteristic. TF-IDF scoring penalizes words that appear everywhere (like "Iran" or "said") and rewards terms that spike in a specific window, revealing shifting focus and emerging narratives.
+Identify which words are *distinctively important* in each time period — not just frequent, but uniquely characteristic. TF-IDF scoring penalizes words that appear everywhere in the corpus (like a channel-specific recurring actor or "said") and rewards terms that spike in a specific window, revealing shifting focus and emerging narratives.
 
 ---
 
@@ -24,8 +26,16 @@ from nltk.corpus import stopwords
 nltk.download("stopwords")
 stop_words = set(stopwords.words("english"))
 
-# Extend with domain-ubiquitous terms that add no signal
-stop_words.update(["iran", "iranian", "says", "said", "also", "would", "us", "new"])
+# Extend with generic newswire filler. These show up for almost any news channel.
+stop_words.update(["says", "said", "also", "would", "us", "new", "breaking", "update"])
+
+# Extend with channel-specific stopwords: the channel's own name (so it doesn't dominate its own TF-IDF),
+# plus any persistently ubiquitous subject. For PressTV these are ("presstv", "iran", "iranian"); for an
+# Israeli news channel they might be ("idf", "israel", "israeli"); for a US politics channel they might be
+# ("washington", "republican", "democrat"). Inspect `df_text["text"]` for the most common tokens before
+# committing to a list, or reuse the defaults in `src/telegram_scraper/analysis/lexical.py`.
+CHANNEL_STOPWORDS = set()  # e.g. {"presstv", "iran", "iranian"}
+stop_words.update(CHANNEL_STOPWORDS)
 
 def clean_text(text):
     text = text.lower()
@@ -41,18 +51,25 @@ df_text["clean_text"] = df_text["text"].apply(clean_text)
 
 ### Step 2 — Period Segmentation
 
-Split the 8-day range into 4 equal bins (~2 days each). Concatenate all message texts within each bin into a single pseudo-document.
+Split the export window into 4 equal bins and concatenate all message texts within each bin into a single pseudo-document. Derive the bin labels from the actual `timestamp` range so the plan works on any channel window, not a hardcoded 8 days.
 
 ```python
-df_text["period"] = pd.cut(
-    df_text["timestamp"],
-    bins=4,
-    labels=["Apr 6–8", "Apr 8–10", "Apr 10–12", "Apr 12–14"],
-)
+N_BINS = 4
+
+# Cut into equal-duration bins and derive readable labels from the bin edges.
+bin_series, bin_edges = pd.cut(df_text["timestamp"], bins=N_BINS, retbins=True)
+df_text["period"] = bin_series
+
+period_labels = [
+    f"{bin_edges[i].strftime('%b %d')}–{bin_edges[i + 1].strftime('%b %d')}"
+    for i in range(N_BINS)
+]
+df_text["period"] = df_text["period"].cat.rename_categories(period_labels)
 
 pseudo_docs = df_text.groupby("period")["clean_text"].apply(" ".join).tolist()
-period_labels = ["Apr 6–8", "Apr 8–10", "Apr 10–12", "Apr 12–14"]
 ```
+
+If the window is very short (≤2 days), reduce `N_BINS` to 2 or 3 so each bin still contains enough messages for TF-IDF to produce stable scores.
 
 ### Step 3 — TF-IDF Computation
 
@@ -150,7 +167,8 @@ wordcloud (optional, for supplementary clouds)
 
 ## Expected Insights
 
-- Which geopolitical terms emerge mid-period (e.g., "Islamabad", "negotiations" appearing after talks begin).
-- Which terms fade (e.g., "strikes" or "threat" declining if the narrative shifts to diplomacy).
-- Whether PressTV's vocabulary is narrow and repetitive or evolves meaningfully across the 8-day window.
-- The speed of vocabulary pivot — do new terms appear gradually or in sharp jumps?
+- Which terms emerge mid-period (e.g., a place name like "Islamabad" or a process word like "negotiations" appearing after a diplomatic event begins).
+- Which terms fade (e.g., "strikes" or "threat" declining if the channel's narrative shifts toward diplomacy; or a personality's name dropping out once an event cycle ends).
+- Whether the channel's vocabulary is narrow and repetitive or evolves meaningfully across the export window. Channels with a single dominant beat typically show only a small set of rising/falling terms; broader channels show a wider churn.
+- The speed of vocabulary pivot — do new terms appear gradually or in sharp jumps between adjacent bins?
+- Cross-channel: running this pipeline over each `CHANNEL_RESULTS[slug]` separately and stacking the resulting `tfidf_risers_df` tables exposes which lexical shifts are shared across the ecosystem vs. unique to a single outlet.

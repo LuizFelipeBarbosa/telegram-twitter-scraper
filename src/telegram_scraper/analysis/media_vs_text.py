@@ -14,9 +14,6 @@ from telegram_scraper.notebook_pipeline import RawMessage, preferred_message_tex
 DEFAULT_MEDIA_COLOR = "#1f77b4"
 DEFAULT_TEXT_ONLY_COLOR = "#ff7f0e"
 DEFAULT_TERM_EXTRA_STOPWORDS = {
-    "presstv",
-    "press",
-    "tv",
     "via",
     "also",
     "said",
@@ -36,6 +33,21 @@ DEFAULT_TERM_EXTRA_STOPWORDS = {
     "photos",
     "channel",
     "telegram",
+    "whatsapp",
+    "read",
+}
+
+_CHANNEL_SPECIFIC_TERM_STOPWORDS: dict[str, set[str]] = {
+    "presstv": {"presstv", "press", "tv", "iran", "iranian", "tehran"},
+    "beholdisraelchannel": {"behold", "israel", "israeli", "idf", "jewish", "amir", "tsarfati"},
+    "iltvnews": {"iltv", "israel", "israeli", "idf"},
+    "jewishbreakingnewstelegram": {"jbn", "jewish", "israel", "israeli", "idf"},
+    "thetimesofisrael2022": {"times", "toi", "israel", "israeli", "idf"},
+}
+
+CHANNEL_EXTRA_STOPWORDS: dict[str, set[str]] = {
+    slug: DEFAULT_TERM_EXTRA_STOPWORDS | channel_tokens
+    for slug, channel_tokens in _CHANNEL_SPECIFIC_TERM_STOPWORDS.items()
 }
 
 _TEXT_URL_RE = re.compile(r"https?://\S+|www\.\S+")

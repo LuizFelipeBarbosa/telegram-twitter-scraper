@@ -1,0 +1,31 @@
+entity,segment_label,message_count,segment_total,message_share_pct,total_count,share_gap_pct_points,sort_order
+Iran,Media,1079,2644,40.809,1721,9.584,0
+Iran,Text-only,642,2056,31.226,1721,9.584,0
+Israel,Media,699,2644,26.437,1153,4.356,1
+Israel,Text-only,454,2056,22.082,1153,4.356,1
+US,Media,759,2644,28.707,1149,9.738,2
+US,Text-only,390,2056,18.969,1149,9.738,2
+Iranian,Media,455,2644,17.209,880,-3.462,3
+Iranian,Text-only,425,2056,20.671,880,-3.462,3
+Israeli,Media,430,2644,16.263,760,0.213,4
+Israeli,Text-only,330,2056,16.051,760,0.213,4
+Lebanon,Media,284,2644,10.741,530,-1.224,5
+Lebanon,Text-only,246,2056,11.965,530,-1.224,5
+WHATSAPP GROUP,Media,244,2644,9.228,526,-4.488,6
+WHATSAPP GROUP,Text-only,282,2056,13.716,526,-4.488,6
+Trump,Media,347,2644,13.124,513,5.05,7
+Trump,Text-only,166,2056,8.074,513,5.05,7
+Hezbollah,Media,227,2644,8.585,466,-3.039,8
+Hezbollah,Text-only,239,2056,11.625,466,-3.039,8
+Tehran,Media,171,2644,6.467,345,-1.996,9
+Tehran,Text-only,174,2056,8.463,345,-1.996,9
+IDF,Media,156,2644,5.9,332,-2.66,10
+IDF,Text-only,176,2056,8.56,332,-2.66,10
+WHATSAPP CHANNEL WHATSAPP GROUP,Media,92,2644,3.48,224,-2.941,11
+WHATSAPP CHANNEL WHATSAPP GROUP,Text-only,132,2056,6.42,224,-2.941,11
+Netanyahu,Media,134,2644,5.068,186,2.539,12
+Netanyahu,Text-only,52,2056,2.529,186,2.539,12
+Gaza,Media,128,2644,4.841,168,2.896,13
+Gaza,Text-only,40,2056,1.946,168,2.896,13
+American,Media,78,2644,2.95,159,-0.99,14
+American,Text-only,81,2056,3.94,159,-0.99,14

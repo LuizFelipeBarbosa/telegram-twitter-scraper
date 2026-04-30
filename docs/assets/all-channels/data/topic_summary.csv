@@ -1,0 +1,12 @@
+topic_id,topic_label,message_count,mean_cluster_probability,mean_message_length,first_seen,last_seen,top_keywords,keyword_preview
+75,"Topic 75: strait, hormuz, strait hormuz",188,0.991,298.0,2026-02-03 22:22:17+00:00,2026-04-17 22:10:17+00:00,"strait, hormuz, strait hormuz, iran, blockade, iranian, naval, irgc, gulf, vessels","strait, hormuz, strait hormuz"
+88,"Topic 88: trump, iran, president",179,0.954,293.7,2026-01-12 19:57:17+00:00,2026-04-17 21:53:01+00:00,"trump, iran, president, war, nuclear, trump iran, hormuz, president trump, strait, end","trump, iran, president"
+26,"Topic 26: missile, injured, iranian",164,0.930,260.7,2025-12-26 12:05:33+00:00,2026-04-16 21:08:07+00:00,"missile, injured, iranian, people, impact, israel, condition, ballistic missile, ballistic, iranian missile","missile, injured, iranian"
+51,"Topic 51: jbn links, links, jbn",163,0.981,513.5,2026-03-01 12:15:26+00:00,2026-04-16 08:44:42+00:00,"jbn links, links, jbn, follow jbn, group follow, group, follow, iran, iranian, air","jbn links, links, jbn"
+45,"Topic 45: hezbollah, idf, group",101,0.938,607.5,2025-12-23 17:59:17+00:00,2026-04-17 07:47:13+00:00,"hezbollah, idf, group, follow, follow jbn, group follow, jbn links, links, jbn, lebanon","hezbollah, idf, group"
+...,...,...,...,...,...,...,...,...
+78,"Topic 78: modi, prime minister, prime",15,1.000,283.3,2025-12-29 18:32:23+00:00,2026-04-03 00:15:15+00:00,"modi, prime minister, prime, minister, visit, netanyahu, israel, indian, narendra, narendra modi","modi, prime minister, prime"
+55,"Topic 55: hezbollah, idf, southern",15,1.000,1094.8,2026-03-12 13:58:15+00:00,2026-04-13 13:33:19+00:00,"hezbollah, idf, southern, terrorist, lebanon, command, operation, strike, eliminated, unit","hezbollah, idf, southern"
+6,"Topic 6: rafah, crossing, gaza",15,1.000,333.0,2026-01-22 11:49:04+00:00,2026-03-19 08:07:25+00:00,"rafah, crossing, gaza, rafah crossing, egypt, israel, humanitarian, security, passage, gazans","rafah, crossing, gaza"
+11,"Topic 11: ceasefire, displaced, southern",15,1.000,142.3,2026-04-14 01:24:11+00:00,2026-04-17 17:31:27+00:00,"ceasefire, displaced, southern, residents, lebanon, effect, displaced residents, lebanese, southern lebanon, souther...","ceasefire, displaced, southern"
+-1,Noise / Mixed,1041,0.000,312.0,2025-12-18 17:51:56+00:00,2026-04-17 21:21:22+00:00,,outlier / mixed

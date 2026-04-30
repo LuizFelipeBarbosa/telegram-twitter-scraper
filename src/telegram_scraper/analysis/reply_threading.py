@@ -920,8 +920,8 @@ def _build_threads_figure(
             message="No threaded reply components were found beyond isolated single messages.",
         )
 
-    message_lookup = reply_messages_df.set_index("message_id").to_dict("index")
-    edge_gap_lookup = reply_edges_df.set_index("reply_message_id")["time_gap_label"].to_dict()
+    message_lookup = reply_messages_df.drop_duplicates(subset=["message_id"]).set_index("message_id").to_dict("index")
+    edge_gap_lookup = reply_edges_df.drop_duplicates(subset=["reply_message_id"]).set_index("reply_message_id")["time_gap_label"].to_dict()
     timestamp_lookup = {
         int(message_id): record["timestamp"] for message_id, record in message_lookup.items()
     }

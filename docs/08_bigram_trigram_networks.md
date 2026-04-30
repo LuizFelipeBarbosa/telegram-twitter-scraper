@@ -1,14 +1,16 @@
 # Plan 8 — Bigram / Trigram Phrase Networks
 
-> **Dataset:** 940 text-bearing messages from PressTV Telegram channel
-> **Period:** April 6–14, 2026 (~8 days)
-> **Objective:** Expose recurring talking points and propaganda phrases by mapping which words consistently appear together.
+> **Dataset:** text-bearing messages exported by a channel-specific pipeline notebook (e.g. `notebooks/pipeline_<slug>.ipynb` or `CHANNEL_RESULTS[slug]["df_text"]` from the multi-channel pipeline).
+> **Period:** whatever window the export covers.
+> **Objective:** Expose recurring talking points and signature phrases by mapping which words consistently appear together.
+>
+> _Illustrative sample values in this plan are drawn from a prior PressTV run (940 text-bearing messages, April 6–14 2026, ~8 days). Substitute your own channel's counts and window when applying the plan._
 
 ---
 
 ## Goal
 
-Identify statistically significant multi-word phrases that reveal PressTV's recurring talking points, editorial templates, and propaganda patterns. Unlike single-word frequency analysis (Plan 3), bigram/trigram networks capture *phrase-level* patterns — "Zionist regime", "resistance axis", "nuclear deal" — that carry meaning beyond their individual words.
+Identify statistically significant multi-word phrases that reveal the target channel's recurring talking points, editorial templates, and rhetorical patterns. Unlike single-word frequency analysis (Plan 3), bigram / trigram networks capture *phrase-level* patterns — things like "Zionist regime", "resistance axis", "nuclear deal", "red line", "ground invasion", or whatever compound terms the channel repeats — that carry meaning beyond their individual words.
 
 ---
 
@@ -61,7 +63,7 @@ trigram_pmi = trigram_finder.score_ngrams(TrigramAssocMeasures.pmi)
 
 ### Step 3 — Filtering
 
-Keep only bigrams with PMI > 3.0 (strong association) and frequency > 5. This eliminates noise while preserving meaningful phrases.
+Keep only bigrams with PMI > 3.0 (strong association) and frequency > 5 for a corpus of roughly ~1,000 messages. For smaller exports lower the frequency floor (e.g., min_freq = 3 for a few hundred messages); for much larger exports raise it so the result stays readable.
 
 ```python
 # Get both PMI and frequency for filtering
@@ -140,7 +142,7 @@ dropped_phrases = first_set - second_set   # Disappeared in second half
 - **Nodes:** Individual words. Sized by total degree (number of bigram connections). Colored by word category — manually assign or cluster by graph community.
 - **Edges:** Directed arrows from first word to second word in each bigram. Thickness proportional to frequency. Label with the frequency count.
 - **Layout:** Force-directed (`spring_layout`) with repulsion tuned to prevent overlap.
-- **Clusters:** Words that participate in many shared bigrams form visible clusters. Expected clusters: a "nuclear" hub (nuclear → deal, nuclear → weapons, nuclear → program), a "military" hub, a "diplomatic" hub.
+- **Clusters:** Words that participate in many shared bigrams form visible clusters. Which clusters appear is itself a finding: for a geopolitical channel you may see a "nuclear" hub (nuclear → deal, nuclear → weapons, nuclear → program), a "military" hub, and a "diplomatic" hub; for a domestic-politics channel you may instead see a "legislation" hub and a "campaign" hub; for a finance channel, a "rates" hub and an "earnings" hub.
 
 ```python
 from pyvis.network import Network
@@ -164,10 +166,12 @@ net.show("bigram_network.html")
 
 Two network graphs side by side:
 
-- **Left:** First half (Apr 6–10) bigram network.
-- **Right:** Second half (Apr 10–14) bigram network.
+- **Left:** First half of the export window (`timestamp <= df_text["timestamp"].median()`).
+- **Right:** Second half of the window.
 - Highlight new phrases (green edges) and disappeared phrases (red edges in left graph, absent in right).
 - Reveals how the talking-point vocabulary evolved.
+
+For a long window (many weeks or more), three or four time slices can be more informative than a simple first-/second-half split.
 
 ### Quaternary — Trigram Table
 
@@ -199,8 +203,9 @@ matplotlib
 
 ## Expected Insights
 
-- PressTV's signature phrases — compound terms that recur as editorial building blocks (e.g., "Zionist regime", "resistance axis", "nuclear deal", "illegal sanctions").
+- The channel's signature phrases — compound terms that recur as editorial building blocks. Sample signatures from a prior PressTV run: "Zionist regime", "resistance axis", "nuclear deal", "illegal sanctions"; your channel will have its own set.
 - Phrase clusters revealing thematic vocabulary neighborhoods.
 - Whether new phrases emerge in the second half (indicating narrative evolution) or the vocabulary remains static (indicating template-driven messaging).
 - High-PMI, low-frequency bigrams that may indicate specialized or coded language.
-- Comparison with generic news language — which phrases are uniquely PressTV vs. standard newswire?
+- Comparison with generic news language — which phrases are uniquely characteristic of this channel vs. standard newswire?
+- Cross-channel: running this plan over each `CHANNEL_RESULTS[slug]` and diffing the top-PMI bigram sets exposes shared framings (phrases common to several outlets) vs. channel-unique framings (phrases that only one outlet uses).

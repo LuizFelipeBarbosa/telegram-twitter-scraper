@@ -12,9 +12,6 @@ from telegram_scraper.analysis._common import UNKNOWN_LANGUAGE, message_used_tra
 from telegram_scraper.notebook_pipeline import RawMessage, preferred_message_text
 
 DEFAULT_TOPIC_EXTRA_STOPWORDS = {
-    "presstv",
-    "press",
-    "tv",
     "via",
     "also",
     "one",
@@ -34,6 +31,21 @@ DEFAULT_TOPIC_EXTRA_STOPWORDS = {
     "photos",
     "telegram",
     "channel",
+    "whatsapp",
+    "read",
+}
+
+_CHANNEL_SPECIFIC_TOPIC_STOPWORDS: dict[str, set[str]] = {
+    "presstv": {"presstv", "press", "tv", "iran", "iranian", "tehran"},
+    "beholdisraelchannel": {"behold", "israel", "israeli", "idf", "jewish", "amir", "tsarfati"},
+    "iltvnews": {"iltv", "israel", "israeli", "idf"},
+    "jewishbreakingnewstelegram": {"jbn", "jewish", "israel", "israeli", "idf"},
+    "thetimesofisrael2022": {"times", "toi", "israel", "israeli", "idf"},
+}
+
+CHANNEL_EXTRA_STOPWORDS: dict[str, set[str]] = {
+    slug: DEFAULT_TOPIC_EXTRA_STOPWORDS | channel_tokens
+    for slug, channel_tokens in _CHANNEL_SPECIFIC_TOPIC_STOPWORDS.items()
 }
 
 _TOPIC_URL_RE = re.compile(r"https?://\S+|www\.\S+")

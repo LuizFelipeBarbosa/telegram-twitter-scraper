@@ -1,14 +1,16 @@
 # Plan 7 — Reply Threading & Engagement Proxy Analysis
 
-> **Dataset:** 1,200 messages from PressTV Telegram channel (166 with `reply_to_message_id` populated)
-> **Period:** April 6–14, 2026 (~8 days)
+> **Dataset:** the full message export (a fraction of rows will have `reply_to_message_id` populated) produced by a channel-specific pipeline notebook — `notebooks/pipeline_<slug>.ipynb` or `CHANNEL_RESULTS[slug]["df"]` from the multi-channel pipeline.
+> **Period:** whatever window the export covers.
 > **Objective:** Use the reply-threading structure as an engagement proxy to understand which messages generate follow-up discussion and what content characteristics drive replies.
+>
+> _Illustrative sample values in this plan are drawn from a prior PressTV run (1,200 messages with 166 reply edges, April 6–14 2026, ~8 days). Substitute your own channel's counts and window when applying the plan._
 
 ---
 
 ## Goal
 
-Without view counts or forward metrics, the 166 threaded replies are the only engagement signal in the dataset. This analysis treats reply chains as a proxy for editorial importance — messages that get replied to are likely updates on developing stories, corrections, or high-priority news. Mapping the reply graph reveals PressTV's internal story-threading behavior.
+Without view counts or forward metrics, threaded replies are the only first-party engagement signal in a Telegram channel export. This analysis treats reply chains as a proxy for editorial importance — messages that get replied to are likely updates on developing stories, corrections, or high-priority news. Mapping the reply graph reveals the channel's internal story-threading behavior. Reply density varies sharply by channel type: a fast-paced wire channel may thread ~10% of posts, while a commentary-heavy channel may thread either much more (ongoing discussion) or much less (single-dispatch posts). Both extremes are informative.
 
 ---
 
@@ -165,6 +167,7 @@ matplotlib / plotly
 
 - Whether replies function as story updates (developing news threads) or as editorial supplements (adding media to text-only posts).
 - Which content characteristics predict replies — longer messages? Breaking news? Messages with media?
-- The typical reply chain depth — is PressTV threading deeply (4+ message chains) or shallowly (single reply then new thread)?
+- The typical reply chain depth — is the channel threading deeply (4+ message chains) or shallowly (single reply then new thread)?
 - Whether reply timing reveals an editorial workflow (e.g., initial text post → media reply 10 min later = standard procedure).
-- The ratio of "developing story" threads vs. standalone posts — how much of PressTV's output is threaded narrative vs. isolated dispatches.
+- The ratio of "developing story" threads vs. standalone posts — how much of the channel's output is threaded narrative vs. isolated dispatches.
+- Cross-channel: comparing `reply_summary_df.share_messages_with_replies` across `CHANNEL_RESULTS[slug]` entries shows whether threading is a shared editorial habit or varies sharply by outlet.

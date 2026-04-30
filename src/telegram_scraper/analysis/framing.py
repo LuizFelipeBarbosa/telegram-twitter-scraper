@@ -115,6 +115,9 @@ class RhetoricFramingConfig:
     validation_samples_per_frame: int = 4
     validation_random_state: int = 42
     example_preview_chars: int = 220
+    frame_taxonomy: tuple[dict[str, Any], ...] = field(
+        default_factory=lambda: tuple(dict(record) for record in DEFAULT_FRAME_TAXONOMY)
+    )
     frame_colors: dict[str, str] = field(
         default_factory=lambda: {
             record["frame_label"]: record["color"] for record in DEFAULT_FRAME_TAXONOMY
@@ -180,7 +183,7 @@ def clean_rhetoric_text(text: str) -> str:
 
 def _frame_taxonomy_df(config: RhetoricFramingConfig) -> pd.DataFrame:
     taxonomy_rows = []
-    for order, record in enumerate(DEFAULT_FRAME_TAXONOMY, start=1):
+    for order, record in enumerate(config.frame_taxonomy, start=1):
         taxonomy_rows.append(
             {
                 "frame_slug": record["frame_slug"],

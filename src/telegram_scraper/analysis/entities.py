@@ -27,17 +27,62 @@ DEFAULT_ENTITY_ALIAS_MAP = {
     "President Trump": "Trump",
     "President Donald Trump": "Trump",
     "US President Donald Trump": "Trump",
-    "Islamic Republic": "Iran",
-    "Islamic Republic of Iran": "Iran",
-    "Zionist regime": "Israel",
-    "Israeli regime": "Israel",
-    "Islamic Revolutionary Guard Corps": "IRGC",
 }
 
-DEFAULT_ENTITY_DROP_NAMES = {
-    "Press TV",
-    "PressTV",
-    "Press Tv",
+DEFAULT_ENTITY_DROP_NAMES: set[str] = set()
+
+_ISRAELI_NEWS_IDF_ALIASES: dict[str, str] = {
+    "IDF": "IDF",
+    "Israel Defense Forces": "IDF",
+    "Israel Defence Forces": "IDF",
+    "the IDF": "IDF",
+}
+
+EXAMPLE_CHANNEL_ENTITY_ALIASES: dict[str, dict[str, str]] = {
+    "presstv": {
+        "Islamic Republic": "Iran",
+        "Islamic Republic of Iran": "Iran",
+        "Zionist regime": "Israel",
+        "Israeli regime": "Israel",
+        "Islamic Revolutionary Guard Corps": "IRGC",
+    },
+    "beholdisraelchannel": {
+        **_ISRAELI_NEWS_IDF_ALIASES,
+        "Amir Tsarfati": "Amir Tsarfati",
+        "Behold Israel Ministries": "Behold Israel",
+    },
+    "iltvnews": {
+        **_ISRAELI_NEWS_IDF_ALIASES,
+        "ILTV Israel News": "ILTV",
+        "ILTV News": "ILTV",
+    },
+    "jewishbreakingnewstelegram": {
+        **_ISRAELI_NEWS_IDF_ALIASES,
+        "Jewish Breaking News": "JBN",
+        "JBN": "JBN",
+    },
+    "thetimesofisrael2022": {
+        **_ISRAELI_NEWS_IDF_ALIASES,
+        "The Times of Israel": "Times of Israel",
+        "Times of Israel": "Times of Israel",
+        "TOI": "Times of Israel",
+    },
+}
+
+EXAMPLE_CHANNEL_ENTITY_DROP_NAMES: dict[str, set[str]] = {
+    "presstv": {"Press TV", "PressTV", "Press Tv"},
+    "beholdisraelchannel": {"Behold Israel", "beholdisrael", "BeholdIsrael", "beholdisraelchannel"},
+    "iltvnews": {"ILTV", "ILTV News", "ILTV Israel News", "ILTV Israel News 24/7", "iltvnews"},
+    "jewishbreakingnewstelegram": {"JBN", "Jewish Breaking News", "jewishbreakingnewstelegram"},
+    "thetimesofisrael2022": {"Times of Israel", "The Times of Israel", "TOI", "thetimesofisrael2022"},
+}
+
+EXAMPLE_CHANNEL_EGO_CANDIDATES: dict[str, list[str]] = {
+    "presstv": ["Iran", "US", "Israel", "Trump", "Hezbollah", "UN"],
+    "beholdisraelchannel": ["Israel", "IDF", "Iran", "Hezbollah", "Hamas", "US"],
+    "iltvnews": ["Israel", "IDF", "Hamas", "Hezbollah", "Gaza", "US"],
+    "jewishbreakingnewstelegram": ["Israel", "IDF", "Hamas", "Gaza", "Iran", "US"],
+    "thetimesofisrael2022": ["Israel", "IDF", "Hamas", "Gaza", "Netanyahu", "US"],
 }
 
 ENTITY_TYPE_ORDER = ["PERSON", "ORG", "GPE", "NORP", "UNKNOWN"]
@@ -64,6 +109,7 @@ class NamedEntityConfig:
     top_n_bar: int = 20
     ego_panels: int = 4
     ego_max_neighbors: int = 10
+    ego_candidates: list[str] = field(default_factory=list)
     alias_map: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_ENTITY_ALIAS_MAP))
     drop_names: set[str] = field(default_factory=lambda: set(DEFAULT_ENTITY_DROP_NAMES))
     type_colors: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_ENTITY_TYPE_COLORS))
@@ -129,12 +175,6 @@ def normalize_entity_name(name: str, config: NamedEntityConfig) -> str:
         return "UN"
     if re.fullmatch(r"(?:US\s+)?President\s+Donald\s+Trump|President\s+Trump|Donald\s+Trump", cleaned, flags=re.IGNORECASE):
         return "Trump"
-    if re.fullmatch(r"Islamic Republic(?: of Iran)?", cleaned, flags=re.IGNORECASE):
-        return "Iran"
-    if re.fullmatch(r"Zionist regime|Israeli regime", cleaned, flags=re.IGNORECASE):
-        return "Israel"
-    if re.fullmatch(r"Islamic Revolutionary Guard Corps|IRGC", cleaned, flags=re.IGNORECASE):
-        return "IRGC"
     return cleaned
 
 
@@ -667,8 +707,7 @@ def run_named_entity_analysis(
         ),
     )
 
-    entity_ego_candidates = ["Iran", "US", "Israel", "Trump", "Hezbollah", "UN"]
-    entity_ego_target_entities = [entity for entity in entity_ego_candidates if entity in named_entity_graph]
+    entity_ego_target_entities = [entity for entity in config.ego_candidates if entity in named_entity_graph]
     if len(entity_ego_target_entities) < config.ego_panels:
         for entity in entity_network_nodes_df.sort_values(["weighted_degree", "message_count"], ascending=[False, False])["entity"]:
             if entity not in entity_ego_target_entities:

@@ -1,14 +1,16 @@
 # Plan 2 — Topic Modeling Landscape
 
-> **Dataset:** 940 text-bearing messages from PressTV Telegram channel
-> **Period:** April 6–14, 2026 (~8 days)
-> **Objective:** Discover the latent themes PressTV focuses on and how they cluster — e.g., military threats, diplomacy, domestic politics, media/propaganda, humanitarian framing.
+> **Dataset:** text-bearing messages exported by a channel-specific pipeline notebook (e.g. `notebooks/pipeline_<slug>.ipynb` or `CHANNEL_RESULTS[slug]["df_text"]` from the multi-channel pipeline).
+> **Period:** whatever window the export covers — the pipeline below adapts to the number of days present.
+> **Objective:** Discover the latent themes the target channel focuses on and how they cluster — e.g., military threats, diplomacy, domestic politics, media/propaganda, humanitarian framing, cultural commentary, or whatever editorial beats are native to the channel.
+>
+> _Illustrative sample values in this plan are drawn from a prior PressTV run (940 text-bearing messages, April 6–14 2026, ~8 days). Substitute your own channel's counts and window when applying the plan._
 
 ---
 
 ## Goal
 
-Use embedding-based topic modeling to map the thematic landscape of the channel. Each message becomes a point in 2D space, clustered by semantic similarity. The result is an interactive map where you can see what PressTV talks about, how topics relate, and how topic focus drifts over the 8-day window.
+Use embedding-based topic modeling to map the thematic landscape of the channel. Each message becomes a point in 2D space, clustered by semantic similarity. The result is an interactive map where you can see what the channel talks about, how topics relate, and how topic focus drifts over the export window.
 
 ---
 
@@ -32,7 +34,7 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 embeddings = model.encode(df_text["text"].tolist(), show_progress_bar=True)
 ```
 
-**Alternative:** If you already have OpenAI embeddings from the notebook pipeline (Section 5 of `pipeline.ipynb`), use those directly. They will be higher-dimensional (e.g., 1536-dim for `text-embedding-3-small`) but UMAP handles this well.
+**Alternative:** If you already have OpenAI embeddings from the notebook pipeline (Section 5 of the channel pipeline notebook — any `pipeline_<slug>.ipynb`), use those directly. They will be higher-dimensional (e.g., 1536-dim for `text-embedding-3-small`) but UMAP handles this well.
 
 ### Step 3 — Dimensionality Reduction
 
@@ -52,7 +54,7 @@ coords_2d = reducer.fit_transform(embeddings)
 ```
 
 **Tuning notes:**
-- `n_neighbors=15` balances local and global structure for ~940 points.
+- `n_neighbors=15` balances local and global structure for corpora on the order of ~1,000 points; drop to ~10 for smaller exports and raise toward ~30 for larger ones.
 - `min_dist=0.1` allows tight clusters without excessive overlap.
 - `metric="cosine"` is standard for text embeddings.
 
@@ -72,7 +74,7 @@ clusterer = hdbscan.HDBSCAN(
 labels = clusterer.fit_predict(coords_2d)
 ```
 
-Expect 5–12 clusters plus a noise cluster (label = −1). Messages in the noise cluster are thematic outliers.
+Expect roughly 5–12 clusters plus a noise cluster (label = −1) on a ~1,000-message export. Narrow-beat channels may collapse to only 1–3 clusters under default parameters — that is itself a finding, and in that case lower `min_cluster_size` and `umap_min_dist` (see the Behold Israel writeup for an example of the tuned parameters `min_cluster_size=8, min_samples=3, umap_neighbors=10, umap_min_dist=0.0`). Messages in the noise cluster are thematic outliers.
 
 ### Step 5 — Topic Labeling
 
@@ -104,7 +106,7 @@ topics, probs = topic_model.fit_transform(df_text["text"].tolist())
 topic_model.get_topic_info()
 ```
 
-Manually assign human-readable labels based on the top terms (e.g., cluster with "nuclear, deal, negotiations, talks" → "Diplomacy & Nuclear Negotiations").
+Manually assign human-readable labels based on the top terms (e.g., cluster with "nuclear, deal, negotiations, talks" → "Diplomacy & Nuclear Negotiations"). The analysis module in `src/telegram_scraper/analysis/topics.py` exposes a `TOPIC_LABEL_OVERRIDES` configuration for pinning these names per channel.
 
 ### Step 6 — Temporal Layer
 
@@ -133,7 +135,7 @@ Add a date column to the scatter data. Optionally create an animated scatter (Pl
 
 ### Tertiary — Topic Proportion Over Time (Stacked Area)
 
-- X-axis = date (8 days).
+- X-axis = date (full export window).
 - Y-axis = proportion of messages belonging to each topic.
 - One colored band per topic.
 - Reveals which themes rise and fall — e.g., does "military threats" spike mid-period while "diplomacy" grows toward the end?
@@ -162,7 +164,8 @@ scikit-learn
 
 ## Expected Insights
 
-- The dominant themes PressTV covers during this period (likely Iran–US tensions, Lebanon/Israel, diplomacy, domestic Iranian politics).
-- Whether topics form tight clusters (focused messaging) or a diffuse cloud (broad, unfocused coverage).
-- How the thematic focus shifts day-to-day — does PressTV pivot quickly between topics or sustain multi-day narratives?
+- The dominant themes the target channel covers during the export window (for a state-affiliated geopolitical channel this is often inter-state tensions, diplomacy, and military action; for a domestic-commentary channel it may be elections, protests, and policy debates).
+- Whether topics form tight clusters (focused messaging) or a diffuse cloud (broad, unfocused coverage). A channel that collapses to a single dominant cluster even after tuning is telling you that its semantic field is narrow — that is the finding, not a modeling failure.
+- How the thematic focus shifts day-to-day — does the channel pivot quickly between topics or sustain multi-day narratives?
 - Which topics are thematically adjacent (e.g., "military threats" near "us-vs-them rhetoric") and which are isolated.
+- Cross-channel: when the same embedding + clustering pipeline is applied to multiple channels, comparing the topic compositions of each `CHANNEL_RESULTS[slug]` reveals how differently framed outlets carve up the same news period.

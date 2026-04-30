@@ -1,14 +1,16 @@
 # Plan 6 — Framing & Rhetoric Analysis
 
-> **Dataset:** 940 text-bearing messages from PressTV Telegram channel
-> **Period:** April 6–14, 2026 (~8 days)
-> **Objective:** Classify each message by its rhetorical strategy to reveal how PressTV constructs its narrative and how persuasion tactics shift over time.
+> **Dataset:** text-bearing messages exported by a channel-specific pipeline notebook (e.g. `notebooks/pipeline_<slug>.ipynb` or `CHANNEL_RESULTS[slug]["df_text"]` from the multi-channel pipeline).
+> **Period:** whatever window the export covers.
+> **Objective:** Classify each message by its rhetorical strategy to reveal how the target channel constructs its narrative and how persuasion tactics shift over time.
+>
+> _Illustrative sample values in this plan are drawn from a prior PressTV run (940 text-bearing messages, April 6–14 2026, ~8 days). Substitute your own channel's counts and window when applying the plan._
 
 ---
 
 ## Goal
 
-Move beyond *what* PressTV says to *how* it says it. Each message employs a rhetorical strategy — fear appeals, us-vs-them framing, authority citations, victimhood narratives. Mapping these across time reveals the persuasion architecture of a state-affiliated media channel during a period of geopolitical tension.
+Move beyond *what* the channel says to *how* it says it. Each message employs a rhetorical strategy — fear appeals, us-vs-them framing, authority citations, victimhood narratives. Mapping these across time reveals the channel's persuasion architecture over the export window.
 
 ---
 
@@ -16,7 +18,7 @@ Move beyond *what* PressTV says to *how* it says it. Each message employs a rhet
 
 ### Step 1 — Taxonomy Definition
 
-Define 8 rhetorical categories with clear descriptions for the zero-shot classifier:
+Define 8 rhetorical categories with clear descriptions for the zero-shot classifier. The taxonomy below is deliberately broad and applies to most news / commentary channels. For a specialized beat you may want to add or replace categories — e.g., *Religious / Prophetic Framing* for a faith-oriented channel, *Market Commentary* for a finance channel. Swap them through `FRAME_CANDIDATE_LABELS` in `src/telegram_scraper/analysis/framing.py` rather than editing call sites.
 
 | Category | Description | Example Signal Words |
 |----------|-------------|---------------------|
@@ -97,17 +99,19 @@ Manually review 30–50 messages (stratified by category) to assess classificati
 
 ### Primary — Stacked Area Chart (Rhetoric Over Time)
 
-- **X-axis:** Datetime (12-hour windows across 8 days).
+- **X-axis:** Datetime (12-hour windows across the export range).
 - **Y-axis:** Proportion (0–100%).
 - **Bands:** One per rhetorical category, colored distinctively.
 - **Reveals:** How persuasion tactics shift — e.g., does "fear/threat" dominate early when tensions are high, then give way to "authority appeal" as negotiations begin?
 
 ### Secondary — Sankey / Alluvial Diagram
 
-- **Left column:** Dominant frames in the first half (Apr 6–10).
-- **Right column:** Dominant frames in the second half (Apr 10–14).
+- **Left column:** Dominant frames in the first half of the export window.
+- **Right column:** Dominant frames in the second half.
 - **Flows:** Message count flowing from one frame to another.
 - **Reveals:** Narrative pivots — e.g., 40 messages classified as "fear/threat" in the first half shift to "call to action" in the second half.
+
+Use the actual window midpoint (`df["timestamp"].median()`) rather than a hardcoded date so the split works on any channel's export.
 
 ### Tertiary — Example Gallery Dashboard
 
@@ -141,7 +145,7 @@ matplotlib / seaborn (heatmaps)
 
 ## Estimated Complexity
 
-**High** — Zero-shot classification with BART-large-MNLI is slow on CPU: ~3–5 seconds per message, or roughly 45–80 minutes for 940 messages. Mitigation strategies:
+**High** — Zero-shot classification with BART-large-MNLI is slow on CPU: ~3–5 seconds per message, which for a ~1,000-message export is roughly 50–80 minutes. Mitigation strategies:
 
 - **GPU:** Reduces to ~5 min total.
 - **Batching:** The pipeline supports batch inference, reducing overhead.
@@ -152,8 +156,8 @@ matplotlib / seaborn (heatmaps)
 
 ## Expected Insights
 
-- The dominant rhetorical strategy overall (likely "authority appeal" given PressTV's heavy use of official quotes, or "us-vs-them" given the geopolitical context).
-- Whether PressTV shifts tactics in response to events — e.g., pivoting from "fear/threat" to "triumphalism" after successful negotiations.
+- The dominant rhetorical strategy overall (e.g., "authority appeal" for a channel that relies on official quotes; "us-vs-them" for a channel that frames a geopolitical conflict; "factual / neutral" for a wire-style reporter).
+- Whether the channel shifts tactics in response to events — e.g., pivoting from "fear / threat" to "triumphalism" after a military success, or from "factual / neutral" to "call to action" during a political campaign.
 - The proportion of genuinely neutral reporting vs. emotionally loaded framing.
 - Which rhetorical categories co-occur — does "victimhood" always pair with "us-vs-them"?
-- How PressTV's persuasion architecture compares to other state media channels (if extended to multi-channel analysis later).
+- Cross-channel: the multi-channel pipeline makes this comparison first-class — apply the plan to each `CHANNEL_RESULTS[slug]` and compare the resulting `frame_distribution_df` to expose how differently framed outlets cover the same news window.

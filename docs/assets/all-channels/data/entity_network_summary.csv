@@ -1,0 +1,2 @@
+messages_analyzed,messages_with_entities,unique_entities_before_filter,nodes_after_filter,edges_after_filter,min_entity_messages,min_edge_weight,community_method
+5097,4994,4409,688,3775,3,2,louvain

@@ -1,16 +1,18 @@
 # Plan 9 — Comparative Analysis: Media vs. Text-Only Messages
 
-> **Implementation status:** Implemented in `src/telegram_scraper/analysis/media_vs_text.py` and surfaced as **Section 14** in `notebooks/pipeline.ipynb`.
+> **Implementation status:** Implemented in `src/telegram_scraper/analysis/media_vs_text.py` and surfaced as **Section 14** in every channel pipeline notebook (e.g. `notebooks/pipeline_presstv.ipynb`, `notebooks/pipeline_behold_israel.ipynb`, `notebooks/pipeline_israel_news.ipynb`).
 >
-> **Dataset:** 1,200 messages from PressTV Telegram channel (757 with media, 443 text-only)
-> **Period:** April 6–14, 2026 (~8 days)
+> **Dataset:** the full message export produced by a channel-specific pipeline notebook — `notebooks/pipeline_<slug>.ipynb` or `CHANNEL_RESULTS[slug]["df"]` from the multi-channel pipeline.
+> **Period:** whatever window the export covers.
 > **Objective:** Analyze whether media-accompanied messages differ systematically in content, timing, and framing from text-only messages.
+>
+> _Illustrative sample values in this plan are drawn from a prior PressTV run (1,200 messages; 757 with media, 443 text-only; April 6–14 2026, ~8 days). Substitute your own channel's counts and window when applying the plan._
 
 ---
 
 ## Goal
 
-With 63% of messages carrying media (photos, videos, documents), PressTV heavily leverages visual content. This analysis asks whether media messages are substantively different from text-only messages — do they cover different topics, use different emotional registers, appear at different times, and employ different rhetorical strategies? The answer reveals whether media is decorative or structurally meaningful in PressTV's editorial strategy.
+The share of messages carrying media varies widely by channel — in prior runs, ~63% for PressTV and ~47% for Behold Israel — and that share is itself editorially meaningful. This analysis asks whether media messages are substantively different from text-only messages on the target channel: do they cover different topics, use different emotional registers, appear at different times, and employ different rhetorical strategies? The answer reveals whether media is decorative or structurally meaningful in the channel's editorial strategy, and whether channels with very different media baselines use visuals for comparable purposes.
 
 ---
 
@@ -140,7 +142,7 @@ Stacked bar chart or mosaic plot:
 
 ### Summary Dashboard
 
-Combine all four visualizations into a single 2×2 dashboard panel with a shared title: "Media vs. Text-Only: How Visual Content Shapes PressTV's Messaging"
+Combine all four visualizations into a single 2×2 dashboard panel with a shared title such as "Media vs. Text-Only: How Visual Content Shapes {CHANNEL_LABEL}'s Messaging" (substitute the target channel's human-readable name — e.g. "PressTV", "Behold Israel", "The Times of Israel").
 
 ---
 
@@ -181,6 +183,7 @@ Even without the NLP-dependent panels, the timing and text length comparisons ar
 
 - Whether media messages are shorter (quick visual dispatches) or longer (photo essays with captions).
 - Whether media messages have stronger negative sentiment (breaking bad news with photos) or more neutral sentiment (factual photo reporting).
-- Which topics PressTV always illustrates vs. leaves as text — reveals editorial priorities for visual storytelling.
-- Whether media messages cluster at specific hours (e.g., breaking news during waking hours in Iran/Middle East) while text-only posts fill other times.
-- Whether certain rhetorical frames (e.g., victimhood/injustice) are systematically paired with images — a known propaganda technique of using emotional visuals to reinforce narrative frames.
+- Which topics the channel always illustrates vs. leaves as text — reveals editorial priorities for visual storytelling.
+- Whether media messages cluster at specific hours (e.g., breaking news during the channel's home-region waking hours) while text-only posts fill other times.
+- Whether certain rhetorical frames (e.g., victimhood / injustice) are systematically paired with images — a known propaganda technique of using emotional visuals to reinforce narrative frames.
+- Cross-channel: `media_text_summary_df`, `media_text_stat_tests_df`, and `media_text_topic_distribution_df` all come out of `CHANNEL_RESULTS[slug]` with the same shape, so stacking them across channels lets you compare how editorial weight is placed on visuals: which channels use media for breaking coverage, which for commentary, and which treat text and image as interchangeable wrappers.

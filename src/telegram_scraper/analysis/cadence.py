@@ -539,11 +539,17 @@ def _build_volume_media_figure(
     ax2 = ax1.twinx()
     smoothing_window = max(0, int(config.media_smoothing_window))
     if smoothing_window > 0:
-        media_pct_smoothed = (
-            cadence_media_hourly_df["media_pct"]
-            .rolling(window=smoothing_window, min_periods=max(1, smoothing_window // 3), center=True)
-            .mean()
+        window_media = (
+            cadence_media_hourly_df["media_count"]
+            .rolling(window=smoothing_window, min_periods=1, center=True)
+            .sum()
         )
+        window_messages = (
+            cadence_media_hourly_df["message_count"]
+            .rolling(window=smoothing_window, min_periods=1, center=True)
+            .sum()
+        )
+        media_pct_smoothed = window_media.div(window_messages.where(window_messages > 0)).mul(100)
         ax2.plot(
             cadence_media_hourly_df["timestamp"],
             cadence_media_hourly_df["media_pct"],
@@ -557,7 +563,7 @@ def _build_volume_media_figure(
             media_pct_smoothed,
             color="#1f77b4",
             linewidth=2.4,
-            label=f"Media share ({smoothing_window}h rolling mean)",
+            label=f"Media share ({smoothing_window}h volume-weighted)",
         )
     else:
         ax2.plot(

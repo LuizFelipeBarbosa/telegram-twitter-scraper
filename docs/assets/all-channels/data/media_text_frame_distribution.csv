@@ -1,0 +1,17 @@
+dominant_frame,segment_label,message_count,segment_total,message_share_pct,total_count,share_gap_pct_points,sort_order
+Mixed / Ambiguous,Media,2521,3041,82.9,4233,-0.449,0
+Mixed / Ambiguous,Text-only,1712,2054,83.35,4233,-0.449,0
+Call to Action,Media,132,3041,4.341,244,-1.112,1
+Call to Action,Text-only,112,2054,5.453,244,-1.112,1
+Fear / Threat,Media,169,3041,5.557,236,2.295,2
+Fear / Threat,Text-only,67,2054,3.262,236,2.295,2
+Authority Appeal,Media,107,3041,3.519,161,0.89,3
+Authority Appeal,Text-only,54,2054,2.629,161,0.89,3
+Us-vs-Them / Othering,Media,54,3041,1.776,89,0.072,4
+Us-vs-Them / Othering,Text-only,35,2054,1.704,89,0.072,4
+Triumphalism / Strength,Media,23,3041,0.756,66,-1.337,5
+Triumphalism / Strength,Text-only,43,2054,2.093,66,-1.337,5
+Conspiracy / Suspicion,Media,25,3041,0.822,47,-0.249,6
+Conspiracy / Suspicion,Text-only,22,2054,1.071,47,-0.249,6
+Victimhood / Injustice,Media,10,3041,0.329,19,-0.109,7
+Victimhood / Injustice,Text-only,9,2054,0.438,19,-0.109,7

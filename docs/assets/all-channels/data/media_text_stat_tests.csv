@@ -1,0 +1,8 @@
+metric,test_type,group_a,group_b,group_a_n,group_b_n,category_count,statistic,degrees_of_freedom,p_value,effect_size,group_a_median,group_b_median,significant_0_05
+Text length,Mann-Whitney U,Media,Text-only,3053,2056,,3000032.0,,0.007407,0.0441,284.0,260.0,True
+Sentiment score,Mann-Whitney U,Media,Text-only,3041,2056,,3354506.0,,9e-06,-0.073,-0.222,-0.308,True
+Posting hour distribution,Chi-square,Media,Text-only,3720,2280,24.0,89.926,23.0,0.0,0.1224,,,True
+Dominant sentiment,Chi-square,Media,Text-only,3041,2056,3.0,23.994,2.0,6e-06,0.0686,,,True
+Dominant emotion,Chi-square,Media,Text-only,3041,2056,7.0,43.967,6.0,0.0,0.0929,,,True
+Dominant topic,Chi-square,Media,Text-only,3041,2056,92.0,851.098,91.0,0.0,0.4086,,,True
+Dominant frame,Chi-square,Media,Text-only,3041,2056,9.0,41.338,8.0,2e-06,0.0901,,,True

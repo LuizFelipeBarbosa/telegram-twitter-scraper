@@ -1,0 +1,17 @@
+topic_label,segment_label,message_count,segment_total,message_share_pct,total_count,share_gap_pct_points,sort_order
+Noise / Mixed,Media,599,1183,50.634,1041,-1.798,0
+Noise / Mixed,Text-only,442,843,52.432,1041,-1.798,0
+"Topic 75: strait, hormuz, strait hormuz",Media,130,1183,10.989,188,4.109,1
+"Topic 75: strait, hormuz, strait hormuz",Text-only,58,843,6.88,188,4.109,1
+"Topic 88: trump, iran, president",Media,107,1183,9.045,179,0.504,2
+"Topic 88: trump, iran, president",Text-only,72,843,8.541,179,0.504,2
+"Topic 26: missile, injured, iranian",Media,110,1183,9.298,164,2.893,3
+"Topic 26: missile, injured, iranian",Text-only,54,843,6.406,164,2.893,3
+"Topic 51: jbn links, links, jbn",Media,64,1183,5.41,163,-6.334,4
+"Topic 51: jbn links, links, jbn",Text-only,99,843,11.744,163,-6.334,4
+"Topic 45: hezbollah, idf, group",Media,29,1183,2.451,101,-6.09,5
+"Topic 45: hezbollah, idf, group",Text-only,72,843,8.541,101,-6.09,5
+"Topic 64: talks, islamabad, iran",Media,66,1183,5.579,96,2.02,6
+"Topic 64: talks, islamabad, iran",Text-only,30,843,3.559,96,2.02,6
+"Topic 74: jewish, antisemitism, israel",Media,78,1183,6.593,94,4.695,7
+"Topic 74: jewish, antisemitism, israel",Text-only,16,843,1.898,94,4.695,7

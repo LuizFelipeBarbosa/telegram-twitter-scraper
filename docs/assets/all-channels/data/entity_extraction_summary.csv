@@ -1,0 +1,2 @@
+messages_available,messages_ner_ready,messages_with_entities,entity_mentions,unique_normalized_entities,spacy_model
+5097,5097,4994,24071,4409,en_core_web_sm

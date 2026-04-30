@@ -1,0 +1,11 @@
+thread_label,thread_size,thread_depth,component_total_nodes,external_node_count,reply_messages,messages_receiving_replies,root_message_id,root_in_dataset,root_preview,top_replied_message_id,top_replied_count
+T001,9,2,9,0,8,2,185302,True,"The Handala hacking group announced that it carried out a large-scale retaliatory cyber operation,...",185302,7
+T002,7,3,7,0,6,3,185217,True,"🔺 Press TV Exclusive: US destroyers' Strait of Hormuz transit stunt failed, came close to destruction The...",185401,3
+T003,6,5,6,0,5,5,185765,True,🔴 Yemen's Ansarullah Chief Al-Houthi delivering speech regarding latest regional developments 🔺 Al-Houthi:...,185765,1
+T004,5,4,5,0,4,4,185239,True,'Not a fan of Pope': Trump attacks Catholic leader following criticism over US-Israeli war on Iran US...,185239,1
+T005,4,2,4,0,3,2,184992,True,📸 Nizar Amidi has been elected as the new President of Iraq. @PressTV,185028,2
+T006,4,2,4,0,3,2,185055,True,📸 Iran's Islamic Revolution Guards Corps (IRGC) issues a statement strongly denying the claims about the...,185055,2
+T007,4,2,4,0,3,2,185064,True,"▶️ Several homes destroyed following Israeli airstrikes on the town of Qana, southern Lebanon. @PressTV",185064,2
+T008,4,2,4,0,3,2,185290,True,"🔴 A fresh rocket barrage was fired from Lebanon, setting off air-raid sirens in Nahariya, nearby areas, and...",185290,2
+T009,3,2,3,0,2,2,184824,True,"🔴 Hezbollah chief praises bravery, steadfastness of resistance fighters in letter to nation 🔺 Naim Qassem:...",184824,1
+T010,3,2,3,0,2,2,185057,True,📸 Commander of the Quds Force of the Islamic Revolution Guard Corps (IRGC) Brigadier General Esmail Qaani...,185057,1

@@ -1,14 +1,16 @@
 # Plan 1 — Sentiment & Emotion Over Time
 
-> **Dataset:** 940 text-bearing messages from PressTV Telegram channel
-> **Period:** April 6–14, 2026 (~8 days)
-> **Objective:** Reveal how the emotional arc of PressTV's messaging shifts hour-by-hour and day-by-day in response to geopolitical events.
+> **Dataset:** text-bearing messages exported by a channel-specific pipeline notebook (e.g. `notebooks/pipeline_<slug>.ipynb` writing to `notebooks/messages.csv` or `CHANNEL_RESULTS[slug]["df_text"]` in the multi-channel pipeline).
+> **Period:** the window covered by the channel's message export — typically a few days to a few weeks; all temporal aggregations below scale to whatever range is present in the data.
+> **Objective:** Reveal how the emotional arc of the target channel's messaging shifts hour-by-hour and day-by-day in response to real-world events.
+>
+> _Illustrative sample values in this plan are drawn from a prior PressTV run (940 text-bearing messages, April 6–14 2026, ~8 days). Substitute your own channel's counts and date range when applying the plan._
 
 ---
 
 ## Goal
 
-Track sentiment polarity and fine-grained emotion across the 8-day window. Spikes and dips in sentiment should correlate with real-world events (strikes, negotiations, UN votes, threats), making this a narrative-level view of how PressTV modulates its tone.
+Track sentiment polarity and fine-grained emotion across the full export window. Spikes and dips in sentiment should correlate with real-world events (strikes, negotiations, UN votes, protests, elections, press conferences), making this a narrative-level view of how the channel modulates its tone.
 
 ---
 
@@ -65,7 +67,9 @@ df_text["emotions"] = df_text["text"].apply(lambda t: emotion_pipe(t[:512]))
 
 ### Step 5 — Event Annotation
 
-Manually identify 5–10 key events from the date range by scanning high-volume or high-sentiment-shift periods. Examples from the dataset:
+Manually identify 5–10 key events from the date range by scanning high-volume or high-sentiment-shift periods. The events you annotate will depend on the channel's beat — for a geopolitical news channel they might be strikes, ceasefire announcements, or diplomatic meetings; for a domestic politics channel they might be votes, press conferences, or protests.
+
+Example annotations from a prior PressTV run (replace with the events relevant to your channel and window):
 
 - Iran–US peace talks begin in Islamabad
 - Trump threatens Iranian infrastructure
@@ -83,12 +87,12 @@ Tag each with a timestamp for overlay on the chart.
 
 - **Left y-axis:** Rolling mean sentiment score (−1 to +1), plotted as a smoothed line with a 95% confidence band.
 - **Right y-axis:** Stacked area chart of emotion proportions (anger, fear, joy, sadness, etc.).
-- **X-axis:** Datetime (full 8-day range).
+- **X-axis:** Datetime (full export window).
 - **Overlay:** Vertical dashed lines at event timestamps with rotated annotation labels.
 
 ### Secondary — Emotion Heatmap (Small Multiples)
 
-- One row per day (8 rows).
+- One row per day in the export window.
 - Columns for each hour (24 columns).
 - Cell color = dominant emotion for that hour.
 - Reveals intra-day emotional rhythms and event-driven disruptions.
@@ -114,12 +118,13 @@ seaborn (for heatmap)
 
 ## Estimated Complexity
 
-**Medium** — Model inference is the bottleneck (~5 min on CPU for 940 texts with each model). Aggregation and plotting are fast.
+**Medium** — Model inference is the bottleneck (roughly ~5 min on CPU per ~1,000 texts for each of the sentiment and emotion models; scale linearly with corpus size). Aggregation and plotting are fast.
 
 ---
 
 ## Expected Insights
 
-- Whether PressTV maintains a consistent negative tone or modulates strategically around events.
-- Which emotions dominate overall (likely anger and fear given the geopolitical context) and whether there are surprise joy/triumph spikes (e.g., after successful negotiations).
+- Whether the channel maintains a consistent emotional baseline or modulates strategically around events.
+- Which emotions dominate overall (e.g., anger and fear for conflict-reporting channels; joy and surprise for cultural/entertainment channels) and whether there are counter-direction spikes around specific events.
 - Whether sentiment leads or lags real-world events — does the channel anticipate or react?
+- How the channel's emotional register compares to other channels run through the same pipeline (cross-channel comparison becomes possible once each `CHANNEL_RESULTS[slug]` carries a sentiment timeline of the same shape).

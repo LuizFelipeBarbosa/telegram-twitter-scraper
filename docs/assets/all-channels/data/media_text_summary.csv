@@ -1,0 +1,2 @@
+channel,messages_analyzed,start,end,media_messages,text_only_messages,media_share_pct,text_bearing_messages,sentiment_available,topic_available,frame_available,entity_available,top_media_topic,top_text_only_topic,top_media_frame,top_text_only_frame
+Press TV + ILTV Israel News 24/7 + Jewish Breaking News - JBN + The Times of Israel + Amir Tsarfati,6000,2025-12-17 18:22:28+00:00,2026-04-17 22:10:17+00:00,3720,2280,62.0,5109,True,True,True,True,Noise / Mixed,Noise / Mixed,Mixed / Ambiguous,Mixed / Ambiguous

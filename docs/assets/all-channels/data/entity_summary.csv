@@ -1,0 +1,21 @@
+entity,message_count,entity_type,top_surface_form,surface_forms,unique_surface_forms,graph_degree,weighted_degree,community_label
+Iran,1766,GPE,Iran,Iran,1,379,5660.0,C1
+Israel,1176,GPE,Israel,Israel,1,358,3861.0,C2
+US,1163,GPE,US,"US, U.S., the United States, America, The United States",12,310,4057.0,C1
+Iranian,894,NORP,Iranian,Iranian,1,246,2802.0,C1
+Israeli,766,NORP,Israeli,Israeli,1,237,2582.0,C3
+Lebanon,532,GPE,Lebanon,Lebanon,1,152,1749.0,C3
+WHATSAPP GROUP,526,ORG,WHATSAPP GROUP,WHATSAPP GROUP,1,152,1581.0,C3
+Trump,520,PERSON,Trump,"Trump, Donald Trump, DONALD TRUMP",3,145,1643.0,C1
+Hezbollah,471,ORG,Hezbollah,Hezbollah,1,128,1597.0,C3
+Tehran,348,GPE,Tehran,Tehran,1,124,1176.0,C1
+IDF,334,ORG,IDF,IDF,1,103,1193.0,C3
+WHATSAPP CHANNEL WHATSAPP GROUP,224,ORG,WHATSAPP CHANNEL WHATSAPP GROUP,WHATSAPP CHANNEL WHATSAPP GROUP,1,72,650.0,C2
+Netanyahu,187,PERSON,Netanyahu,Netanyahu,1,65,547.0,C2
+Gaza,169,GPE,Gaza,Gaza,1,75,548.0,C2
+American,159,NORP,American,American,1,63,495.0,C1
+Jewish,159,NORP,Jewish,Jewish,1,80,400.0,C2
+IRGC,128,ORG,IRGC,IRGC,1,44,380.0,C1
+Hamas,124,ORG,Hamas,Hamas,1,62,379.0,C2
+Jerusalem,121,GPE,Jerusalem,Jerusalem,1,58,315.0,C2
+Lebanese,120,NORP,Lebanese,Lebanese,1,48,417.0,C3

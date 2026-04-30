@@ -1,0 +1,12 @@
+topic_id,rank,keyword,score
+0,1,today stories,2.404939
+0,2,stories,2.364392
+0,3,stories today,2.306353
+0,4,today,1.920847
+1,1,truth,0.575907
+...,...,...,...
+90,1,trump,0.270109
+90,2,lebanon,0.204219
+90,3,president,0.188037
+90,4,ceasefire,0.169480
+90,5,israel,0.144391

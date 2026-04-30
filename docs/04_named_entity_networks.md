@@ -1,14 +1,16 @@
 # Plan 4 — Named Entity Network Graphs
 
-> **Dataset:** 940 text-bearing messages from PressTV Telegram channel
-> **Period:** April 6–14, 2026 (~8 days)
-> **Objective:** Map the political "cast of characters" — which people, organizations, and nations are mentioned together, revealing PressTV's narrative structure and framing of alliances/opposition.
+> **Dataset:** text-bearing messages exported by a channel-specific pipeline notebook (e.g. `notebooks/pipeline_<slug>.ipynb` or `CHANNEL_RESULTS[slug]["df_text"]` from the multi-channel pipeline).
+> **Period:** whatever window the export covers.
+> **Objective:** Map the "cast of characters" in the channel's coverage — which people, organizations, nations, or groups are mentioned together, revealing the channel's narrative structure and framing of alliances / opposition.
+>
+> _Illustrative sample values in this plan are drawn from a prior PressTV run (940 text-bearing messages, April 6–14 2026, ~8 days). Substitute your own channel's counts and window when applying the plan._
 
 ---
 
 ## Goal
 
-Extract every named entity (person, organization, country, group) from the corpus, then build a co-occurrence network showing who gets linked with whom within the same message. The resulting graph reveals PressTV's implicit framing: which actors are placed in the same context, what alliances and oppositions are constructed through adjacency.
+Extract every named entity (person, organization, country, group) from the corpus, then build a co-occurrence network showing who gets linked with whom within the same message. The resulting graph reveals the channel's implicit framing: which actors are placed in the same context, what alliances and oppositions are constructed through adjacency.
 
 ---
 
@@ -18,7 +20,7 @@ Extract every named entity (person, organization, country, group) from the corpu
 
 Run spaCy NER on each message. Target entity labels:
 
-| Label | Description | Examples |
+| Label | Description | Example entities (swap for your channel's beat) |
 |-------|-------------|----------|
 | `PERSON` | Named individuals | Trump, Velayati, Nasrallah |
 | `ORG` | Organizations | UN, Hezbollah, Pentagon, IRGC |
@@ -43,19 +45,20 @@ df_text["entities"] = df_text["text"].apply(extract_entities)
 
 ### Step 2 — Entity Normalization
 
-NER models produce noisy variants. Normalize common aliases:
+NER models produce noisy variants. Normalize common aliases. The map below is a starting point — `src/telegram_scraper/analysis/entities.py` ships `DEFAULT_ENTITY_ALIAS_MAP` and a `NamedEntityConfig.alias_map` override you can pass per channel to handle ideological renames (e.g., a pro-Tehran channel's "Zionist regime" → "Israel"; a pro-Jerusalem channel's "Judea and Samaria" → "West Bank"; a US-politics channel's "Sleepy Joe" → "Biden"). Extend it after skimming the top-N unnormalized entities on a first pass.
 
 ```python
+# Starter map — extend per channel.
 ENTITY_MAP = {
     "United States": "US",
     "America": "US",
     "the United States": "US",
+    "Donald Trump": "Trump",
+    "President Trump": "Trump",
+    # Channel-specific ideological labels (example values from PressTV):
     "Islamic Republic": "Iran",
     "Zionist regime": "Israel",
     "Israeli regime": "Israel",
-    "Donald Trump": "Trump",
-    "President Trump": "Trump",
-    # Add more as discovered in the data
 }
 
 def normalize_entity(name):
@@ -111,7 +114,7 @@ partition = community_louvain.best_partition(G, weight="weight")
 nx.set_node_attributes(G, partition, "community")
 ```
 
-Expected communities might include: Iranian officials cluster, US/Israel cluster, Arab states cluster, international organizations cluster.
+Expected community structure depends heavily on the channel. For a Middle-East-focused geopolitical channel, communities might emerge around Iranian officials, US/Israeli actors, Arab states, and international organizations. For other beats (e.g., domestic politics, business, sports) the communities will reflect that domain's factions instead — read the Louvain partition as the channel's own implicit grouping of actors.
 
 ### Step 6 — Layout
 
@@ -157,10 +160,24 @@ net.show("entity_network.html")
 
 ### Tertiary — Ego Network Subgraphs
 
-For 3–4 key actors (e.g., "Iran", "Trump", "Hezbollah", "UN"), extract their ego network (immediate neighbors only) and display as separate small graphs. Reveals each actor's narrative context — who they're framed alongside.
+For 3–4 key actors, extract each one's ego network (immediate neighbors only) and display as separate small graphs. Reveals each actor's narrative context — who they're framed alongside.
+
+Pick the ego targets from the top of `entity_summary_df` (or pass an explicit candidate list through `NamedEntityConfig` — see `src/telegram_scraper/analysis/entities.py`). Good defaults are the top 4 entities by weighted degree; for comparability across channels, override that with a small set of shared actors that appear in every channel's graph.
 
 ```python
-ego = nx.ego_graph(G, "Iran", radius=1)
+# Pick ego targets dynamically from the top of the entity ranking.
+ego_targets = (
+    entity_network_nodes_df
+    .sort_values(["weighted_degree", "message_count"], ascending=[False, False])
+    ["entity"]
+    .head(4)
+    .tolist()
+)
+
+# Or pin a shared set for cross-channel comparison (example from PressTV run):
+# ego_targets = ["Iran", "US", "Israel", "Trump"]
+
+ego_subgraphs = {name: nx.ego_graph(G, name, radius=1) for name in ego_targets if name in G}
 ```
 
 ---
@@ -185,8 +202,9 @@ pandas
 
 ## Expected Insights
 
-- The central nodes in PressTV's narrative (likely Iran, US, Israel, Trump).
-- Which actors are framed as connected — e.g., is "Hezbollah" always co-mentioned with "Iran" or sometimes with "Lebanon" independently?
-- Community structure revealing implicit alliance framing (Iran + allies vs. US + Israel).
+- The central nodes in the channel's narrative (for a prior PressTV run these were Iran, US, Israel, and Trump; for a different channel the core cast will differ — that contrast is one of the most useful cross-channel comparisons this plan enables).
+- Which actors are framed as connected — e.g., does a militia name always co-occur with a specific state sponsor, or does it also appear in independent contexts?
+- Community structure revealing implicit alliance framing (e.g., one bloc vs. another).
 - Peripheral entities that appear rarely but in notable combinations.
-- Whether PressTV's entity landscape is tightly focused (few dominant actors) or broad (many actors with moderate attention).
+- Whether the channel's entity landscape is tightly focused (few dominant actors, high graph density) or broad (many actors with moderate attention, lower density) — a simple proxy for editorial scope.
+- Cross-channel: running this plan over each `CHANNEL_RESULTS[slug]` and aligning the top-N actor lists reveals which entities are shared across outlets and which are unique to a specific channel's framing.

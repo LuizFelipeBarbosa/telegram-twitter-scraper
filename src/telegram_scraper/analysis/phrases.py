@@ -35,12 +35,25 @@ DEFAULT_PHRASE_EXTRA_STOPWORDS = {
     "news",
     "channel",
     "telegram",
-    "presstv",
-    "press",
     "today",
     "also",
     "just",
     "via",
+    "whatsapp",
+    "read",
+}
+
+_CHANNEL_SPECIFIC_PHRASE_STOPWORDS: dict[str, set[str]] = {
+    "presstv": {"presstv", "press", "tv", "iran", "iranian", "tehran"},
+    "beholdisraelchannel": {"behold", "israel", "israeli", "idf", "jewish", "amir", "tsarfati"},
+    "iltvnews": {"iltv", "israel", "israeli", "idf"},
+    "jewishbreakingnewstelegram": {"jbn", "jewish", "israel", "israeli", "idf"},
+    "thetimesofisrael2022": {"times", "toi", "israel", "israeli", "idf"},
+}
+
+CHANNEL_EXTRA_STOPWORDS: dict[str, set[str]] = {
+    slug: DEFAULT_PHRASE_EXTRA_STOPWORDS | channel_tokens
+    for slug, channel_tokens in _CHANNEL_SPECIFIC_PHRASE_STOPWORDS.items()
 }
 DEFAULT_STATUS_COLORS = {
     "retained": "#9e9e9e",

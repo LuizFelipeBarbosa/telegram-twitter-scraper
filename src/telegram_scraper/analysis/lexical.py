@@ -18,15 +18,11 @@ DEFAULT_TFIDF_STATUS_COLORS = {
 }
 
 DEFAULT_TFIDF_EXTRA_STOPWORDS = {
-    "iran",
-    "iranian",
     "says",
     "said",
     "also",
     "would",
     "new",
-    "presstv",
-    "press",
     "breaking",
     "video",
     "videos",
@@ -40,6 +36,21 @@ DEFAULT_TFIDF_EXTRA_STOPWORDS = {
     "channel",
     "telegram",
     "via",
+    "whatsapp",
+    "read",
+}
+
+_CHANNEL_SPECIFIC_TFIDF_STOPWORDS: dict[str, set[str]] = {
+    "presstv": {"presstv", "press", "tv", "iran", "iranian", "tehran"},
+    "beholdisraelchannel": {"behold", "israel", "israeli", "idf", "jewish", "amir", "tsarfati"},
+    "iltvnews": {"iltv", "israel", "israeli", "idf"},
+    "jewishbreakingnewstelegram": {"jbn", "jewish", "israel", "israeli", "idf"},
+    "thetimesofisrael2022": {"times", "toi", "israel", "israeli", "idf"},
+}
+
+CHANNEL_EXTRA_STOPWORDS: dict[str, set[str]] = {
+    slug: DEFAULT_TFIDF_EXTRA_STOPWORDS | channel_tokens
+    for slug, channel_tokens in _CHANNEL_SPECIFIC_TFIDF_STOPWORDS.items()
 }
 
 _TFIDF_URL_RE = re.compile(r"https?://\S+|www\.\S+")
