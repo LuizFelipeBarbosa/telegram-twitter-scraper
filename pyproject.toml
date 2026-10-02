@@ -12,6 +12,7 @@ dependencies = [
   "nest-asyncio>=1.6,<2",
   "openai>=1.78,<2",
   "pandas>=2,<3",
+  "pyarrow>=15",
   "telethon>=1.40,<2",
   "typer>=0.12,<1",
 ]
@@ -30,7 +31,9 @@ dev = [
   "python-louvain>=0.16,<1",
   "scikit-learn>=1.5,<2",
   "seaborn>=0.13,<1",
+  "sentence-transformers>=3,<6",
   "spacy>=3.8,<4",
+  "statsmodels>=0.14,<1",
   "torch>=2.8,<3",
   "transformers>=4.57,<5",
   "umap-learn>=0.5,<1",

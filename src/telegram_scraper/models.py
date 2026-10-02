@@ -56,6 +56,11 @@ class MessageRecord:
     has_media: bool
     text: str
     media_files: tuple[MediaRecord, ...] = ()
+    media_kind: str = "none"
+    grouped_id: int | None = None
+    views: int | None = None
+    forwards: int | None = None
+    has_link_preview: bool = False
 
 
 @dataclass(frozen=True)

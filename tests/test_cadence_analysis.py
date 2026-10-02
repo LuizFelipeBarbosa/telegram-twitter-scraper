@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import pytest
@@ -32,6 +32,7 @@ def build_message(
         sender_name=None,
         text=text,
         media_refs=MEDIA if has_media else (),
+        media_kind="photo" if has_media else "none",
         raw_json={},
         english_text=english_text,
     )
@@ -132,3 +133,31 @@ def test_run_messaging_cadence_analysis_respects_manual_event_annotations() -> N
     ]
 
     plt.close("all")
+
+
+def test_cadence_media_flag_uses_editorial_media_kind_not_media_refs() -> None:
+    ts = datetime(2026, 4, 6, 9, 0, tzinfo=timezone.utc)
+
+    def kinded(message_id: int, kind: str, text: str | None) -> RawMessage:
+        return RawMessage(
+            channel_id=99,
+            message_id=message_id,
+            timestamp=ts + timedelta(minutes=message_id),
+            sender_id=None,
+            sender_name=None,
+            text=text,
+            raw_json={},
+            media_kind=kind,
+            has_link_preview=kind == "webpage",
+        )
+
+    result = run_messaging_cadence_analysis(
+        [kinded(1, "video", "clip"), kinded(2, "webpage", "link card"), kinded(3, "none", "plain"), kinded(4, "photo", None)],
+        channel_label="Kinds",
+        config=MessagingCadenceConfig(annotated_spikes=1),
+    )
+
+    df = result.cadence_messages_df.set_index("message_id")
+    assert df["has_media"].to_dict() == {1: True, 2: False, 3: False, 4: True}
+    assert df["media_kind"].to_dict() == {1: "video", 2: "webpage", 3: "none", 4: "photo"}
+    assert df["is_media_only"].to_dict() == {1: False, 2: False, 3: False, 4: True}

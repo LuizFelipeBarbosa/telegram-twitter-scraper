@@ -19,6 +19,7 @@ class CliTests(unittest.TestCase):
             "sync-chat",
             "backfill",
             "repair-media",
+            "snapshot",
         ):
             self.assertIn(command, result.output)
 
@@ -54,6 +55,24 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("--chat", result.output)
+
+    def test_snapshot_help_exposes_window_and_channel_options(self):
+        runner = CliRunner()
+
+        result = runner.invoke(app, ["snapshot", "--help"])
+
+        self.assertEqual(result.exit_code, 0)
+        for option in ("--channel", "--start", "--end", "--out", "--download-media"):
+            self.assertIn(option, result.output)
+
+    def test_snapshot_rejects_inverted_window(self):
+        runner = CliRunner()
+
+        result = runner.invoke(
+            app, ["snapshot", "--channel", "x", "--start", "2026-02-01", "--end", "2026-01-01"]
+        )
+
+        self.assertEqual(result.exit_code, 1)
 
 
 if __name__ == "__main__":

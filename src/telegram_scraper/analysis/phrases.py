@@ -255,7 +255,7 @@ def _prepare_phrase_messages(
                 "date": timestamp.floor("D"),
                 "source_language": message.source_language or UNKNOWN_LANGUAGE,
                 "used_translation": message_used_translation(message),
-                "has_media": bool(message.media_refs),
+                "has_media": message.has_editorial_media,
                 "text": original_text,
                 "clean_text": clean_text,
                 "tokens": tokens,

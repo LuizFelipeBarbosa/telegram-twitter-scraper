@@ -230,7 +230,7 @@ def _prepare_rhetoric_messages(messages: Sequence[RawMessage]) -> pd.DataFrame:
                 "text": cleaned_text,
                 "raw_text": (message.text or "").strip(),
                 "english_text": (message.english_text or "").strip(),
-                "has_media": bool(message.media_refs),
+                "has_media": message.has_editorial_media,
                 "text_length": len(cleaned_text),
             }
         )
