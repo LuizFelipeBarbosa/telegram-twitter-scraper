@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import asyncio
+import json
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import List
 
 try:
     import typer
 except ImportError:  # pragma: no cover - exercised only without runtime deps.
     typer = None
 
-from telegram_scraper.chat_discovery import filter_chats
+from telegram_scraper.chat_discovery import discover_chats, filter_chats, resolve_chat
 from telegram_scraper.config import ConfigError, Settings
 from telegram_scraper.markdown_writer import MarkdownWriter
+from telegram_scraper.snapshot import fetch_snapshot
 from telegram_scraper.state_store import StateStore
 from telegram_scraper.sync_service import SyncService
 from telegram_scraper.telegram_client import TelegramAccountClient, TelegramClientError
@@ -46,6 +50,24 @@ def _format_chat_line(chat: object, selected: bool) -> str:
     username = getattr(chat, "username", None)
     username_text = f" @{username}" if username else ""
     return f"{marker} {chat.chat_type.value:<7} {chat.chat_id:<12} {chat.slug}{username_text} | {chat.title}"
+
+
+def _parse_day(value: str, *, option: str) -> datetime:
+    try:
+        return datetime.strptime(value.strip(), "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        raise ValueError(f"{option} must be a date in YYYY-MM-DD format, got: {value!r}") from None
+
+
+def _format_snapshot_table(channels: list[dict[str, object]]) -> str:
+    header = f"{'channel':<32} {'messages':>9}  first_ts -> last_ts"
+    lines = [header]
+    for channel in channels:
+        lines.append(
+            f"{str(channel['slug']):<32} {channel['message_count']:>9}  "
+            f"{channel['first_ts'] or '-'} -> {channel['last_ts'] or '-'}"
+        )
+    return "\n".join(lines)
 
 
 def _exit_with_error(message: str) -> "typer.Exit":
@@ -241,5 +263,64 @@ if typer is not None:
             asyncio.run(_run())
         except (LookupError, TelegramClientError, OSError) as exc:
             raise _exit_with_error(str(exc))
+
+    @app.command()
+    def snapshot(
+        channel: List[str] = typer.Option(
+            ..., "--channel", help="Channel selector: id, username, title, or slug. Repeatable."
+        ),
+        start: str = typer.Option(..., "--start", help="Inclusive start date (UTC), YYYY-MM-DD."),
+        end: str = typer.Option(..., "--end", help="Exclusive end date (UTC), YYYY-MM-DD."),
+        out: Path = typer.Option(Path("data/raw"), "--out", help="Parent directory for snapshot runs."),
+        download_media: bool = typer.Option(
+            False, "--download-media/--no-download-media", help="Also download image files to the archive output root."
+        ),
+        env_file: Path = typer.Option(Path(".env"), help="Path to environment file."),
+    ) -> None:
+        """Write a reproducible parquet snapshot of full-text messages to <out>/<run_id>/."""
+        try:
+            start_dt = _parse_day(start, option="--start")
+            end_dt = _parse_day(end, option="--end")
+            if start_dt >= end_dt:
+                raise ValueError("--start must be before --end")
+            settings = _load_settings(env_file, require_output_root=download_media)
+            settings.require_credentials()
+        except (ConfigError, ValueError) as exc:
+            raise _exit_with_error(str(exc))
+
+        client = _build_client(settings)
+        fetched_label = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        run_id = f"{start_dt:%Y-%m-%d}_{end_dt:%Y-%m-%d}_{fetched_label}"
+        run_dir = out / run_id
+
+        async def _run() -> None:
+            try:
+                dialogs = await client.get_dialogs()
+                available = discover_chats(dialogs)
+                chats = []
+                for selector in channel:
+                    resolved = resolve_chat(available, selector)
+                    if resolved.slug not in {chat.slug for chat in chats}:
+                        chats.append(resolved)
+                await fetch_snapshot(
+                    client,
+                    chats,
+                    start=start_dt,
+                    end=end_dt,
+                    out_dir=run_dir,
+                    download_media=download_media,
+                    run_id=run_id,
+                )
+            finally:
+                await client.disconnect()
+
+        try:
+            asyncio.run(_run())
+        except (LookupError, ValueError, TelegramClientError, OSError) as exc:
+            raise _exit_with_error(str(exc))
+
+        manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+        typer.echo(_format_snapshot_table(manifest["channels"]))
+        typer.echo(f"snapshot written to {run_dir}")
 else:  # pragma: no cover - exercised only without typer installed.
     app = None

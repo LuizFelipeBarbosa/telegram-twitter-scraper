@@ -3,6 +3,7 @@ from telegram_scraper.analysis.cadence import (
     MessagingCadenceResult,
     run_messaging_cadence_analysis,
 )
+from telegram_scraper.analysis.embeddings import LocalEmbedder, embed_frame
 from telegram_scraper.analysis.entities import NamedEntityConfig, NamedEntityResult, run_named_entity_analysis
 from telegram_scraper.analysis.framing import (
     RhetoricFramingConfig,
@@ -25,10 +26,43 @@ from telegram_scraper.analysis.sentiment import (
     SentimentEmotionConfig,
     SentimentEmotionResult,
     run_sentiment_emotion_analysis,
+    score_frame,
 )
-from telegram_scraper.analysis.topics import TopicModelingConfig, TopicModelingResult, run_topic_modeling_analysis
+from telegram_scraper.analysis.stats import (
+    bh_adjust,
+    bootstrap_mean_ci,
+    chi_square_by_group,
+    collapse_rare_categories,
+    daily_rate_ci,
+    keyword_share,
+    mean_diff_ci,
+    proportion_ci,
+    rate_ratio_ci,
+    share_table,
+    tost_equivalence,
+    two_proportion_test,
+)
+from telegram_scraper.analysis.topics import (
+    JointTopicResult,
+    TopicModelingConfig,
+    TopicModelingResult,
+    fit_joint_topics,
+    label_topics,
+    run_topic_modeling_analysis,
+    stability_summary,
+    topic_stability,
+)
+from telegram_scraper.analysis.validation import (
+    KAPPA_THRESHOLD,
+    make_coding_sheet,
+    score_agreement,
+    usable_labels,
+)
 
 __all__ = [
+    "JointTopicResult",
+    "KAPPA_THRESHOLD",
+    "LocalEmbedder",
     "LexicalShiftConfig",
     "LexicalShiftResult",
     "MediaTextComparisonConfig",
@@ -47,6 +81,19 @@ __all__ = [
     "SentimentEmotionResult",
     "TopicModelingConfig",
     "TopicModelingResult",
+    "bh_adjust",
+    "bootstrap_mean_ci",
+    "chi_square_by_group",
+    "collapse_rare_categories",
+    "daily_rate_ci",
+    "embed_frame",
+    "fit_joint_topics",
+    "keyword_share",
+    "label_topics",
+    "make_coding_sheet",
+    "mean_diff_ci",
+    "proportion_ci",
+    "rate_ratio_ci",
     "run_media_text_comparison_analysis",
     "run_messaging_cadence_analysis",
     "run_named_entity_analysis",
@@ -56,4 +103,12 @@ __all__ = [
     "run_sentiment_emotion_analysis",
     "run_tfidf_shift_analysis",
     "run_topic_modeling_analysis",
+    "score_agreement",
+    "score_frame",
+    "share_table",
+    "stability_summary",
+    "tost_equivalence",
+    "topic_stability",
+    "two_proportion_test",
+    "usable_labels",
 ]

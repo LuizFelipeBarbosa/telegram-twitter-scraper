@@ -3,9 +3,10 @@ from __future__ import annotations
 import re
 import textwrap
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Sequence
 
+import numpy as np
 import pandas as pd
 
 from telegram_scraper.analysis._common import UNKNOWN_LANGUAGE, message_used_translation
@@ -76,6 +77,9 @@ class TopicModelingConfig:
     keywords_per_topic: int = 10
     label_keywords: int = 3
     ngram_range: tuple[int, int] = (1, 2)
+    cluster_dims: int = 5
+    random_state: int = 42
+    cluster_selection_method: str = "eom"
     label_overrides: dict[int, str] = field(default_factory=dict)
     extra_stopwords: set[str] = field(default_factory=lambda: set(DEFAULT_TOPIC_EXTRA_STOPWORDS))
 
@@ -260,6 +264,82 @@ def _prepare_topic_messages(
     return topic_messages_df, topic_embedding_matrix
 
 
+def _effective_cluster_params(n_rows: int, config: TopicModelingConfig) -> tuple[int, int, int]:
+    neighbors = min(config.umap_neighbors, max(2, n_rows - 1))
+    min_cluster_size = config.min_cluster_size if n_rows >= config.min_cluster_size else max(2, n_rows // 2)
+    min_samples = min(config.min_samples, max(1, min_cluster_size - 1))
+    return neighbors, min_cluster_size, min_samples
+
+
+def _import_umap_hdbscan() -> tuple[Any, Any]:
+    try:
+        import hdbscan
+        import umap
+    except ImportError as exc:  # pragma: no cover - exercised in notebook env
+        raise ImportError(
+            "Topic modeling requires umap-learn and hdbscan. "
+            "Install notebook extras like: pip install umap-learn hdbscan plotly scikit-learn"
+        ) from exc
+    return umap, hdbscan
+
+
+def _cluster_embeddings(
+    embeddings: Any,
+    config: TopicModelingConfig,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """UMAP to ``config.cluster_dims`` (cosine) then HDBSCAN on that reduced space.
+
+    Returns (labels, probabilities, reduced_coordinates). HDBSCAN only sees 2-D data when
+    ``cluster_dims == 2`` is requested explicitly.
+    """
+    umap, hdbscan = _import_umap_hdbscan()
+    matrix = np.asarray(embeddings, dtype=np.float32)
+    n_rows = len(matrix)
+    if n_rows < 5:
+        raise RuntimeError("Topic modeling needs at least 5 rows to run UMAP and HDBSCAN.")
+    if config.cluster_dims < 2:
+        raise ValueError("cluster_dims must be >= 2.")
+
+    neighbors, min_cluster_size, min_samples = _effective_cluster_params(n_rows, config)
+    # UMAP's spectral init needs n_components < n_rows - 1.
+    dims = min(config.cluster_dims, max(2, n_rows - 2))
+    reduced = umap.UMAP(
+        n_components=dims,
+        n_neighbors=neighbors,
+        min_dist=config.umap_min_dist,
+        metric="cosine",
+        random_state=config.random_state,
+    ).fit_transform(matrix)
+
+    clusterer = hdbscan.HDBSCAN(
+        min_cluster_size=min_cluster_size,
+        min_samples=min_samples,
+        metric="euclidean",
+        cluster_selection_method=config.cluster_selection_method,
+    )
+    labels = clusterer.fit_predict(reduced).astype(int)
+    probabilities = np.asarray(getattr(clusterer, "probabilities_", np.ones(n_rows)), dtype=float)
+    return labels, probabilities, np.asarray(reduced)
+
+
+def _plot_coordinates_2d(embeddings: Any, config: TopicModelingConfig, *, reuse: np.ndarray | None = None) -> np.ndarray:
+    """Separate 2-D UMAP used only for scatter plots (reuses clustering coords if they are already 2-D)."""
+    if reuse is not None and reuse.shape[1] == 2:
+        return reuse
+    umap, _ = _import_umap_hdbscan()
+    matrix = np.asarray(embeddings, dtype=np.float32)
+    neighbors, _, _ = _effective_cluster_params(len(matrix), config)
+    return np.asarray(
+        umap.UMAP(
+            n_components=2,
+            n_neighbors=neighbors,
+            min_dist=config.umap_min_dist,
+            metric="cosine",
+            random_state=config.random_state,
+        ).fit_transform(matrix)
+    )
+
+
 def run_topic_modeling_analysis(
     translated_messages: Sequence[RawMessage],
     embedding_lookup: dict[tuple[int, int], Sequence[float]],
@@ -271,39 +351,13 @@ def run_topic_modeling_analysis(
     started_at = time.monotonic()
 
     try:
-        import hdbscan
-    except ImportError as exc:  # pragma: no cover - exercised in notebook env
-        raise ImportError(
-            "Topic modeling requires hdbscan. Install notebook extras like: pip install umap-learn hdbscan plotly scikit-learn"
-        ) from exc
-    try:
         import plotly.express as px
     except ImportError as exc:  # pragma: no cover - exercised in notebook env
         raise ImportError(
             "Topic modeling requires plotly. Install notebook extras like: pip install umap-learn hdbscan plotly scikit-learn"
         ) from exc
-    try:
-        import umap
-    except ImportError as exc:  # pragma: no cover - exercised in notebook env
-        raise ImportError(
-            "Topic modeling requires umap-learn. Install notebook extras like: pip install umap-learn hdbscan plotly scikit-learn"
-        ) from exc
-    try:
-        import numpy as np
-    except ImportError as exc:  # pragma: no cover - exercised in notebook env
-        raise ImportError(
-            "Topic modeling requires numpy. Install notebook extras like: pip install umap-learn hdbscan plotly scikit-learn"
-        ) from exc
 
     topic_messages_df, topic_embedding_matrix = _prepare_topic_messages(translated_messages, embedding_lookup)
-
-    effective_neighbors = min(config.umap_neighbors, max(2, len(topic_messages_df) - 1))
-    effective_min_cluster_size = (
-        config.min_cluster_size
-        if len(topic_messages_df) >= config.min_cluster_size
-        else max(2, len(topic_messages_df) // 2)
-    )
-    effective_min_samples = min(config.min_samples, max(1, effective_min_cluster_size - 1))
 
     topic_prep_summary_df = pd.DataFrame(
         [
@@ -317,23 +371,9 @@ def run_topic_modeling_analysis(
         ]
     )
 
-    topic_umap_model = umap.UMAP(
-        n_components=2,
-        n_neighbors=effective_neighbors,
-        min_dist=config.umap_min_dist,
-        metric="cosine",
-        random_state=42,
-    )
-    topic_coords_2d = topic_umap_model.fit_transform(topic_embedding_matrix)
-
-    topic_clusterer = hdbscan.HDBSCAN(
-        min_cluster_size=effective_min_cluster_size,
-        min_samples=effective_min_samples,
-        metric="euclidean",
-        cluster_selection_method="eom",
-    )
-    topic_labels = topic_clusterer.fit_predict(topic_coords_2d)
-    topic_probabilities = getattr(topic_clusterer, "probabilities_", np.ones(len(topic_labels)))
+    # Cluster in `cluster_dims` dimensions; the 2-D projection below is for plotting only.
+    topic_labels, topic_probabilities, topic_cluster_coords = _cluster_embeddings(topic_embedding_matrix, config)
+    topic_coords_2d = _plot_coordinates_2d(topic_embedding_matrix, config, reuse=topic_cluster_coords)
 
     topic_messages_df = topic_messages_df.copy()
     topic_messages_df["umap_x"] = topic_coords_2d[:, 0]
@@ -553,3 +593,222 @@ def run_topic_modeling_analysis(
         topic_color_map=topic_color_map,
         analysis_seconds=time.monotonic() - started_at,
     )
+
+
+# ---------------------------------------------------------------------------
+# Joint (cross-channel) topic model
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class JointTopicResult:
+    """One topic model fitted across all groups (channels).
+
+    ``assignments_df`` shares ``df.index`` with the input frame. Topic id -1 is HDBSCAN noise.
+    ``share_by_group_df`` is long-format (group x topic, zero-filled) with columns
+    ``[group_col, topic_id, topic_label, n, group_n, share, share_of_clustered]``; ``share`` is
+    relative to all rows in the group (noise included), ``share_of_clustered`` excludes noise
+    from the denominator (NaN for the noise row).
+    """
+
+    assignments_df: pd.DataFrame
+    topic_summary_df: pd.DataFrame
+    share_by_group_df: pd.DataFrame
+    noise_share_by_group: pd.DataFrame
+    config: TopicModelingConfig
+    group_col: str
+
+    @property
+    def n_topics(self) -> int:
+        return int((self.topic_summary_df["topic_id"] != -1).sum())
+
+    def to_namespace(self) -> dict[str, Any]:
+        return {
+            "joint_assignments_df": self.assignments_df,
+            "joint_topic_summary_df": self.topic_summary_df,
+            "joint_share_by_group_df": self.share_by_group_df,
+            "joint_noise_share_by_group": self.noise_share_by_group,
+        }
+
+
+def _check_embeddings(df: pd.DataFrame, embeddings: Any) -> np.ndarray:
+    matrix = np.asarray(embeddings, dtype=np.float32)
+    if matrix.ndim != 2:
+        raise ValueError("embeddings must be a 2-D array (rows x dims).")
+    if len(matrix) != len(df):
+        raise ValueError(f"embeddings has {len(matrix)} rows but df has {len(df)} rows.")
+    return matrix
+
+
+def fit_joint_topics(
+    df: pd.DataFrame,
+    embeddings: Any,
+    *,
+    config: TopicModelingConfig | None = None,
+    text_col: str = "text",
+    group_col: str = "channel_slug",
+) -> JointTopicResult:
+    """Fit ONE UMAP + HDBSCAN topic model over every row of ``df`` (all groups together)."""
+    config = config or TopicModelingConfig()
+    matrix = _check_embeddings(df, embeddings)
+
+    labels, probabilities, cluster_coords = _cluster_embeddings(matrix, config)
+    coords_2d = _plot_coordinates_2d(matrix, config, reuse=cluster_coords)
+
+    topic_frame = pd.DataFrame(
+        {
+            "topic_id": labels,
+            "topic_text": df[text_col].fillna("").astype(str).map(clean_topic_text).to_numpy(),
+        },
+        index=df.index,
+    )
+    keyword_lookup, _ = _compute_topic_keywords(topic_frame, config)
+    order_ids = _ordered_topic_ids(topic_frame)
+    label_lookup = {topic_id: _make_topic_label(topic_id, keyword_lookup, config) for topic_id in order_ids}
+
+    assignments_df = pd.DataFrame(
+        {
+            "topic_id": labels,
+            "topic_label": [label_lookup[int(topic_id)] for topic_id in labels],
+            "probability": probabilities,
+            "x2d": coords_2d[:, 0],
+            "y2d": coords_2d[:, 1],
+        },
+        index=df.index,
+    )
+
+    counts = topic_frame["topic_id"].value_counts()
+    summary_df = pd.DataFrame(
+        {
+            "topic_id": order_ids,
+            "label": [label_lookup[topic_id] for topic_id in order_ids],
+            "top_keywords": [
+                ", ".join(keyword_lookup.get(topic_id, [])[: config.keywords_per_topic]) if topic_id != -1 else ""
+                for topic_id in order_ids
+            ],
+            "n": [int(counts[topic_id]) for topic_id in order_ids],
+        }
+    )
+    summary_df["share"] = summary_df["n"] / max(len(df), 1)
+
+    group_values = df[group_col].to_numpy()
+    share_df = (
+        pd.crosstab(group_values, labels)
+        .reindex(columns=order_ids, fill_value=0)
+        .rename_axis(index=group_col, columns="topic_id")
+        .stack()
+        .rename("n")
+        .reset_index()
+    )
+    share_df["n"] = share_df["n"].astype(int)
+    share_df["topic_label"] = share_df["topic_id"].map(label_lookup)
+    share_df["group_n"] = share_df.groupby(group_col)["n"].transform("sum")
+    clustered_n = share_df[share_df["topic_id"] != -1].groupby(group_col)["n"].sum()
+    share_df["share"] = share_df["n"] / share_df["group_n"]
+    share_df["share_of_clustered"] = np.where(
+        share_df["topic_id"] == -1,
+        np.nan,
+        share_df["n"] / share_df[group_col].map(clustered_n).replace(0, np.nan),
+    )
+    share_df = share_df[[group_col, "topic_id", "topic_label", "n", "group_n", "share", "share_of_clustered"]]
+
+    noise_df = (
+        pd.DataFrame({group_col: group_values, "topic_id": labels})
+        .groupby(group_col)["topic_id"]
+        .agg(n="size", n_noise=lambda values: int((values == -1).sum()))
+        .reset_index()
+    )
+    noise_df["share"] = noise_df["n_noise"] / noise_df["n"]
+
+    return JointTopicResult(
+        assignments_df=assignments_df,
+        topic_summary_df=summary_df,
+        share_by_group_df=share_df,
+        noise_share_by_group=noise_df,
+        config=config,
+        group_col=group_col,
+    )
+
+
+def topic_stability(
+    df: pd.DataFrame,
+    embeddings: Any,
+    *,
+    config: TopicModelingConfig | None = None,
+    seeds: Sequence[int] = (0, 1, 2, 3, 4),
+) -> pd.DataFrame:
+    """Refit the clustering under different random seeds and compare partitions.
+
+    Returns one row per seed pair: ``seed_a, seed_b, ari, n_shared (points non-noise in both
+    runs), n_topics_a, n_topics_b, noise_share_a, noise_share_b``. A summary dict
+    (``mean_ari``, ``min_ari``, ...) is stored in ``result.attrs["summary"]`` and can be
+    recomputed with :func:`stability_summary`.
+    """
+    from sklearn.metrics import adjusted_rand_score
+
+    config = config or TopicModelingConfig()
+    matrix = _check_embeddings(df, embeddings)
+    seeds = list(seeds)
+    if len(seeds) < 2:
+        raise ValueError("topic_stability needs at least two seeds.")
+
+    runs: dict[int, np.ndarray] = {}
+    for seed in seeds:
+        labels, _, _ = _cluster_embeddings(matrix, replace(config, random_state=int(seed)))
+        runs[seed] = labels
+
+    rows: list[dict[str, Any]] = []
+    for index, seed_a in enumerate(seeds):
+        for seed_b in seeds[index + 1 :]:
+            labels_a, labels_b = runs[seed_a], runs[seed_b]
+            shared = (labels_a != -1) & (labels_b != -1)
+            ari = (
+                float(adjusted_rand_score(labels_a[shared], labels_b[shared])) if shared.sum() >= 2 else float("nan")
+            )
+            rows.append(
+                {
+                    "seed_a": seed_a,
+                    "seed_b": seed_b,
+                    "ari": ari,
+                    "n_shared": int(shared.sum()),
+                    "n_topics_a": int(len(set(labels_a[labels_a != -1]))),
+                    "n_topics_b": int(len(set(labels_b[labels_b != -1]))),
+                    "noise_share_a": float((labels_a == -1).mean()),
+                    "noise_share_b": float((labels_b == -1).mean()),
+                }
+            )
+    result = pd.DataFrame(rows)
+    result.attrs["summary"] = stability_summary(result)
+    return result
+
+
+def stability_summary(stability_df: pd.DataFrame) -> dict[str, float]:
+    """Mean / min ARI and topic-count range from a :func:`topic_stability` frame."""
+    n_topics = pd.concat([stability_df["n_topics_a"], stability_df["n_topics_b"]])
+    return {
+        "mean_ari": float(stability_df["ari"].mean()),
+        "min_ari": float(stability_df["ari"].min()),
+        "n_pairs": int(len(stability_df)),
+        "min_topics": int(n_topics.min()),
+        "max_topics": int(n_topics.max()),
+    }
+
+
+def label_topics(summary_df: pd.DataFrame, overrides: dict[int, str]) -> pd.DataFrame:
+    """Return a copy of ``summary_df`` with human labels applied for the given topic ids.
+
+    Updates ``label`` (summary frames) and/or ``topic_label`` (assignment / share frames),
+    whichever exist. Unknown topic ids raise ``KeyError`` so stale overrides are not ignored.
+    """
+    label_columns = [column for column in ("label", "topic_label") if column in summary_df.columns]
+    if "topic_id" not in summary_df.columns or not label_columns:
+        raise ValueError("summary_df needs a 'topic_id' column and a 'label' or 'topic_label' column.")
+    unknown = set(overrides) - set(summary_df["topic_id"].astype(int))
+    if unknown:
+        raise KeyError(f"Unknown topic ids in overrides: {sorted(unknown)}")
+    labeled = summary_df.copy()
+    for column in label_columns:
+        labeled[column] = [
+            overrides.get(int(topic_id), current) for topic_id, current in zip(labeled["topic_id"], labeled[column])
+        ]
+    return labeled

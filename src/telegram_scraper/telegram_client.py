@@ -3,11 +3,12 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import AsyncIterator, Awaitable, Callable
 
 from telegram_scraper.models import ChatRecord, MediaRecord, MessageRecord
-from telegram_scraper.utils import chat_output_dir
+from telegram_scraper.utils import chat_output_dir, ensure_utc
 
 
 class TelegramClientError(RuntimeError):
@@ -83,7 +84,63 @@ def _event_chat_id(event: object) -> int | None:
     return None
 
 
+_GEO_MEDIA_TYPES = {"MessageMediaGeo", "MessageMediaGeoLive", "MessageMediaVenue"}
+
+
+def _document_media_kind(media: object) -> str:
+    document = getattr(media, "document", None)
+    mime_type = str(getattr(document, "mime_type", None) or "").lower()
+    attributes = {type(attribute).__name__: attribute for attribute in (getattr(document, "attributes", None) or [])}
+    audio_attribute = attributes.get("DocumentAttributeAudio")
+
+    if "DocumentAttributeAnimated" in attributes or mime_type == "image/gif":
+        return "animation"
+    # Round video notes are still video.
+    if "DocumentAttributeVideo" in attributes or mime_type.startswith("video/") or getattr(media, "video", False):
+        return "video"
+    if audio_attribute is not None or mime_type.startswith("audio/") or getattr(media, "voice", False):
+        if getattr(audio_attribute, "voice", False) or getattr(media, "voice", False):
+            return "voice"
+        return "audio"
+    if "DocumentAttributeSticker" in attributes:
+        return "other"
+    if mime_type.startswith("image/"):
+        return "photo"
+    return "document"
+
+
+def classify_media_kind(message: object) -> str:
+    """Classify a message's media into a coarse editorial kind.
+
+    Uses the raw Telethon ``message.media`` object (not ``message.photo``, which also
+    returns the preview photo of a link card). Detection is by class name so tests can
+    use simple fakes.
+    """
+    media = getattr(message, "media", None)
+    if media is None:
+        return "none"
+    media_type = type(media).__name__
+    if media_type == "MessageMediaEmpty":
+        return "none"
+    if media_type == "MessageMediaWebPage":
+        return "webpage"
+    if media_type == "MessageMediaPhoto":
+        return "photo"
+    if media_type == "MessageMediaDocument":
+        return _document_media_kind(media)
+    if media_type == "MessageMediaPoll":
+        return "poll"
+    if media_type in _GEO_MEDIA_TYPES:
+        return "geo"
+    return "other"
+
+
+def _optional_int(value: object) -> int | None:
+    return int(value) if value is not None else None
+
+
 def normalize_message(chat: ChatRecord, message: object, *, media_files: tuple[MediaRecord, ...] = ()) -> MessageRecord:
+    media_kind = classify_media_kind(message)
     return MessageRecord(
         chat=chat,
         message_id=int(getattr(message, "id")),
@@ -96,6 +153,11 @@ def normalize_message(chat: ChatRecord, message: object, *, media_files: tuple[M
         has_media=getattr(message, "media", None) is not None,
         text=getattr(message, "message", "") or "",
         media_files=media_files,
+        media_kind=media_kind,
+        grouped_id=_optional_int(getattr(message, "grouped_id", None)),
+        views=_optional_int(getattr(message, "views", None)),
+        forwards=_optional_int(getattr(message, "forwards", None)),
+        has_link_preview=media_kind == "webpage",
     )
 
 
@@ -227,6 +289,7 @@ class TelegramAccountClient:
         limit: int | None = None,
         reverse: bool = True,
         offset_id: int = 0,
+        download_media: bool = True,
     ) -> AsyncIterator[MessageRecord]:
         await self.connect()
         assert self._client is not None
@@ -238,7 +301,7 @@ class TelegramAccountClient:
             reverse=reverse,
             offset_id=offset_id,
         ):
-            media_files = await self._download_message_media(chat, message)
+            media_files = await self._download_message_media(chat, message) if download_media else ()
             yield normalize_message(chat, message, media_files=media_files)
 
     async def iter_message_envelopes(
@@ -249,24 +312,43 @@ class TelegramAccountClient:
         limit: int | None = None,
         reverse: bool = True,
         offset_id: int = 0,
+        download_media: bool = True,
+        offset_date: datetime | None = None,
+        since: datetime | None = None,
     ) -> AsyncIterator[TelegramMessageEnvelope]:
+        """Yield message envelopes.
+
+        ``offset_date`` fetches messages older than that date. ``since`` stops iteration
+        once a message older than it is reached; it only applies when iterating
+        newest-to-oldest (``reverse=False``).
+        """
         await self.connect()
         assert self._client is not None
         entity = chat.entity or chat.chat_id
+        iter_kwargs: dict[str, object] = {}
+        if offset_date is not None:
+            iter_kwargs["offset_date"] = offset_date
         async for message in self._client.iter_messages(
             entity,
             limit=limit,
             min_id=min_message_id,
             reverse=reverse,
             offset_id=offset_id,
+            **iter_kwargs,
         ):
-            media_files = await self._download_message_media(chat, message)
+            if since is not None and not reverse:
+                message_date = ensure_utc(getattr(message, "date", None))
+                if message_date is not None and message_date < ensure_utc(since):
+                    break
+            media_files = await self._download_message_media(chat, message) if download_media else ()
             yield TelegramMessageEnvelope(
                 record=normalize_message(chat, message, media_files=media_files),
                 raw_json=_raw_message_payload(message),
             )
 
-    async def get_messages_by_ids(self, chat: ChatRecord, ids: list[int]) -> list[MessageRecord]:
+    async def get_messages_by_ids(
+        self, chat: ChatRecord, ids: list[int], *, download_media: bool = True
+    ) -> list[MessageRecord]:
         if not ids:
             return []
 
@@ -283,11 +365,13 @@ class TelegramAccountClient:
         for message in fetched:
             if message is None:
                 continue
-            media_files = await self._download_message_media(chat, message)
+            media_files = await self._download_message_media(chat, message) if download_media else ()
             messages.append(normalize_message(chat, message, media_files=media_files))
         return messages
 
-    async def get_message_envelopes_by_ids(self, chat: ChatRecord, ids: list[int]) -> list[TelegramMessageEnvelope]:
+    async def get_message_envelopes_by_ids(
+        self, chat: ChatRecord, ids: list[int], *, download_media: bool = True
+    ) -> list[TelegramMessageEnvelope]:
         if not ids:
             return []
 
@@ -304,7 +388,7 @@ class TelegramAccountClient:
         for message in fetched:
             if message is None:
                 continue
-            media_files = await self._download_message_media(chat, message)
+            media_files = await self._download_message_media(chat, message) if download_media else ()
             messages.append(
                 TelegramMessageEnvelope(
                     record=normalize_message(chat, message, media_files=media_files),

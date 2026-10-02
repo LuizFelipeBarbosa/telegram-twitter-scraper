@@ -14,3 +14,23 @@ build/
 dist/
 
 .env.listen
+/data/cache/
+
+# macOS
+.DS_Store
+
+# Agent tooling, skills and project specifications (kept locally, not part of the study)
+.pi/
+.claude/
+.agents/
+.cursor/
+CLAUDE.md
+AGENTS.md
+docs/superpowers/
+docs/specs/
+docs/plans/
+
+# Superseded first-pass material and stray run artifacts (kept locally only)
+archive/
+.run-logs/
+/232323232.png

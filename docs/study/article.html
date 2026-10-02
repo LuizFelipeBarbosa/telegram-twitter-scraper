@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Press TV on the Wire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one 66ch reading column on a cool newsprint ground; figures break out to a wider measure; the hero is a "wire wall" of daily posting strips. */
+:root {
+  --paper: #f3f4f2;
+  --ink: #17191c;
+  --ink-2: #4a5059;
+  --rule: #d5d8dc;
+  --panel: #e8eae7;
+  --plate: #ffffff;
+  --mark: #9b1c31;
+  --c-presstv: #9b1c31;
+  --c-irna: #c97a06;
+  --c-idf: #1f3a5f;
+  --c-iltv: #13897a;
+  --c-toi: #3a78b5;
+  --c-jbn: #6b7a90;
+  --f-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Newsreader", Georgia, "Times New Roman", serif;
+  --f-data: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 66ch;
+  --wide: 1080px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121417; --ink: #eceef0; --ink-2: #a3aab4; --rule: #2c3138; --panel: #1b1f24; --plate: #ffffff;
+    --mark: #e0566b; --c-presstv: #e0566b; --c-irna: #f0a43a; --c-idf: #8fb0dd; --c-iltv: #3cc4ae; --c-toi: #6fa8e0; --c-jbn: #a3b0c2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121417; --ink: #eceef0; --ink-2: #a3aab4; --rule: #2c3138; --panel: #1b1f24; --plate: #ffffff;
+  --mark: #e0566b; --c-presstv: #e0566b; --c-irna: #f0a43a; --c-idf: #8fb0dd; --c-iltv: #3cc4ae; --c-toi: #6fa8e0; --c-jbn: #a3b0c2;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 1.125rem; line-height: 1.6; margin: 0; }
+.wrap { padding-inline: 20px; padding-block: 0 4rem; }
+.col { max-width: var(--measure); margin-inline: auto; }
+.wide { max-width: var(--wide); margin-inline: auto; }
+a { color: inherit; text-decoration-color: var(--mark); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.08; margin: 0; }
+h1 { font-size: clamp(2.2rem, 6vw, 4.1rem); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.5rem, 3.2vw, 2.05rem); font-weight: 700; letter-spacing: -0.01em; margin-top: 3.2rem; }
+h3 { font-size: 1.15rem; font-weight: 700; margin-top: 2rem; }
+p { margin: 1rem 0 0; }
+.kicker, .label, figcaption, .meta, table, .note { font-family: var(--f-data); }
+.kicker { font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--mark); }
+.meta { font-size: .8rem; color: var(--ink-2); letter-spacing: .02em; }
+header.top { padding-block: 2.6rem 1.2rem; display: grid; gap: .9rem; }
+.dek { font-size: 1.3rem; line-height: 1.45; color: var(--ink-2); max-width: 52ch; margin: 0; }
+/* hero wire wall */
+.wall { margin-top: 1.6rem; border-top: 2px solid var(--ink); padding-top: .8rem; }
+.wall-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-family: var(--f-data); font-size: .74rem; color: var(--ink-2); letter-spacing: .04em; }
+.strip { display: grid; grid-template-columns: 9.5rem 1fr 5.4rem; align-items: end; gap: .8rem; padding-block: .35rem; border-bottom: 1px solid var(--rule); }
+.strip .who { font-family: var(--f-display); font-weight: 700; font-size: .95rem; line-height: 1.15; }
+.strip .who small { display: block; font-family: var(--f-data); font-weight: 400; font-size: .68rem; color: var(--ink-2); letter-spacing: .04em; text-transform: uppercase; }
+.strip svg { width: 100%; height: 46px; display: block; }
+.strip .rate { font-family: var(--f-data); text-align: right; font-size: .78rem; color: var(--ink-2); line-height: 1.2; }
+.strip .rate b { display: block; font-family: var(--f-display); font-size: 1.35rem; color: var(--ink); font-weight: 800; }
+.axis-dates { display: grid; grid-template-columns: 9.5rem 1fr 5.4rem; gap: .8rem; font-family: var(--f-data); font-size: .68rem; color: var(--ink-2); }
+.axis-dates span { display: flex; justify-content: space-between; }
+@media (max-width: 560px) {
+  .strip, .axis-dates { grid-template-columns: 5.6rem 1fr 3.9rem; gap: .5rem; }
+  .strip .who { font-size: .8rem; } .strip .rate b { font-size: 1.05rem; }
+}
+/* boxes */
+.box { background: var(--panel); padding: 1.1rem 1.25rem 1.25rem; margin-top: 1.8rem; border-left: 3px solid var(--mark); }
+.box h3 { margin-top: 0; font-size: 1rem; letter-spacing: .02em; }
+.box ul { margin: .6rem 0 0; padding-left: 1.1rem; }
+.box li { margin-top: .35rem; font-size: 1rem; }
+.findings { display: grid; gap: 0; margin-top: 1.6rem; border-top: 2px solid var(--ink); }
+.finding { display: grid; grid-template-columns: 7.5rem 1fr; gap: 1rem; padding-block: .8rem; border-bottom: 1px solid var(--rule); }
+.finding .tag { font-family: var(--f-data); font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-2); padding-top: .25rem; }
+.finding p { margin: 0; font-size: 1.02rem; }
+.finding .verdict { font-family: var(--f-display); font-weight: 700; }
+@media (max-width: 560px) { .finding { grid-template-columns: 1fr; gap: .2rem; } }
+/* figures */
+figure { margin: 2rem auto 0; }
+figure .chart { width: 100%; }
+figure svg { display: block; width: 100%; height: auto; overflow: visible; }
+figcaption { font-size: .78rem; color: var(--ink-2); margin-top: .6rem; line-height: 1.5; max-width: var(--measure); }
+figcaption b { color: var(--ink); font-weight: 500; }
+.fig-title { font-family: var(--f-display); font-weight: 700; font-size: 1.1rem; line-height: 1.25; margin-bottom: .6rem; text-wrap: balance; }
+.plate { background: var(--plate); padding: 10px; border: 1px solid var(--rule); }
+.plate img { display: block; width: 100%; height: auto; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .82rem; font-variant-numeric: tabular-nums; margin-top: 1.2rem; }
+th, td { text-align: right; padding: .45rem .6rem; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-weight: 500; color: var(--ink-2); border-bottom: 2px solid var(--ink); }
+td .ci { color: var(--ink-2); font-size: .74rem; }
+td.old { color: var(--ink-2); }
+.chip { display: inline-block; width: .7em; height: .7em; border-radius: 50%; margin-right: .45em; vertical-align: baseline; }
+.legend { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; font-family: var(--f-data); font-size: .74rem; color: var(--ink-2); margin-top: .4rem; }
+.legend span { display: inline-flex; align-items: center; }
+.legend i { width: .75rem; height: .75rem; border-radius: 50%; display: inline-block; margin-right: .4rem; }
+.legend i.hollow { background: transparent !important; border: 2px solid currentColor; }
+/* design grid */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-top: 1.4rem; }
+.cell { background: var(--paper); padding: .9rem 1rem; min-width: 0; }
+.cell .label { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.cell p { margin: .35rem 0 0; font-size: 1rem; line-height: 1.4; }
+.cell .empty { color: var(--ink-2); font-style: italic; }
+@media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+.note { font-size: .8rem; color: var(--ink-2); line-height: 1.55; }
+ol.refs { padding-left: 0; list-style: none; font-size: .95rem; }
+ol.refs li { margin-top: .6rem; padding-left: 1.6rem; text-indent: -1.6rem; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 3rem 0 0; }
+.chart text { font-family: var(--f-data); fill: var(--ink-2); font-size: 11px; }
+.chart .lbl { fill: var(--ink); font-weight: 500; }
+.chart .grid { stroke: var(--rule); stroke-width: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .strip svg rect { transition: opacity .2s; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header class="top col">
+  <div class="kicker">Revised study · Telegram, 28 Feb – 17 Apr 2026</div>
+  <h1>Press TV posts like no one else. Most of its other differences are national.</h1>
+  <p class="dek">A re-run of my comparison of Iran's English-language state broadcaster with Israeli news channels, on clean data, with a second state channel on each side and stricter tests.</p>
+  <div class="meta">Luiz Felipe Barbosa · 2 October 2026 · Replaces the version of 12 May 2026</div>
+</header>
+
+<section class="wide wall" aria-label="Daily posts per channel">
+  <div class="wall-head"><span>POSTS PER DAY · ONE BAR = ONE DAY · SAME SCALE FOR EVERY ROW</span><span>MEAN / DAY</span></div>
+  <div id="wall"></div>
+  <div class="axis-dates"><span></span><span><span>28 Feb</span><span>war begins</span><span>17 Apr</span></span><span></span></div>
+</section>
+
+<main>
+<div class="col">
+  <p>During the first seven weeks of the 2026 war between Iran and the United States and Israel, Press TV published 6,683 posts on Telegram. That is 136 a day, every day, day and night. The next busiest channel in this study, Iran's own state news agency IRNA, managed 33. The Israel Defense Forces' channel managed 29, and The Times of Israel 13.</p>
+  <p>The first version of this article read that gap, along with several others, as the signature of state ownership. This version tests the same idea with a better design and cleaner data. The posting gap survives and is larger than I first reported. Most of the other differences I attributed to ownership turn out to follow nationality instead, or did not survive the cleanup at all.</p>
+
+  <div class="box" role="note">
+    <h3>What changed from the first version</h3>
+    <ul>
+      <li>The old pipeline cut Press TV's text to 200 characters before analysis, while the Israeli channels were analyzed in full. Half of Press TV's posts are longer than that.</li>
+      <li>Videos were counted as text-only posts. In the old week of data, 39% of Press TV posts carried a video; the old flag said none did.</li>
+      <li>Album photos were counted as separate posts, and each channel covered a different stretch of time (from 8 to 122 days).</li>
+      <li>Topic models were fitted channel by channel with different settings. The "single monolithic ILTV topic" was a clustering failure.</li>
+      <li>Withdrawn claims: Press TV posting "6× ILTV", the Khamenei memorial as a state-broadcaster fingerprint, visuals reserved for diplomacy, and fear-dominant convergence in tone.</li>
+    </ul>
+  </div>
+
+  <h2>Design</h2>
+  <p>Six English-language Telegram channels, every post published between 28 February and 17 April 2026 (UTC), fetched on the same day with full text. A post is one message or one album. Iranian and Israeli outlets now each include a state channel, so ownership and nationality can be separated, at least in part.</p>
+</div>
+
+<div class="col">
+  <div class="grid2" role="table" aria-label="Channels by ownership and country">
+    <div class="cell" role="cell"><div class="label">State · Iran</div><p><span class="chip" style="background:var(--c-presstv)"></span>Press TV, IRIB's foreign-language broadcaster<br><span class="chip" style="background:var(--c-irna)"></span>IRNA English, the state news agency</p></div>
+    <div class="cell" role="cell"><div class="label">State · Israel</div><p><span class="chip" style="background:var(--c-idf)"></span>Israel Defense Forces, the military's official channel (a spokesperson, not a newsroom)</p></div>
+    <div class="cell" role="cell"><div class="label">Private · Iran</div><p class="empty">No English-language private Iranian channel was available. This is the design's biggest gap.</p></div>
+    <div class="cell" role="cell"><div class="label">Private · Israel</div><p><span class="chip" style="border:2px solid var(--c-iltv)"></span>ILTV Israel News<br><span class="chip" style="border:2px solid var(--c-toi)"></span>The Times of Israel<br><span class="chip" style="border:2px solid var(--c-jbn)"></span>Jewish Breaking News (aggregator; ownership unverified)</p></div>
+  </div>
+  <p class="note">14,620 messages become 12,221 posts once albums are grouped. Press TV accounts for 55% of them. All intervals below are 95%: bootstrap over days for rates, Wilson intervals for shares.</p>
+
+  <h2>Tempo: the one gap that holds</h2>
+  <p>Measured over the same 49 days, Press TV out-posts every other channel by a factor of 4 to 12. Within Iran, it posts four times as often as IRNA, which is also state-owned. In Israel the pattern runs the other way: the state channel (IDF) posts at 0.58 times the combined rate of the three private channels (95% CI 0.51–0.66). State ownership alone does not predict a high posting rate.</p>
+</div>
+
+<figure class="wide">
+  <div class="fig-title">Press TV averages 136 posts a day; the other five channels average 11 to 33</div>
+  <div class="chart" id="rates"></div>
+  <div class="legend"><span><i style="background:var(--ink-2)"></i>state</span><span><i class="hollow" style="color:var(--ink-2)"></i>private</span><span>line = 95% bootstrap interval over 49 days</span></div>
+  <figcaption>Posts per day, 28 Feb – 17 Apr 2026. <b>Source:</b> Telegram snapshot, notebook <code>02_tempo</code>.</figcaption>
+</figure>
+
+<div class="col">
+  <p>The table puts the corrected multiples next to the first version's figures. In the original week of 7–14 April, Press TV posted 21 times as often as ILTV, not six. The Times of Israel figure was too high, and only the JBN figure was close.</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Press TV ÷ channel</th><th>28 Feb – 17 Apr</th><th>7–14 Apr</th><th>10–17 Apr</th><th>First version</th></tr></thead>
+    <tbody id="ratio-rows"></tbody>
+  </table>
+  </div>
+
+  <p>Its daily rhythm points to the reason. 23% of Press TV's posts go out between midnight and 6 a.m. Tehran time, against 3% for IRNA. IRNA keeps office hours for a domestic agency. Press TV runs an overnight shift for audiences in other time zones. This fits Price's (1994) account of international broadcasting as a contest for foreign loyalties. That is a story about mission, though, and not ownership as such. The fast Israeli aggregator JBN also posts 26% of its output overnight.</p>
+</div>
+
+<figure class="wide">
+  <div class="plate"><img src="figures/02_hour_rhythm.png" alt="Heatmaps of the share of each channel's posts by hour of day, in UTC and in local time. Press TV is spread evenly across the day; IRNA is concentrated in Tehran office hours." loading="lazy"></div>
+  <figcaption>Share of each channel's posts by hour. <b>Source:</b> notebook <code>02_tempo</code>.</figcaption>
+</figure>
+
+<div class="col">
+  <h2>Agenda: two national conversations with a shared middle</h2>
+  <p>I fitted one topic model to all channels together, using the same embeddings and settings for every channel. It finds 51 topics and holds up across five random seeds (mean adjusted Rand index 0.91), though it leaves 34% of posts unassigned. Of the posts it does assign, 40% fall in topics only Iranian channels discuss, 33% in topics only Israeli channels discuss, and 27% in topics both sides cover. These include strikes on Gulf bases, Trump and Hormuz, and commentary on the West.</p>
+</div>
+
+<figure class="wide">
+  <div class="plate"><img src="figures/03_topic_specificity.png" alt="Scatter of 51 topics placed from only-Israeli channels to only-Iranian channels, sized by share of posts. 37 topics are one-sided and 14 shared; the largest is Khamenei mourning on the Iranian side." loading="lazy"></div>
+  <figcaption>Each dot is a topic from the joint model, placed by how much of it comes from Iranian versus Israeli channels (each channel weighted equally). <b>Source:</b> notebook <code>03_agenda</code>.</figcaption>
+</figure>
+
+<div class="col">
+  <p>The first version treated Press TV's coverage of the 40th-day mourning for Ayatollah Khamenei as evidence of a state broadcaster doing legitimacy work that private outlets have no reason to do. The fair test is symmetric: does each country's media commemorate its own dead? It does.</p>
+</div>
+
+<figure class="wide">
+  <div class="fig-title">Each side commemorates its own: IRNA most of all, Press TV second, the Israeli channels for Yom HaShoah</div>
+  <div class="chart" id="comm"></div>
+  <figcaption>Share of each channel's posts matching (a) mourning language about Khamenei or (b) Israeli national commemoration (Holocaust Remembrance Day, the fallen, memorials), with Wilson 95% intervals. Keyword measures; the two are not of equal intensity, so compare channels within a panel. <b>Source:</b> notebook <code>03_agenda</code>.</figcaption>
+</figure>
+
+<div class="col">
+  <p>IRNA devotes 12.3% of its posts to Khamenei mourning, four times Press TV's 2.8%. No Israeli channel goes above 0.2%. Israeli commemoration language appears in 1–3% of posts on all four Israeli channels, state and private alike, and almost never on the Iranian ones. The topic model gives the same picture: a Khamenei topic holds 19% of IRNA's assigned posts and 10% of Press TV's, while a Holocaust-remembrance topic holds 10% of The Times of Israel's and 7% of ILTV's. Commemoration splits along nationality, not ownership.</p>
+
+  <h2>Actors: the same war, framed at different distances from Washington</h2>
+  <p>Iran is the most-named entity on five of the six channels. The framing still differs by side. The Iranian state channels tie all three countries together in one post far more often: 45% of IRNA posts and 24% of Press TV posts name Iran, Israel and the United States together, against 7–10% on the private Israeli channels and 1% on the IDF channel. Iranian outlets narrate a US–Israeli war on Iran. Israeli outlets more often narrate Israel's war, with Washington as one actor among several.</p>
+</div>
+
+<figure class="wide">
+  <div class="fig-title">Iranian state channels name Iran, Israel and the US in one post two and a half to six times as often as Israeli private channels</div>
+  <div class="chart" id="tri"></div>
+  <figcaption>Share of posts naming all three countries, with Wilson 95% intervals. <b>Source:</b> notebook <code>04_actors</code>.</figcaption>
+</figure>
+
+<figure class="wide">
+  <div class="plate"><img src="figures/04_actor_emphasis.png" alt="Heatmap of the share of each channel's posts naming Trump, Netanyahu, Khamenei or Mojtaba, Araghchi, Hezbollah, IRGC, IDF and Hormuz." loading="lazy"></div>
+  <figcaption>Who gets named. Trump appears in 8–19% of posts on every channel except the IDF's. Khamenei peaks at IRNA (20%), Hezbollah at the IDF (20%). <b>Source:</b> notebook <code>04_actors</code>.</figcaption>
+</figure>
+
+<div class="col">
+  <h2>Media: heavy video is not a Press TV signature</h2>
+  <p>Coded correctly, Press TV is almost entirely visual: 48% of its posts carry video, 45% a photo, and only 2% are text alone. ILTV (52% video) and JBN (44%) look much the same. The Times of Israel attaches a photo to every post, and the IDF channel is 87% text. These are house formats, and they cut across both ownership and nationality.</p>
+  <p>The first version said Press TV reserved visuals for diplomacy and official actors, which it read through Nye's (2004) idea of soft power. With videos counted as media, the pattern reverses. Diplomacy and official actors make up 4% of Press TV's video posts, 18% of its photo posts and 26% of its link-preview cards. Video is where the mourning, rallies and strike footage go. The old claim came from video posts sitting in the "text-only" group.</p>
+</div>
+
+<figure class="wide">
+  <div class="plate"><img src="figures/06_press_tv_topic_by_media.png" alt="Dot plots for Press TV showing the share of video, photo, link-preview and text-only posts in three topic groups. Diplomacy is 4% of video posts and 26% of link previews; Khamenei and funerals are 16% of video posts." loading="lazy"></div>
+  <figcaption>Press TV topic groups by media class. Bias-corrected Cramér's V for media class × topic is 0.33 (Benjamini–Hochberg adjusted p &lt; 0.001). View counts do not differ between Press TV's video and photo posts (ratio 0.995, CI 0.98–1.01), though views were read in October, long after posting. <b>Source:</b> notebook <code>06_media</code>.</figcaption>
+</figure>
+
+<div class="col">
+  <h2>Tone: the instruments failed validation</h2>
+  <p>The first version reported that all four channels shared a fear-dominant emotional baseline. That claim rested on two off-the-shelf classifiers that nobody had checked against this kind of text. This time I drew a blind sample of 900 posts, 150 per channel with the channel hidden, and had a second coder label them. The second coder was a language model (three Claude Sonnet instances, 300 posts each), not a person. That makes it a check of agreement between two models, not a measure of accuracy.</p>
+  <p>The two readings barely agree. Cohen's kappa is 0.23 for sentiment and 0.24 for emotion, far below the 0.6 I set in advance as the bar for interpreting a label. On the IDF channel agreement is no better than chance. The disagreement has a direction. The classifier calls only 2–7% of posts positive on any channel. The second coder calls 15–45% positive, mostly triumphal strike claims and military communiqués that the classifier reads as neutral or frightening. I therefore make no claim about tone, including convergence.</p>
+</div>
+
+<figure class="wide" id="valfig">
+  <div class="plate"><img src="figures/05_validation_confusion.png" alt="Two confusion heatmaps comparing the classifier's sentiment and emotion labels with the second coder's labels on 900 posts." loading="lazy"></div>
+  <figcaption>Classifier labels against the LLM second coder, row-normalized. <b>Source:</b> notebook <code>05_tone</code>; sample and coding protocol in <code>data/validation/</code>.</figcaption>
+</figure>
+
+<div class="col">
+  <h2>What ownership explains</h2>
+  <div class="findings">
+    <div class="finding"><div class="tag">Tempo</div><p><span class="verdict">Mission, not ownership.</span> Press TV is an outlier even among state channels; Israel's state channel posts less than its private ones.</p></div>
+    <div class="finding"><div class="tag">Agenda</div><p><span class="verdict">Nationality.</span> 73% of assigned posts sit in one-sided topics, and each country commemorates its own.</p></div>
+    <div class="finding"><div class="tag">Actors</div><p><span class="verdict">Nationality, strongest at state outlets.</span> Iranian state channels frame a triangular war with Washington; Israeli channels much less often do.</p></div>
+    <div class="finding"><div class="tag">Media</div><p><span class="verdict">House format.</span> ILTV and JBN are as video-heavy as Press TV; the "visuals for diplomacy" pattern reverses.</p></div>
+    <div class="finding"><div class="tag">Tone</div><p><span class="verdict">Not measurable with these tools.</span> Neither label passes validation.</p></div>
+  </div>
+  <p>Hallin and Mancini's comparative framework, extended beyond the West in their 2012 volume, is more useful here for what the state <em>asks</em> of an outlet than for who owns it. Press TV's distinctiveness lies in its foreign-service mission: the overnight shift, the volume, the steady output through every phase of the war. On agenda and framing, the useful line runs between Tehran and Jerusalem, not between state and private. That is what news-value accounts predict when two national presses cover the same war from opposite sides (Galtung &amp; Ruge, 1965). Herman and Chomsky's (2002) propaganda model, which I leaned on in the first version, describes convergence inside one market system. It says little about adversaries' media.</p>
+
+  <h2>Limits</h2>
+  <ul class="note">
+    <li>One state broadcaster and no private Iranian channel. The IDF channel is a military spokesperson; 46% of its posts are exact repeats of alert templates. JBN's ownership is unverified.</li>
+    <li>Commemoration, actor and triangle measures are keyword proxies with some false positives. A third of posts are unassigned by the topic model, and topic labels are hand-written summaries.</li>
+    <li>View counts were read on 2 October 2026, months after posting. Some channels have days with no posts, and the snapshot cannot tell silence from deletion.</li>
+    <li>The tone check used an LLM as the second coder. A human-coded sample is the next step before any claim about tone.</li>
+  </ul>
+
+  <h2>Methods and reproducibility</h2>
+  <p class="note">Snapshot <code>2026-02-28_2026-04-18_20261002T081854Z</code>, fetched 2 October 2026 with <code>telegram-scraper snapshot</code>; full text, media classified by Telegram media type, albums grouped by <code>grouped_id</code>. Notebooks <code>00_collect</code> to <code>06_media</code> in the repository's <code>notebooks/</code> folder reproduce every number and figure here; key results are collected in <code>docs/study/findings.json</code>. Embeddings: BAAI/bge-small-en-v1.5. Topics: UMAP to 5 dimensions plus HDBSCAN (min cluster size 50), one joint model, stability over 5 seeds. Tone: cardiffnlp/twitter-roberta-base-sentiment-latest and j-hartmann/emotion-english-distilroberta-base. Entities: spaCy en_core_web_sm. Rates use a day-level bootstrap (2,000 draws); shares use Wilson intervals; multiple tests are Benjamini–Hochberg adjusted.</p>
+
+  <h2>Works cited</h2>
+  <ol class="refs">
+    <li>Cohen, J. (1960). A coefficient of agreement for nominal scales. <em>Educational and Psychological Measurement, 20</em>(1), 37–46.</li>
+    <li>Galtung, J., &amp; Ruge, M. H. (1965). The structure of foreign news. <em>Journal of Peace Research, 2</em>(1), 64–91.</li>
+    <li>Hallin, D. C., &amp; Mancini, P. (2004). <em>Comparing media systems: Three models of media and politics.</em> Cambridge University Press.</li>
+    <li>Hallin, D. C., &amp; Mancini, P. (Eds.). (2012). <em>Comparing media systems beyond the Western world.</em> Cambridge University Press.</li>
+    <li>Herman, E. S., &amp; Chomsky, N. (2002). <em>Manufacturing consent: The political economy of the mass media</em> (Updated ed.). Pantheon Books.</li>
+    <li>Khiabany, G. (2010). <em>Iranian media: The paradox of modernity.</em> Routledge.</li>
+    <li>Nye, J. S. (2004). <em>Soft power: The means to success in world politics.</em> PublicAffairs.</li>
+    <li>Peri, Y. (2012). The impact of national security on the development of media systems: The case of Israel. In D. C. Hallin &amp; P. Mancini (Eds.), <em>Comparing media systems beyond the Western world</em> (pp. 11–25). Cambridge University Press.</li>
+    <li>Price, M. E. (1994). The market for loyalties: Electronic media and the global competition for allegiances. <em>Yale Law Journal, 104</em>(3), 667–705.</li>
+    <li>Telegram channel posts, 28 Feb – 17 Apr 2026: Press TV (t.me/presstv), IRNA English (t.me/Irna_en), Israel Defense Forces (t.me/idfofficial), ILTV Israel News (t.me/ILTVnews), The Times of Israel (t.me/TheTimesOfIsrael2022), Jewish Breaking News (t.me/JewishBreakingNewsTelegram).</li>
+  </ol>
+</div>
+</main>
+</div>
+
+<script>
+const DATA = {"dates": ["2026-02-28", "2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05", "2026-03-06", "2026-03-07", "2026-03-08", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-14", "2026-03-15", "2026-03-16", "2026-03-17", "2026-03-18", "2026-03-19", "2026-03-20", "2026-03-21", "2026-03-22", "2026-03-23", "2026-03-24", "2026-03-25", "2026-03-26", "2026-03-27", "2026-03-28", "2026-03-29", "2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-04", "2026-04-05", "2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-11", "2026-04-12", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17"], "daily": {"presstv": [164, 150, 138, 121, 116, 132, 117, 104, 137, 157, 134, 181, 140, 209, 149, 79, 129, 131, 118, 158, 134, 133, 153, 140, 140, 138, 124, 151, 148, 138, 129, 131, 143, 158, 154, 132, 148, 133, 142, 142, 136, 131, 133, 112, 115, 105, 128, 127, 121], "irna-en": [58, 80, 34, 45, 43, 54, 20, 47, 74, 68, 19, 41, 47, 50, 51, 19, 1, 17, 26, 25, 29, 29, 32, 36, 25, 35, 21, 14, 30, 30, 20, 18, 17, 22, 17, 35, 51, 30, 39, 41, 40, 19, 39, 34, 26, 16, 32, 24, 17], "idfofficial": [67, 51, 49, 42, 39, 31, 28, 39, 38, 39, 31, 24, 30, 34, 28, 28, 29, 39, 43, 39, 31, 36, 38, 25, 44, 25, 43, 31, 30, 32, 36, 26, 30, 20, 27, 26, 21, 31, 33, 13, 11, 11, 7, 8, 9, 16, 6, 12, 3], "iltvnews": [87, 35, 27, 21, 18, 22, 6, 7, 20, 18, 9, 8, 12, 2, 0, 7, 10, 9, 11, 9, 7, 13, 16, 12, 10, 9, 9, 5, 0, 8, 9, 11, 2, 0, 3, 6, 12, 16, 7, 1, 8, 3, 1, 9, 9, 10, 10, 9, 3], "thetimesofisrael2022": [26, 27, 24, 19, 13, 16, 12, 9, 11, 13, 14, 11, 17, 7, 7, 13, 10, 18, 18, 12, 17, 6, 14, 13, 18, 13, 18, 13, 4, 11, 12, 16, 13, 2, 7, 3, 9, 11, 13, 19, 9, 8, 5, 9, 13, 14, 8, 17, 10], "jewishbreakingnewstelegram": [0, 93, 58, 53, 23, 29, 22, 0, 43, 27, 19, 28, 32, 28, 3, 44, 30, 39, 13, 20, 9, 17, 33, 30, 30, 28, 36, 16, 22, 41, 16, 33, 10, 19, 12, 16, 31, 28, 29, 29, 29, 19, 28, 29, 24, 23, 16, 26, 11]}, "rates": {"presstv": [136.4, 130.9, 142.2, 6683], "irna-en": [33.4, 29.0, 38.1, 1637], "idfofficial": [29.2, 25.6, 32.7, 1429], "iltvnews": [11.3, 8.3, 15.3, 556], "thetimesofisrael2022": [12.7, 11.2, 14.2, 622], "jewishbreakingnewstelegram": [26.4, 22.4, 31.0, 1294]}, "comm": {"(a) Khamenei mourning": {"idfofficial": [0.0, 0.0, 0.27, 0, 1425], "iltvnews": [0.18, 0.03, 1.04, 1, 542], "irna-en": [12.29, 10.79, 13.97, 201, 1635], "jewishbreakingnewstelegram": [0.09, 0.02, 0.51, 1, 1113], "presstv": [2.84, 2.47, 3.27, 188, 6619], "thetimesofisrael2022": [0.0, 0.0, 0.61, 0, 622]}, "(b) Israeli national commemoration": {"idfofficial": [0.98, 0.59, 1.64, 14, 1425], "iltvnews": [3.32, 2.11, 5.19, 18, 542], "irna-en": [0.06, 0.01, 0.35, 1, 1635], "jewishbreakingnewstelegram": [0.99, 0.55, 1.76, 11, 1113], "presstv": [0.0, 0, 0.06, 0, 6619], "thetimesofisrael2022": [1.61, 0.88, 2.93, 10, 622]}}, "tri": {"idfofficial": [1.0, 0.6, 1.6], "iltvnews": [7.2, 5.3, 9.7], "irna-en": [45.4, 43.0, 47.8], "jewishbreakingnewstelegram": [7.7, 6.3, 9.4], "presstv": [24.2, 23.2, 25.3], "thetimesofisrael2022": [9.5, 7.4, 12.0]}, "ratios": [{"window": "full window (28 Feb-17 Apr)", "denominator": "irna-en", "channel": "IRNA", "days": 49, "presstv_per_day": 136.3877551020408, "other_per_day": 33.40816326530612, "ratio": 4.0824679291386685, "ci_low": 3.61418038114426, "ci_high": 4.66740044890723}, {"window": "full window (28 Feb-17 Apr)", "denominator": "idfofficial", "channel": "IDF", "days": 49, "presstv_per_day": 136.3877551020408, "other_per_day": 29.163265306122447, "ratio": 4.676696990902729, "ci_low": 4.176749779346867, "ci_high": 5.30721611596799}, {"window": "full window (28 Feb-17 Apr)", "denominator": "iltvnews", "channel": "ILTV", "days": 49, "presstv_per_day": 136.3877551020408, "other_per_day": 11.346938775510203, "ratio": 12.01978417266187, "ci_low": 8.982696670946442, "ci_high": 16.41210413080895}, {"window": "full window (28 Feb-17 Apr)", "denominator": "thetimesofisrael2022", "channel": "ToI", "days": 49, "presstv_per_day": 136.3877551020408, "other_per_day": 12.693877551020408, "ratio": 10.744372990353698, "ci_low": 9.520419407449936, "ci_high": 12.259474402313362}, {"window": "full window (28 Feb-17 Apr)", "denominator": "jewishbreakingnewstelegram", "channel": "JBN", "days": 49, "presstv_per_day": 136.3877551020408, "other_per_day": 26.40816326530612, "ratio": 5.1646058732612055, "ci_low": 4.386311568967862, "ci_high": 6.14439895279052}, {"window": "7-14 Apr", "denominator": "irna-en", "channel": "IRNA", "days": 8, "presstv_per_day": 127.0, "other_per_day": 31.75, "ratio": 4.0, "ci_low": 3.4821826681049983, "ci_high": 4.873111140796153}, {"window": "7-14 Apr", "denominator": "idfofficial", "channel": "IDF", "days": 8, "presstv_per_day": 127.0, "other_per_day": 13.5, "ratio": 9.407407407407408, "ci_low": 6.6274292628443785, "ci_high": 13.594660285285284}, {"window": "7-14 Apr", "denominator": "iltvnews", "channel": "ILTV", "days": 8, "presstv_per_day": 127.0, "other_per_day": 6.0, "ratio": 21.166666666666668, "ci_low": 14.408863636363636, "ci_high": 37.65575738916255}, {"window": "7-14 Apr", "denominator": "thetimesofisrael2022", "channel": "ToI", "days": 8, "presstv_per_day": 127.0, "other_per_day": 11.25, "ratio": 11.28888888888889, "ci_low": 8.981132075471699, "ci_high": 15.089813432835816}, {"window": "7-14 Apr", "denominator": "jewishbreakingnewstelegram", "channel": "JBN", "days": 8, "presstv_per_day": 127.0, "other_per_day": 26.25, "ratio": 4.838095238095238, "ci_low": 4.42409398393637, "ci_high": 5.401067171391753}, {"window": "10-17 Apr", "denominator": "irna-en", "channel": "IRNA", "days": 8, "presstv_per_day": 121.5, "other_per_day": 25.875, "ratio": 4.695652173913044, "ci_low": 3.900623792786802, "ci_high": 5.841254843254665}, {"window": "10-17 Apr", "denominator": "idfofficial", "channel": "IDF", "days": 8, "presstv_per_day": 121.5, "other_per_day": 9.0, "ratio": 13.5, "ci_low": 10.12087912087912, "ci_high": 18.9811320754717}, {"window": "10-17 Apr", "denominator": "iltvnews", "channel": "ILTV", "days": 8, "presstv_per_day": 121.5, "other_per_day": 6.75, "ratio": 18.0, "ci_low": 13.142806841046276, "ci_high": 29.794117647058822}, {"window": "10-17 Apr", "denominator": "thetimesofisrael2022", "channel": "ToI", "days": 8, "presstv_per_day": 121.5, "other_per_day": 10.5, "ratio": 11.571428571428571, "ci_low": 9.127450980392156, "ci_high": 15.57182539682539}, {"window": "10-17 Apr", "denominator": "jewishbreakingnewstelegram", "channel": "JBN", "days": 8, "presstv_per_day": 121.5, "other_per_day": 22.0, "ratio": 5.5227272727272725, "ci_low": 4.628140703517588, "ci_high": 6.907159321175278}]};
+const CH = [
+  {s:"presstv", n:"Press TV", own:"state", c:"Iran", v:"--c-presstv"},
+  {s:"irna-en", n:"IRNA", own:"state", c:"Iran", v:"--c-irna"},
+  {s:"idfofficial", n:"IDF", own:"state", c:"Israel", v:"--c-idf"},
+  {s:"jewishbreakingnewstelegram", n:"JBN", own:"private", c:"Israel", v:"--c-jbn"},
+  {s:"thetimesofisrael2022", n:"Times of Israel", own:"private", c:"Israel", v:"--c-toi"},
+  {s:"iltvnews", n:"ILTV", own:"private", c:"Israel", v:"--c-iltv"}
+];
+const NS = "http://www.w3.org/2000/svg";
+const col = v => `var(${v})`;
+function el(tag, attrs, parent, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const fmt = (x, d=1) => Number(x).toFixed(d);
+
+/* hero: wire wall */
+(function () {
+  const host = document.getElementById("wall");
+  const max = Math.max(...Object.values(DATA.daily).flat());
+  const nd = DATA.dates.length;
+  CH.forEach(ch => {
+    const row = document.createElement("div"); row.className = "strip";
+    const who = document.createElement("div"); who.className = "who";
+    who.innerHTML = `${ch.n}<small>${ch.own} · ${ch.c}</small>`;
+    const svg = el("svg", {viewBox: `0 0 ${nd * 10} 46`, preserveAspectRatio: "none", role: "img",
+      "aria-label": `${ch.n}: daily posts from 28 Feb to 17 Apr 2026`});
+    DATA.daily[ch.s].forEach((v, i) => {
+      const h = Math.max(v / max * 44, v > 0 ? 1 : 0);
+      const r = el("rect", {x: i * 10 + 1, y: 46 - h, width: 8, height: h, fill: col(ch.v)}, svg);
+      el("title", {}, r, `${ch.n}, ${DATA.dates[i]}: ${v} posts`);
+    });
+    const rate = document.createElement("div"); rate.className = "rate";
+    rate.innerHTML = `<b>${Math.round(DATA.rates[ch.s][0])}</b>${DATA.rates[ch.s][3].toLocaleString("en-US")} posts`;
+    row.append(who, svg, rate); host.appendChild(row);
+  });
+})();
+
+/* dot + whisker helper */
+function dotPlot(id, rows, opts) {
+  const host = document.getElementById(id);
+  const W = 760, rowH = 34, top = 26, left = 128, right = 70;
+  const H = top + rows.length * rowH + 30;
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opts.label}, host);
+  const x = v => left + (v - opts.min) / (opts.max - opts.min) * (W - left - right);
+  opts.ticks.forEach(t => {
+    el("line", {x1: x(t), x2: x(t), y1: top - 8, y2: H - 26, class: "grid"}, svg);
+    el("text", {x: x(t), y: H - 10, "text-anchor": "middle"}, svg, opts.tickFmt(t));
+  });
+  if (opts.header) el("text", {x: left, y: 12, class: "lbl"}, svg, opts.header);
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + rowH / 2;
+    const ch = CH.find(c => c.s === r.s);
+    el("text", {x: left - 12, y: y + 4, "text-anchor": "end", class: "lbl"}, svg, ch.n);
+    el("line", {x1: x(r.lo), x2: x(Math.max(r.hi, r.lo)), y1: y, y2: y, stroke: col(ch.v), "stroke-width": 3, "stroke-linecap": "round"}, svg);
+    const dot = el("circle", {cx: x(r.v), cy: y, r: 6.5, fill: ch.own === "state" ? col(ch.v) : "var(--paper)", stroke: col(ch.v), "stroke-width": 2.5}, svg);
+    el("title", {}, dot, `${ch.n}: ${opts.valFmt(r.v)} (95% CI ${opts.valFmt(r.lo)}–${opts.valFmt(r.hi)})`);
+    el("text", {x: W - right + 12, y: y + 4}, svg, opts.valFmt(r.v));
+  });
+}
+
+/* rates */
+dotPlot("rates", CH.map(c => ({s: c.s, v: DATA.rates[c.s][0], lo: DATA.rates[c.s][1], hi: DATA.rates[c.s][2]})).sort((a, b) => b.v - a.v),
+  {label: "Posts per day by channel with 95% intervals", min: 0, max: 150, ticks: [0, 25, 50, 75, 100, 125, 150],
+   tickFmt: t => t, valFmt: v => fmt(v, 1)});
+
+/* ratio table */
+(function () {
+  const old = {"iltvnews": "6×", "thetimesofisrael2022": "15×", "jewishbreakingnewstelegram": "6×", "irna-en": "—", "idfofficial": "—"};
+  const wins = ["full window (28 Feb-17 Apr)", "7-14 Apr", "10-17 Apr"];
+  const tb = document.getElementById("ratio-rows");
+  ["irna-en", "idfofficial", "jewishbreakingnewstelegram", "thetimesofisrael2022", "iltvnews"].forEach(s => {
+    const ch = CH.find(c => c.s === s);
+    const cells = wins.map(w => {
+      const r = DATA.ratios.find(q => q.window === w && q.denominator === s);
+      return `<td>${fmt(r.ratio)}× <span class="ci">${fmt(r.ci_low)}–${fmt(r.ci_high)}</span></td>`;
+    }).join("");
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><span class="chip" style="background:${col(ch.v)}"></span>${ch.n}</td>${cells}<td class="old">${old[s]}</td>`;
+    tb.appendChild(tr);
+  });
+})();
+
+/* commemoration: two panels */
+(function () {
+  const host = document.getElementById("comm");
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:1.2rem";
+  host.appendChild(wrap);
+  [["(a) Khamenei mourning", "(a) Khamenei mourning", 15, [0, 5, 10, 15]],
+   ["(b) Israeli national commemoration", "(b) Israeli commemoration", 6, [0, 2, 4, 6]]].forEach(([key, head, mx, ticks], i) => {
+    const d = document.createElement("div"); d.id = "comm" + i; d.style.minWidth = "0"; wrap.appendChild(d);
+    const rows = CH.map(c => { const a = DATA.comm[key][c.s]; return {s: c.s, v: a[0], lo: a[1], hi: a[2]}; });
+    dotPlot(d.id, rows, {label: head + " share of posts by channel", header: head, min: 0, max: mx, ticks,
+      tickFmt: t => t + "%", valFmt: v => fmt(v, 1) + "%"});
+  });
+})();
+
+/* triangle */
+dotPlot("tri", CH.map(c => ({s: c.s, v: DATA.tri[c.s][0], lo: DATA.tri[c.s][1], hi: DATA.tri[c.s][2]})).sort((a, b) => b.v - a.v),
+  {label: "Share of posts naming Iran, Israel and the US together", min: 0, max: 50, ticks: [0, 10, 20, 30, 40, 50],
+   tickFmt: t => t + "%", valFmt: v => fmt(v, 1) + "%"});
+</script>
+
+</body>
+</html>

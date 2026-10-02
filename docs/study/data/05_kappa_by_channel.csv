@@ -1,0 +1,13 @@
+channel_slug,channel,scale,kappa,n
+presstv,Press TV,sentiment,0.2728600836708944,150
+presstv,Press TV,emotion,0.2553079116932502,150
+irna-en,IRNA,sentiment,0.24958881578947356,150
+irna-en,IRNA,emotion,0.2986412893998569,150
+idfofficial,IDF,sentiment,-0.016330785267546943,150
+idfofficial,IDF,emotion,-0.06960950764006757,150
+iltvnews,ILTV,sentiment,0.2875931608943446,150
+iltvnews,ILTV,emotion,0.2900385250412768,150
+thetimesofisrael2022,ToI,sentiment,0.33900623005622244,150
+thetimesofisrael2022,ToI,emotion,0.3493855307790691,150
+jewishbreakingnewstelegram,JBN,sentiment,0.24032682828009988,150
+jewishbreakingnewstelegram,JBN,emotion,0.2035838725734196,150

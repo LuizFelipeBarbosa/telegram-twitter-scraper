@@ -230,7 +230,7 @@ def _prepare_media_text_messages(
     for message in messages:
         timestamp = pd.to_datetime(message.timestamp, utc=True)
         text = (preferred_message_text(message) or "").strip()
-        has_media = bool(message.media_refs)
+        has_media = message.has_editorial_media
         records.append(
             {
                 "channel_id": message.channel_id,
@@ -241,6 +241,7 @@ def _prepare_media_text_messages(
                 "source_language": message.source_language or UNKNOWN_LANGUAGE,
                 "used_translation": message_used_translation(message),
                 "has_media": has_media,
+                "media_kind": message.media_kind,
                 "segment_label": config.media_label if has_media else config.text_only_label,
                 "is_media_only": bool(message.is_media_only),
                 "text": text,

@@ -16,6 +16,9 @@ from telegram_scraper.utils import ensure_utc
 
 _NON_LATIN_RE = re.compile(r"[\u0400-\u04FF\u0590-\u05FF\u0600-\u06FF\u0900-\u097F\u4E00-\u9FFF]")
 _EMBED_BATCH_SIZE = 100
+# Media kinds that count as editorial media. Link-preview cards (webpage), polls,
+# geo points and untyped media are deliberately excluded.
+EDITORIAL_MEDIA_KINDS = frozenset({"photo", "video", "animation", "audio", "voice", "document"})
 
 
 @dataclass(frozen=True)
@@ -84,10 +87,19 @@ class RawMessage:
     english_text: str | None = None
     source_language: str | None = None
     translated_at: datetime | None = None
+    media_kind: str = "none"
+    grouped_id: int | None = None
+    views: int | None = None
+    forwards: int | None = None
+    has_link_preview: bool = False
+
+    @property
+    def has_editorial_media(self) -> bool:
+        return self.media_kind in EDITORIAL_MEDIA_KINDS
 
     @property
     def is_media_only(self) -> bool:
-        return not (self.text or "").strip() and bool(self.media_refs)
+        return not (self.text or "").strip() and self.has_editorial_media
 
 
 def preferred_message_text(message: RawMessage) -> str:
@@ -129,6 +141,8 @@ def _fallback_raw_json(message: MessageRecord) -> dict[str, Any]:
         "reply_to_msg_id": message.reply_to_message_id,
         "message": message.text,
         "has_media": message.has_media,
+        "media_kind": message.media_kind,
+        "grouped_id": message.grouped_id,
     }
 
 
@@ -161,6 +175,11 @@ def normalize_message_record(message: MessageRecord, *, raw_json: Mapping[str, A
         forwarded_from=_extract_forwarded_from(payload),
         reply_to_message_id=message.reply_to_message_id,
         raw_json=payload,
+        media_kind=message.media_kind,
+        grouped_id=message.grouped_id,
+        views=message.views,
+        forwards=message.forwards,
+        has_link_preview=message.has_link_preview,
     )
 
 

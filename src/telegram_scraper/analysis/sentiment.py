@@ -4,8 +4,10 @@ import re
 import textwrap
 import time
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any, Mapping, Sequence
 
+import numpy as np
 import pandas as pd
 
 from telegram_scraper.analysis._common import UNKNOWN_LANGUAGE, message_used_translation
@@ -128,7 +130,7 @@ def _prepare_text_messages(messages: Sequence[RawMessage]) -> pd.DataFrame:
                 "text": cleaned_text,
                 "raw_text": (message.text or "").strip(),
                 "english_text": (message.english_text or "").strip(),
-                "has_media": bool(message.media_refs),
+                "has_media": bool(message.has_editorial_media),
             }
         )
 
@@ -141,7 +143,17 @@ def _prepare_text_messages(messages: Sequence[RawMessage]) -> pd.DataFrame:
     return df_text
 
 
-def _score_messages(df_text: pd.DataFrame, config: SentimentEmotionConfig) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+MODEL_MAX_TOKENS = 512
+_SCORE_COLUMNS = (
+    [f"sentiment_{label}" for label in SENTIMENT_LABEL_ORDER]
+    + ["sentiment_score", "dominant_sentiment", "sentiment_confidence"]
+    + [f"emotion_{label}" for label in EMOTION_LABEL_ORDER]
+    + ["dominant_emotion", "emotion_confidence"]
+)
+
+
+@lru_cache(maxsize=4)
+def _load_pipelines(sentiment_model: str, emotion_model: str) -> tuple[Any, Any]:
     try:
         from transformers import pipeline
     except ImportError as exc:  # pragma: no cover - exercised in notebook env
@@ -150,39 +162,83 @@ def _score_messages(df_text: pd.DataFrame, config: SentimentEmotionConfig) -> tu
             "Install notebook extras like: pip install transformers torch matplotlib seaborn numpy"
         ) from exc
 
-    sentiment_pipe = pipeline("sentiment-analysis", model=config.sentiment_model, top_k=None)
-    emotion_pipe = pipeline("text-classification", model=config.emotion_model, top_k=None)
+    sentiment_pipe = pipeline("sentiment-analysis", model=sentiment_model, top_k=None)
+    emotion_pipe = pipeline("text-classification", model=emotion_model, top_k=None)
+    return sentiment_pipe, emotion_pipe
 
-    analysis_texts = df_text["text"].str.slice(0, config.text_max_chars).tolist()
-    sentiment_outputs = sentiment_pipe(analysis_texts, batch_size=config.model_batch_size, truncation=True)
-    emotion_outputs = emotion_pipe(analysis_texts, batch_size=config.model_batch_size, truncation=True)
+
+def _token_limit(pipe: Any) -> int:
+    """Explicit truncation length: the tokenizer's model_max_length, capped at 512 tokens."""
+    limit = getattr(getattr(pipe, "tokenizer", None), "model_max_length", None)
+    if not isinstance(limit, int) or limit <= 0 or limit > MODEL_MAX_TOKENS:
+        return MODEL_MAX_TOKENS
+    return limit
+
+
+def _classify_texts(texts: Sequence[str], config: SentimentEmotionConfig) -> pd.DataFrame:
+    """Run both classifiers over ``texts``; returns a 0..n-1 indexed frame of score columns."""
+    texts = list(texts)
+    if not texts:
+        return pd.DataFrame(columns=_SCORE_COLUMNS)
+    sentiment_pipe, emotion_pipe = _load_pipelines(config.sentiment_model, config.emotion_model)
+    sentiment_outputs = sentiment_pipe(
+        texts, batch_size=config.model_batch_size, truncation=True, max_length=_token_limit(sentiment_pipe)
+    )
+    emotion_outputs = emotion_pipe(
+        texts, batch_size=config.model_batch_size, truncation=True, max_length=_token_limit(emotion_pipe)
+    )
 
     sentiment_score_maps = [score_map(scores, SENTIMENT_LABEL_ORDER) for scores in sentiment_outputs]
     emotion_score_maps = [score_map(scores, EMOTION_LABEL_ORDER) for scores in emotion_outputs]
 
-    sentiment_emotion_df = df_text.copy()
+    scored = pd.DataFrame(index=range(len(texts)))
     for label in SENTIMENT_LABEL_ORDER:
-        sentiment_emotion_df[f"sentiment_{label}"] = [scores[label] for scores in sentiment_score_maps]
-
-    sentiment_emotion_df["sentiment_score"] = (
-        sentiment_emotion_df["sentiment_positive"] - sentiment_emotion_df["sentiment_negative"]
-    )
-    sentiment_emotion_df["dominant_sentiment"] = sentiment_emotion_df[
-        [f"sentiment_{label}" for label in SENTIMENT_LABEL_ORDER]
-    ].idxmax(axis=1).str.removeprefix("sentiment_")
-    sentiment_emotion_df["sentiment_confidence"] = sentiment_emotion_df[
-        [f"sentiment_{label}" for label in SENTIMENT_LABEL_ORDER]
-    ].max(axis=1)
+        scored[f"sentiment_{label}"] = [scores[label] for scores in sentiment_score_maps]
+    scored["sentiment_score"] = scored["sentiment_positive"] - scored["sentiment_negative"]
+    sentiment_columns = [f"sentiment_{label}" for label in SENTIMENT_LABEL_ORDER]
+    scored["dominant_sentiment"] = scored[sentiment_columns].idxmax(axis=1).str.removeprefix("sentiment_")
+    scored["sentiment_confidence"] = scored[sentiment_columns].max(axis=1)
 
     for label in EMOTION_LABEL_ORDER:
-        sentiment_emotion_df[f"emotion_{label}"] = [scores[label] for scores in emotion_score_maps]
+        scored[f"emotion_{label}"] = [scores[label] for scores in emotion_score_maps]
+    emotion_columns = [f"emotion_{label}" for label in EMOTION_LABEL_ORDER]
+    scored["dominant_emotion"] = scored[emotion_columns].idxmax(axis=1).str.removeprefix("emotion_")
+    scored["emotion_confidence"] = scored[emotion_columns].max(axis=1)
+    return scored
 
-    sentiment_emotion_df["dominant_emotion"] = sentiment_emotion_df[
-        [f"emotion_{label}" for label in EMOTION_LABEL_ORDER]
-    ].idxmax(axis=1).str.removeprefix("emotion_")
-    sentiment_emotion_df["emotion_confidence"] = sentiment_emotion_df[
-        [f"emotion_{label}" for label in EMOTION_LABEL_ORDER]
-    ].max(axis=1)
+
+def score_frame(
+    df: pd.DataFrame,
+    text_col: str = "text",
+    config: SentimentEmotionConfig | None = None,
+) -> pd.DataFrame:
+    """Score ``df[text_col]`` with the sentiment and emotion models, aligned to ``df.index``.
+
+    Returns ``sentiment_negative/neutral/positive``, ``sentiment_score`` (positive - negative),
+    ``dominant_sentiment``, ``sentiment_confidence``, ``emotion_<label>`` probabilities,
+    ``dominant_emotion`` and ``emotion_confidence``. Text is cleaned with
+    :func:`clean_analysis_text` and truncated at the tokenizer limit (<= 512 tokens). Unless a
+    ``config`` is given no character pre-truncation is applied (``text_max_chars=0``); rows with
+    no text after cleaning get NaN scores.
+    """
+    config = config or SentimentEmotionConfig(text_max_chars=0)
+    cleaned = df[text_col].fillna("").astype(str).map(clean_analysis_text)
+    if config.text_max_chars and config.text_max_chars > 0:
+        cleaned = cleaned.str.slice(0, config.text_max_chars)
+    has_text = (cleaned != "").to_numpy()
+
+    scored = _classify_texts(cleaned[has_text].tolist(), config)
+    scored.index = np.flatnonzero(has_text)
+    aligned = scored.reindex(range(len(df)))
+    aligned.index = df.index
+    return aligned
+
+
+def _score_messages(df_text: pd.DataFrame, config: SentimentEmotionConfig) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    analysis_texts = df_text["text"].str.slice(0, config.text_max_chars).tolist()
+    scored = _classify_texts(analysis_texts, config)
+    scored.index = df_text.index
+    sentiment_emotion_df = pd.concat([df_text.copy(), scored], axis=1)
 
     sentiment_label_counts_df = (
         sentiment_emotion_df["dominant_sentiment"]
