@@ -1,0 +1,85 @@
+channel_slug,n,successes,share,ci_low,ci_high,week,week_start,measure
+idfofficial,306,0,0.0,0.0,0.012398143345036299,0,28 Feb,(a) Khamenei mourning
+iltvnews,205,0,0.0,0.0,0.018394138991302027,0,28 Feb,(a) Khamenei mourning
+irna-en,333,93,0.27927927927927926,0.2338190526314782,0.32977385984830543,0,28 Feb,(a) Khamenei mourning
+jewishbreakingnewstelegram,250,1,0.004,0.0007064475340650966,0.022305785565415927,0,28 Feb,(a) Khamenei mourning
+presstv,915,72,0.07868852459016394,0.06295153255295555,0.097948323892839,0,28 Feb,(a) Khamenei mourning
+thetimesofisrael2022,137,0,0.0,1.734723475976807e-18,0.02727505702411607,0,28 Feb,(a) Khamenei mourning
+idfofficial,235,0,0.0,0.0,0.01608371862934413,1,07 Mar,(a) Khamenei mourning
+iltvnews,75,0,0.0,0.0,0.04872384248280589,1,07 Mar,(a) Khamenei mourning
+irna-en,346,29,0.0838150289017341,0.058989685059625215,0.11778026961973148,1,07 Mar,(a) Khamenei mourning
+jewishbreakingnewstelegram,149,0,0.0,0.0,0.02513361787000955,1,07 Mar,(a) Khamenei mourning
+presstv,1059,18,0.0169971671388102,0.010778179865435387,0.02670761680728883,1,07 Mar,(a) Khamenei mourning
+thetimesofisrael2022,82,0,0.0,0.0,0.04475062369010034,1,07 Mar,(a) Khamenei mourning
+idfofficial,237,0,0.0,0.0,0.015950155922091817,2,14 Mar,(a) Khamenei mourning
+iltvnews,52,0,0.0,0.0,0.06879223612386236,2,14 Mar,(a) Khamenei mourning
+irna-en,168,10,0.05952380952380952,0.032650105091741696,0.10609091226409446,2,14 Mar,(a) Khamenei mourning
+jewishbreakingnewstelegram,129,0,0.0,0.0,0.02891761995687827,2,14 Mar,(a) Khamenei mourning
+presstv,894,15,0.016778523489932886,0.010193973161823636,0.027498047504213047,2,14 Mar,(a) Khamenei mourning
+thetimesofisrael2022,95,0,0.0,0.0,0.038864853539472985,2,14 Mar,(a) Khamenei mourning
+idfofficial,241,0,0.0,0.0,0.015689576590488134,3,21 Mar,(a) Khamenei mourning
+iltvnews,73,0,0.0,0.0,0.04999200795573113,3,21 Mar,(a) Khamenei mourning
+irna-en,192,3,0.015625,0.005327893387868189,0.04492427936429987,3,21 Mar,(a) Khamenei mourning
+jewishbreakingnewstelegram,163,0,0.0,0.0,0.023024605801502698,3,21 Mar,(a) Khamenei mourning
+presstv,972,16,0.01646090534979424,0.010157320262510906,0.026571452118208175,3,21 Mar,(a) Khamenei mourning
+thetimesofisrael2022,95,0,0.0,0.0,0.038864853539472985,3,21 Mar,(a) Khamenei mourning
+idfofficial,200,0,0.0,0.0,0.01884532637726658,4,28 Mar,(a) Khamenei mourning
+iltvnews,33,0,0.0,0.0,0.10426999754245211,4,28 Mar,(a) Khamenei mourning
+irna-en,154,5,0.032467532467532464,0.01394636101001754,0.0737458012654075,4,28 Mar,(a) Khamenei mourning
+jewishbreakingnewstelegram,129,0,0.0,0.0,0.02891761995687827,4,28 Mar,(a) Khamenei mourning
+presstv,997,2,0.0020060180541624875,0.0005502949893227541,0.007284571114179624,4,28 Mar,(a) Khamenei mourning
+thetimesofisrael2022,65,0,0.0,3.469446951953614e-18,0.05580153132285691,4,28 Mar,(a) Khamenei mourning
+idfofficial,145,0,0.0,0.0,0.025809064565282473,5,04 Apr,(a) Khamenei mourning
+iltvnews,53,1,0.018867924528301886,0.0033384533882637596,0.09942912052501239,5,04 Apr,(a) Khamenei mourning
+irna-en,255,44,0.17254901960784313,0.1311210332673624,0.22369638755514565,5,04 Apr,(a) Khamenei mourning
+jewishbreakingnewstelegram,156,0,0.0,1.734723475976807e-18,0.024032931437414945,5,04 Apr,(a) Khamenei mourning
+presstv,948,58,0.06118143459915612,0.0476244520638332,0.07828040079808612,5,04 Apr,(a) Khamenei mourning
+thetimesofisrael2022,72,0,0.0,3.469446951953614e-18,0.05065117259645782,5,04 Apr,(a) Khamenei mourning
+idfofficial,61,0,0.0,0.0,0.059243867898112854,6,11 Apr,(a) Khamenei mourning
+iltvnews,51,0,0.0,0.0,0.07004661989853146,6,11 Apr,(a) Khamenei mourning
+irna-en,187,17,0.09090909090909091,0.057534002367966464,0.14075340883993162,6,11 Apr,(a) Khamenei mourning
+jewishbreakingnewstelegram,137,0,0.0,1.734723475976807e-18,0.02727505702411607,6,11 Apr,(a) Khamenei mourning
+presstv,834,7,0.008393285371702638,0.0040715444622412035,0.017223007905466787,6,11 Apr,(a) Khamenei mourning
+thetimesofisrael2022,76,0,0.0,3.469446951953614e-18,0.04811358506513734,6,11 Apr,(a) Khamenei mourning
+idfofficial,306,0,0.0,0.0,0.012398143345036299,0,28 Feb,(b) Israeli national commemoration
+iltvnews,205,3,0.014634146341463415,0.004989192088799926,0.04213487454178107,0,28 Feb,(b) Israeli national commemoration
+irna-en,333,0,0.0,0.0,0.011404352760326317,0,28 Feb,(b) Israeli national commemoration
+jewishbreakingnewstelegram,250,0,0.0,8.673617379884035e-19,0.01513329949544458,0,28 Feb,(b) Israeli national commemoration
+presstv,915,0,0.0,0.0,0.004180763486254229,0,28 Feb,(b) Israeli national commemoration
+thetimesofisrael2022,137,0,0.0,1.734723475976807e-18,0.02727505702411607,0,28 Feb,(b) Israeli national commemoration
+idfofficial,235,2,0.00851063829787234,0.002337035157692964,0.03049419464391765,1,07 Mar,(b) Israeli national commemoration
+iltvnews,75,1,0.013333333333333334,0.002357551139048661,0.07173365554421574,1,07 Mar,(b) Israeli national commemoration
+irna-en,346,0,0.0,0.0,0.010980570552282678,1,07 Mar,(b) Israeli national commemoration
+jewishbreakingnewstelegram,149,1,0.006711409395973154,0.00118571261335133,0.037033360050349365,1,07 Mar,(b) Israeli national commemoration
+presstv,1059,0,0.0,0.0,0.00361432910695498,1,07 Mar,(b) Israeli national commemoration
+thetimesofisrael2022,82,1,0.012195121951219513,0.002155992081812344,0.06589339688413921,1,07 Mar,(b) Israeli national commemoration
+idfofficial,237,0,0.0,0.0,0.015950155922091817,2,14 Mar,(b) Israeli national commemoration
+iltvnews,52,0,0.0,0.0,0.06879223612386236,2,14 Mar,(b) Israeli national commemoration
+irna-en,168,0,0.0,0.0,0.022354668349868063,2,14 Mar,(b) Israeli national commemoration
+jewishbreakingnewstelegram,129,0,0.0,0.0,0.02891761995687827,2,14 Mar,(b) Israeli national commemoration
+presstv,894,0,0.0,0.0,0.00427854916138518,2,14 Mar,(b) Israeli national commemoration
+thetimesofisrael2022,95,0,0.0,0.0,0.038864853539472985,2,14 Mar,(b) Israeli national commemoration
+idfofficial,241,2,0.008298755186721992,0.0022787759771462253,0.029747903076570322,3,21 Mar,(b) Israeli national commemoration
+iltvnews,73,3,0.0410958904109589,0.014073940353920601,0.11400091626298334,3,21 Mar,(b) Israeli national commemoration
+irna-en,192,0,0.0,0.0,0.01961514606675412,3,21 Mar,(b) Israeli national commemoration
+jewishbreakingnewstelegram,163,3,0.018404907975460124,0.006278750696494414,0.052708139554032724,3,21 Mar,(b) Israeli national commemoration
+presstv,972,0,0.0,0.0,0.003936560376658454,3,21 Mar,(b) Israeli national commemoration
+thetimesofisrael2022,95,0,0.0,0.0,0.038864853539472985,3,21 Mar,(b) Israeli national commemoration
+idfofficial,200,4,0.02,0.0078044264163494685,0.05028708690582645,4,28 Mar,(b) Israeli national commemoration
+iltvnews,33,3,0.09090909090909091,0.03140394152458163,0.23572605646469735,4,28 Mar,(b) Israeli national commemoration
+irna-en,154,0,0.0,-1.734723475976807e-18,0.024337451322329548,4,28 Mar,(b) Israeli national commemoration
+jewishbreakingnewstelegram,129,2,0.015503875968992248,0.004262070389691609,0.05476663111891136,4,28 Mar,(b) Israeli national commemoration
+presstv,997,0,0.0,0.0,0.0038382291089545523,4,28 Mar,(b) Israeli national commemoration
+thetimesofisrael2022,65,0,0.0,3.469446951953614e-18,0.05580153132285691,4,28 Mar,(b) Israeli national commemoration
+idfofficial,145,2,0.013793103448275862,0.003790752490395701,0.04889254477653415,5,04 Apr,(b) Israeli national commemoration
+iltvnews,53,3,0.05660377358490566,0.019436661484935752,0.15370208310180894,5,04 Apr,(b) Israeli national commemoration
+irna-en,255,1,0.00392156862745098,0.0006925889000102634,0.021875120489777446,5,04 Apr,(b) Israeli national commemoration
+jewishbreakingnewstelegram,156,1,0.00641025641025641,0.0011324653171247943,0.03541286443519509,5,04 Apr,(b) Israeli national commemoration
+presstv,948,0,0.0,0.0,0.004035817924398451,5,04 Apr,(b) Israeli national commemoration
+thetimesofisrael2022,72,0,0.0,3.469446951953614e-18,0.05065117259645782,5,04 Apr,(b) Israeli national commemoration
+idfofficial,61,4,0.06557377049180328,0.02579370448956657,0.15682801679895775,6,11 Apr,(b) Israeli national commemoration
+iltvnews,51,5,0.09803921568627451,0.04260807310761859,0.20978234681080865,6,11 Apr,(b) Israeli national commemoration
+irna-en,187,0,0.0,1.734723475976807e-18,0.02012905814298656,6,11 Apr,(b) Israeli national commemoration
+jewishbreakingnewstelegram,137,4,0.029197080291970802,0.011411525162847307,0.07266498838540796,6,11 Apr,(b) Israeli national commemoration
+presstv,834,0,0.0,-4.336808689942018e-19,0.0045849471642298335,6,11 Apr,(b) Israeli national commemoration
+thetimesofisrael2022,76,9,0.11842105263157894,0.06356819004179065,0.20999217750791938,6,11 Apr,(b) Israeli national commemoration

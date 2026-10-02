@@ -1,0 +1,14 @@
+test,family,p_raw,effect,effect_name,p_bh,significant_bh_0.05
+Press TV media vs topic - new coding: video / photo / none,press_tv_topic_split,2.6843925158428196e-178,0.33010483834079946,bias-corrected Cramer's V,3.4897102705956655e-177,True
+Press TV media vs topic - new coding: any editorial media vs none,press_tv_topic_split,2.3361308558943082e-24,0.1823735341668679,bias-corrected Cramer's V,1.0123233708875335e-23,True
+Press TV media vs topic - OLD coding: photo-only flag,press_tv_topic_split,4.058003583608089e-125,0.39697267965835215,bias-corrected Cramer's V,2.6377023293452575e-124,True
+"Press TV: diplomacy / official actors share, media vs none",press_tv_topic_split,4.90972975737411e-09,-0.1359936371557681,difference in proportions,1.0637747807643903e-08,True
+"Press TV: Hormuz / war economy share, media vs none",press_tv_topic_split,0.012775076918017355,-0.03672617479584186,difference in proportions,0.01660759999342256,True
+"Press TV: Khamenei / Leader and funerals share, media vs none",press_tv_topic_split,0.005842640056132748,0.0589859976899228,difference in proportions,0.008439368969969526,True
+IRNA media vs topic (chi-square),per_channel_topic_split,1.996630485049376e-20,0.2304826759221835,bias-corrected Cramer's V,5.191239261128377e-20,True
+ILTV media vs topic (chi-square),per_channel_topic_split,0.00020016000432166174,0.2160250785363919,bias-corrected Cramer's V,0.0003252600070227003,True
+JBN media vs topic (chi-square),per_channel_topic_split,1.477931203728961e-21,0.3035743806162657,bias-corrected Cramer's V,4.803276412119123e-21,True
+"Press TV: views video vs photo (Welch, log views)",views,0.45986310133629293,0.9954342300646368,geometric-mean ratio video/photo,0.543474574306528,False
+"IRNA: views video vs photo (Welch, log views)",views,8.694446371212106e-05,0.8979345834795242,geometric-mean ratio video/photo,0.00016146828975108197,True
+"ILTV: views video vs photo (Welch, log views)",views,0.5165401617643668,0.9873744696030543,geometric-mean ratio video/photo,0.5595851752447306,False
+"JBN: views video vs photo (Welch, log views)",views,0.7383224411535126,1.002868395563654,geometric-mean ratio video/photo,0.7383224411535126,False

@@ -1,0 +1,6401 @@
+{
+  "00_collect": {
+    "fetched_at": "2026-10-02T08:18:55.837498+00:00",
+    "n_messages": 14620,
+    "n_posts": 12221,
+    "per_channel": [
+      {
+        "channel_slug": "presstv",
+        "items_per_post": 1.2829567559479276,
+        "messages": 8574,
+        "posts": 6683,
+        "posts_with_text": 6619
+      },
+      {
+        "channel_slug": "irna-en",
+        "items_per_post": 1.2278558338423946,
+        "messages": 2010,
+        "posts": 1637,
+        "posts_with_text": 1635
+      },
+      {
+        "channel_slug": "idfofficial",
+        "items_per_post": 1.0,
+        "messages": 1429,
+        "posts": 1429,
+        "posts_with_text": 1425
+      },
+      {
+        "channel_slug": "iltvnews",
+        "items_per_post": 1.2428057553956835,
+        "messages": 691,
+        "posts": 556,
+        "posts_with_text": 542
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "items_per_post": 1.0,
+        "messages": 622,
+        "posts": 622,
+        "posts_with_text": 622
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "items_per_post": 1.0,
+        "messages": 1294,
+        "posts": 1294,
+        "posts_with_text": 1113
+      }
+    ],
+    "snapshot_command": "uv run telegram-scraper snapshot --channel presstv --channel irna-en --channel idfofficial --channel iltvnews --channel thetimesofisrael2022 --channel jewishbreakingnewstelegram --start 2026-02-28 --end 2026-04-18 --out data/raw",
+    "snapshot_run_id": "2026-02-28_2026-04-18_20261002T081854Z",
+    "window": [
+      "2026-02-28",
+      "2026-04-18 (exclusive)"
+    ]
+  },
+  "01_corpus": {
+    "events_dropped": [],
+    "events_verified": [
+      {
+        "IDF": 11,
+        "ILTV": 8,
+        "IRNA": 27,
+        "JBN": 7,
+        "Press TV": 44,
+        "ToI": 5,
+        "date": "2026-02-28",
+        "key": "war_start",
+        "label": "US-Israeli strikes on Iran begin",
+        "n_channels": 6,
+        "n_matches": 102,
+        "verified": true
+      },
+      {
+        "IDF": 0,
+        "ILTV": 6,
+        "IRNA": 29,
+        "JBN": 7,
+        "Press TV": 25,
+        "ToI": 8,
+        "date": "2026-03-01",
+        "key": "khamenei_death",
+        "label": "Khamenei's death announced",
+        "n_channels": 5,
+        "n_matches": 75,
+        "verified": true
+      },
+      {
+        "IDF": 4,
+        "ILTV": 5,
+        "IRNA": 35,
+        "JBN": 16,
+        "Press TV": 88,
+        "ToI": 9,
+        "date": "2026-04-08",
+        "key": "ceasefire",
+        "label": "US-Iran ceasefire announced",
+        "n_channels": 6,
+        "n_matches": 157,
+        "verified": true
+      },
+      {
+        "IDF": 0,
+        "ILTV": 0,
+        "IRNA": 22,
+        "JBN": 0,
+        "Press TV": 48,
+        "ToI": 0,
+        "date": "2026-04-09",
+        "key": "mourning_40",
+        "label": "40th-day mourning for Khamenei",
+        "n_channels": 2,
+        "n_matches": 70,
+        "verified": true
+      },
+      {
+        "IDF": 0,
+        "ILTV": 1,
+        "IRNA": 25,
+        "JBN": 5,
+        "Press TV": 69,
+        "ToI": 2,
+        "date": "2026-04-11",
+        "key": "islamabad",
+        "label": "Islamabad Iran-US talks",
+        "n_channels": 5,
+        "n_matches": 102,
+        "verified": true
+      },
+      {
+        "IDF": 0,
+        "ILTV": 4,
+        "IRNA": 4,
+        "JBN": 4,
+        "Press TV": 35,
+        "ToI": 4,
+        "date": "2026-04-13",
+        "key": "hormuz_blockade",
+        "label": "US naval blockade of Hormuz",
+        "n_channels": 5,
+        "n_matches": 51,
+        "verified": true
+      },
+      {
+        "IDF": 4,
+        "ILTV": 5,
+        "IRNA": 0,
+        "JBN": 5,
+        "Press TV": 2,
+        "ToI": 12,
+        "date": "2026-04-14",
+        "key": "yom_hashoah",
+        "label": "Yom HaShoah (Holocaust Remembrance Day)",
+        "n_channels": 5,
+        "n_matches": 28,
+        "verified": true
+      }
+    ],
+    "first_pass_corrections": [
+      {
+        "first_pass": 0.635,
+        "metric": "Press TV items flagged as having media",
+        "note": "old flag = photo only; now photo OR video",
+        "now": 0.8544698545
+      },
+      {
+        "first_pass": 0.0,
+        "metric": "Press TV posts that carry a video",
+        "note": "old pipeline had no video flag at all",
+        "now": 0.3877338877
+      },
+      {
+        "first_pass": 0.405,
+        "metric": "texts cut at the 200-character cap",
+        "note": "share whose FULL text exceeds 200 chars",
+        "now": 0.5020790021
+      }
+    ],
+    "first_pass_window": [
+      "2026-04-07 06:13:51+00:00",
+      "2026-04-14 16:59:41+00:00"
+    ],
+    "media_class_counts": [
+      {
+        "channel_slug": "presstv",
+        "link preview": 391,
+        "photo": 2997,
+        "text only": 110,
+        "video": 3185
+      },
+      {
+        "channel_slug": "irna-en",
+        "link preview": 370,
+        "photo": 850,
+        "text only": 229,
+        "video": 188
+      },
+      {
+        "channel_slug": "idfofficial",
+        "link preview": 187,
+        "photo": 4,
+        "text only": 1238,
+        "video": 0
+      },
+      {
+        "channel_slug": "iltvnews",
+        "link preview": 0,
+        "photo": 206,
+        "text only": 61,
+        "video": 289
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "link preview": 1,
+        "photo": 621,
+        "text only": 0,
+        "video": 0
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "link preview": 0,
+        "photo": 581,
+        "text only": 141,
+        "video": 572
+      }
+    ],
+    "media_class_shares": [
+      {
+        "channel_slug": "presstv",
+        "link preview": 0.0585066587,
+        "photo": 0.4484512943,
+        "text only": 0.0164596738,
+        "video": 0.4765823732
+      },
+      {
+        "channel_slug": "irna-en",
+        "link preview": 0.2260232132,
+        "photo": 0.5192425168,
+        "text only": 0.1398900428,
+        "video": 0.1148442272
+      },
+      {
+        "channel_slug": "idfofficial",
+        "link preview": 0.1308607418,
+        "photo": 0.0027991603,
+        "text only": 0.866340098,
+        "video": 0.0
+      },
+      {
+        "channel_slug": "iltvnews",
+        "link preview": 0.0,
+        "photo": 0.3705035971,
+        "text only": 0.1097122302,
+        "video": 0.5197841727
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "link preview": 0.001607717,
+        "photo": 0.998392283,
+        "text only": 0.0,
+        "video": 0.0
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "link preview": 0.0,
+        "photo": 0.4489953632,
+        "text only": 0.1089644513,
+        "video": 0.4420401855
+      }
+    ],
+    "median_clean_text_len": {
+      "idfofficial": 642.0,
+      "iltvnews": 315.0,
+      "irna-en": 289.0,
+      "jewishbreakingnewstelegram": 259.0,
+      "presstv": 167.0,
+      "thetimesofisrael2022": 99.0
+    },
+    "messages_vs_posts": [
+      {
+        "channel_slug": "presstv",
+        "messages": 8574,
+        "pct_inflation": 0.2829567559,
+        "posts": 6683
+      },
+      {
+        "channel_slug": "irna-en",
+        "messages": 2010,
+        "pct_inflation": 0.2278558338,
+        "posts": 1637
+      },
+      {
+        "channel_slug": "idfofficial",
+        "messages": 1429,
+        "pct_inflation": 0.0,
+        "posts": 1429
+      },
+      {
+        "channel_slug": "iltvnews",
+        "messages": 691,
+        "pct_inflation": 0.2428057554,
+        "posts": 556
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "messages": 622,
+        "pct_inflation": 0.0,
+        "posts": 622
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "messages": 1294,
+        "pct_inflation": 0.0,
+        "posts": 1294
+      }
+    ],
+    "pct_chars_removed_by_cleaning": {
+      "idfofficial": 0.0719600834,
+      "iltvnews": 0.0106002755,
+      "irna-en": 0.0394498802,
+      "jewishbreakingnewstelegram": 0.3958536676,
+      "presstv": 0.0672757808,
+      "thetimesofisrael2022": 0.186567362
+    }
+  },
+  "02_tempo": {
+    "first_pass_claims_vs_equal_window": {
+      "iltvnews": {
+        "10-17 Apr": 18.0,
+        "7-14 Apr": 21.166666666666668,
+        "claimed": 6,
+        "full window (28 Feb-17 Apr)": 12.01978417266187
+      },
+      "jewishbreakingnewstelegram": {
+        "10-17 Apr": 5.5227272727272725,
+        "7-14 Apr": 4.838095238095238,
+        "claimed": 6,
+        "full window (28 Feb-17 Apr)": 5.1646058732612055
+      },
+      "thetimesofisrael2022": {
+        "10-17 Apr": 11.571428571428571,
+        "7-14 Apr": 11.28888888888889,
+        "claimed": 15,
+        "full window (28 Feb-17 Apr)": 10.744372990353698
+      }
+    },
+    "hour_rhythm_local": [
+      {
+        "channel_slug": "presstv",
+        "peak_hour_local": 22,
+        "peak_share": 0.0540176567,
+        "share_00_06_local": 0.2338770013,
+        "share_08_22_local": 0.6064641628
+      },
+      {
+        "channel_slug": "irna-en",
+        "peak_hour_local": 14,
+        "peak_share": 0.1081246182,
+        "share_00_06_local": 0.0256566891,
+        "share_08_22_local": 0.9273060476
+      },
+      {
+        "channel_slug": "idfofficial",
+        "peak_hour_local": 19,
+        "peak_share": 0.0741777467,
+        "share_00_06_local": 0.1483554934,
+        "share_08_22_local": 0.7165850245
+      },
+      {
+        "channel_slug": "iltvnews",
+        "peak_hour_local": 16,
+        "peak_share": 0.0881294964,
+        "share_00_06_local": 0.0449640288,
+        "share_08_22_local": 0.8237410072
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "peak_hour_local": 16,
+        "peak_share": 0.1012861736,
+        "share_00_06_local": 0.1061093248,
+        "share_08_22_local": 0.7861736334
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "peak_hour_local": 23,
+        "peak_share": 0.0772797527,
+        "share_00_06_local": 0.2588871716,
+        "share_08_22_local": 0.5618238022
+      }
+    ],
+    "low_output_days": [
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "date": 1772236800000,
+        "posts": 0
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "date": 1772841600000,
+        "posts": 0
+      },
+      {
+        "channel_slug": "iltvnews",
+        "date": 1773446400000,
+        "posts": 0
+      },
+      {
+        "channel_slug": "irna-en",
+        "date": 1773619200000,
+        "posts": 1
+      },
+      {
+        "channel_slug": "iltvnews",
+        "date": 1774656000000,
+        "posts": 0
+      },
+      {
+        "channel_slug": "iltvnews",
+        "date": 1775088000000,
+        "posts": 0
+      }
+    ],
+    "median_views": [
+      {
+        "channel_slug": "presstv",
+        "ci_high": 8086.0,
+        "ci_low": 8006.0,
+        "median_views": 8049.0,
+        "n": 6619
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 2622.0,
+        "ci_low": 2537.0,
+        "median_views": 2586.0,
+        "n": 1635
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 12233.0,
+        "ci_low": 11860.0,
+        "median_views": 12023.0,
+        "n": 1429
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 6925.0,
+        "ci_low": 6735.0,
+        "median_views": 6822.0,
+        "n": 556
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 5187.5,
+        "ci_low": 5003.0,
+        "median_views": 5104.0,
+        "n": 622
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 3973.0,
+        "ci_low": 3900.0,
+        "median_views": 3935.0,
+        "n": 1293
+      }
+    ],
+    "n_boot": 5000,
+    "ownership_country_cells": [
+      {
+        "channels": "ILTV, ToI, JBN",
+        "country": "Israel",
+        "n_posts": 2472,
+        "ownership": "private",
+        "posts_per_day": 50.4489795918
+      },
+      {
+        "channels": "Press TV, IRNA",
+        "country": "Iran",
+        "n_posts": 8320,
+        "ownership": "state",
+        "posts_per_day": 169.7959183673
+      },
+      {
+        "channels": "IDF",
+        "country": "Israel",
+        "n_posts": 1429,
+        "ownership": "state",
+        "posts_per_day": 29.1632653061
+      }
+    ],
+    "posts_per_day": [
+      {
+        "channel_slug": "presstv",
+        "ci_high": 142.2045918367,
+        "ci_low": 130.8974489796,
+        "days": 49,
+        "n_posts": 6683,
+        "posts_per_day": 136.387755102
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 38.0816326531,
+        "ci_low": 29.0204081633,
+        "days": 49,
+        "n_posts": 1637,
+        "posts_per_day": 33.4081632653
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 32.7147959184,
+        "ci_low": 25.6326530612,
+        "days": 49,
+        "n_posts": 1429,
+        "posts_per_day": 29.1632653061
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 15.2658163265,
+        "ci_low": 8.3469387755,
+        "days": 49,
+        "n_posts": 556,
+        "posts_per_day": 11.3469387755
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 14.2244897959,
+        "ci_low": 11.2448979592,
+        "days": 49,
+        "n_posts": 622,
+        "posts_per_day": 12.693877551
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 31.0204081633,
+        "ci_low": 22.4081632653,
+        "days": 49,
+        "n_posts": 1294,
+        "posts_per_day": 26.4081632653
+      }
+    ],
+    "press_tv_rate_ratios": [
+      {
+        "ci_high": 4.6674004489,
+        "ci_low": 3.6141803811,
+        "days": 49,
+        "denominator": "irna-en",
+        "other_per_day": 33.4081632653,
+        "presstv_per_day": 136.387755102,
+        "ratio": 4.0824679291,
+        "window": "full window (28 Feb-17 Apr)"
+      },
+      {
+        "ci_high": 5.307216116,
+        "ci_low": 4.1767497793,
+        "days": 49,
+        "denominator": "idfofficial",
+        "other_per_day": 29.1632653061,
+        "presstv_per_day": 136.387755102,
+        "ratio": 4.6766969909,
+        "window": "full window (28 Feb-17 Apr)"
+      },
+      {
+        "ci_high": 16.4121041308,
+        "ci_low": 8.9826966709,
+        "days": 49,
+        "denominator": "iltvnews",
+        "other_per_day": 11.3469387755,
+        "presstv_per_day": 136.387755102,
+        "ratio": 12.0197841727,
+        "window": "full window (28 Feb-17 Apr)"
+      },
+      {
+        "ci_high": 12.2594744023,
+        "ci_low": 9.5204194074,
+        "days": 49,
+        "denominator": "thetimesofisrael2022",
+        "other_per_day": 12.693877551,
+        "presstv_per_day": 136.387755102,
+        "ratio": 10.7443729904,
+        "window": "full window (28 Feb-17 Apr)"
+      },
+      {
+        "ci_high": 6.1443989528,
+        "ci_low": 4.386311569,
+        "days": 49,
+        "denominator": "jewishbreakingnewstelegram",
+        "other_per_day": 26.4081632653,
+        "presstv_per_day": 136.387755102,
+        "ratio": 5.1646058733,
+        "window": "full window (28 Feb-17 Apr)"
+      },
+      {
+        "ci_high": 4.8731111408,
+        "ci_low": 3.4821826681,
+        "days": 8,
+        "denominator": "irna-en",
+        "other_per_day": 31.75,
+        "presstv_per_day": 127.0,
+        "ratio": 4.0,
+        "window": "7-14 Apr"
+      },
+      {
+        "ci_high": 13.5946602853,
+        "ci_low": 6.6274292628,
+        "days": 8,
+        "denominator": "idfofficial",
+        "other_per_day": 13.5,
+        "presstv_per_day": 127.0,
+        "ratio": 9.4074074074,
+        "window": "7-14 Apr"
+      },
+      {
+        "ci_high": 37.6557573892,
+        "ci_low": 14.4088636364,
+        "days": 8,
+        "denominator": "iltvnews",
+        "other_per_day": 6.0,
+        "presstv_per_day": 127.0,
+        "ratio": 21.1666666667,
+        "window": "7-14 Apr"
+      },
+      {
+        "ci_high": 15.0898134328,
+        "ci_low": 8.9811320755,
+        "days": 8,
+        "denominator": "thetimesofisrael2022",
+        "other_per_day": 11.25,
+        "presstv_per_day": 127.0,
+        "ratio": 11.2888888889,
+        "window": "7-14 Apr"
+      },
+      {
+        "ci_high": 5.4010671714,
+        "ci_low": 4.4240939839,
+        "days": 8,
+        "denominator": "jewishbreakingnewstelegram",
+        "other_per_day": 26.25,
+        "presstv_per_day": 127.0,
+        "ratio": 4.8380952381,
+        "window": "7-14 Apr"
+      },
+      {
+        "ci_high": 5.8412548433,
+        "ci_low": 3.9006237928,
+        "days": 8,
+        "denominator": "irna-en",
+        "other_per_day": 25.875,
+        "presstv_per_day": 121.5,
+        "ratio": 4.6956521739,
+        "window": "10-17 Apr"
+      },
+      {
+        "ci_high": 18.9811320755,
+        "ci_low": 10.1208791209,
+        "days": 8,
+        "denominator": "idfofficial",
+        "other_per_day": 9.0,
+        "presstv_per_day": 121.5,
+        "ratio": 13.5,
+        "window": "10-17 Apr"
+      },
+      {
+        "ci_high": 29.7941176471,
+        "ci_low": 13.142806841,
+        "days": 8,
+        "denominator": "iltvnews",
+        "other_per_day": 6.75,
+        "presstv_per_day": 121.5,
+        "ratio": 18.0,
+        "window": "10-17 Apr"
+      },
+      {
+        "ci_high": 15.5718253968,
+        "ci_low": 9.1274509804,
+        "days": 8,
+        "denominator": "thetimesofisrael2022",
+        "other_per_day": 10.5,
+        "presstv_per_day": 121.5,
+        "ratio": 11.5714285714,
+        "window": "10-17 Apr"
+      },
+      {
+        "ci_high": 6.9071593212,
+        "ci_low": 4.6281407035,
+        "days": 8,
+        "denominator": "jewishbreakingnewstelegram",
+        "other_per_day": 22.0,
+        "presstv_per_day": 121.5,
+        "ratio": 5.5227272727,
+        "window": "10-17 Apr"
+      }
+    ],
+    "verified_events": [
+      "war_start",
+      "khamenei_death",
+      "ceasefire",
+      "mourning_40",
+      "islamabad",
+      "hormuz_blockade",
+      "yom_hashoah"
+    ],
+    "within_country_ratios": [
+      {
+        "ci_high": 4.6674004489,
+        "ci_low": 3.6141803811,
+        "comparison": "Iran: Press TV / IRNA (both state)",
+        "denominator_per_day": 33.4081632653,
+        "numerator_per_day": 136.387755102,
+        "ratio": 4.0824679291
+      },
+      {
+        "ci_high": 0.6561565785,
+        "ci_low": 0.5104877562,
+        "comparison": "Israel: IDF (state) / pooled private",
+        "denominator_per_day": 50.4489795918,
+        "numerator_per_day": 29.1632653061,
+        "ratio": 0.5780744337
+      },
+      {
+        "ci_high": 3.3402415018,
+        "ci_low": 2.0125771928,
+        "comparison": "Israel: IDF / ILTV",
+        "denominator_per_day": 11.3469387755,
+        "numerator_per_day": 29.1632653061,
+        "ratio": 2.5701438849
+      },
+      {
+        "ci_high": 2.5711749531,
+        "ci_low": 2.0411849884,
+        "comparison": "Israel: IDF / ToI",
+        "denominator_per_day": 12.693877551,
+        "numerator_per_day": 29.1632653061,
+        "ratio": 2.2974276527
+      },
+      {
+        "ci_high": 1.3305408602,
+        "ci_low": 0.9334329267,
+        "comparison": "Israel: IDF / JBN",
+        "denominator_per_day": 26.4081632653,
+        "numerator_per_day": 29.1632653061,
+        "ratio": 1.1043276662
+      }
+    ]
+  },
+  "03_agenda": {
+    "chosen_config": {
+      "cluster_dims": 5,
+      "min_cluster_size": 50,
+      "min_samples": 5,
+      "random_state": 42,
+      "umap_neighbors": 15
+    },
+    "commemoration_patterns": {
+      "a": "(?:mourn|martyr|funeral|condolence|memorial|commemorat|40th day|fortieth|procession|pays? (?:tribute|respects)|bereave).{0,140}(?:Khamenei|Supreme Leader|Leader of the (?:Islamic )?Revolution|(?:the )?late Leader|Imam Khamenei)|(?:Khamenei|Supreme Leader|Leader of the (?:Islamic )?Revolution|(?:the )?late Leader|Imam Khamenei).{0,140}(?:mourn|martyr|funeral|condolence|memorial|commemorat|40th day|fortieth|procession|pays? (?:tribute|respects)|bereave)",
+      "b": "Yom Ha-?Shoah|Holocaust (?:Remembrance|survivor|memorial|Day)|Memorial Day|Yom Ha-?Zikaron|Remembrance Day|Zikaron|fallen (?:soldiers|heroes)|soldiers? fell in battle|may (?:his|her|their) memory be|(?:Oct(?:ober|\\.)?|October) 7.{0,60}(?:memorial|commemorat|remember|victims)|(?:memorial|commemorat|remember).{0,60}(?:Oct(?:ober|\\.)?|October) 7"
+    },
+    "commemoration_shares": [
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.002688513,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 1425,
+        "share": 0.0,
+        "successes": 0
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0103759846,
+        "ci_low": 0.0003257653,
+        "measure": "(a) Khamenei mourning",
+        "n": 542,
+        "share": 0.0018450185,
+        "successes": 1
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.1397418778,
+        "ci_low": 0.1078973656,
+        "measure": "(a) Khamenei mourning",
+        "n": 1635,
+        "share": 0.1229357798,
+        "successes": 201
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0050717184,
+        "ci_low": 0.0001586201,
+        "measure": "(a) Khamenei mourning",
+        "n": 1113,
+        "share": 0.0008984726,
+        "successes": 1
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0326868083,
+        "ci_low": 0.0246664382,
+        "measure": "(a) Khamenei mourning",
+        "n": 6619,
+        "share": 0.028403082,
+        "successes": 188
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0061380702,
+        "ci_low": 4.33680869e-19,
+        "measure": "(a) Khamenei mourning",
+        "n": 622,
+        "share": 0.0,
+        "successes": 0
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0164235663,
+        "ci_low": 0.0058612426,
+        "measure": "(b) Israeli national commemoration",
+        "n": 1425,
+        "share": 0.0098245614,
+        "successes": 14
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.051882253,
+        "ci_low": 0.021108646,
+        "measure": "(b) Israeli national commemoration",
+        "n": 542,
+        "share": 0.0332103321,
+        "successes": 18
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0034564089,
+        "ci_low": 0.0001079742,
+        "measure": "(b) Israeli national commemoration",
+        "n": 1635,
+        "share": 0.0006116208,
+        "successes": 1
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.017610508,
+        "ci_low": 0.0055274751,
+        "measure": "(b) Israeli national commemoration",
+        "n": 1113,
+        "share": 0.0098831986,
+        "successes": 11
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0005800318,
+        "ci_low": -5.421010862e-20,
+        "measure": "(b) Israeli national commemoration",
+        "n": 6619,
+        "share": 0.0,
+        "successes": 0
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0293392307,
+        "ci_low": 0.0087558147,
+        "measure": "(b) Israeli national commemoration",
+        "n": 622,
+        "share": 0.0160771704,
+        "successes": 10
+      }
+    ],
+    "commemoration_weekly": [
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0123981433,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 306,
+        "share": 0.0,
+        "successes": 0,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.018394139,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 205,
+        "share": 0.0,
+        "successes": 0,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.3297738598,
+        "ci_low": 0.2338190526,
+        "measure": "(a) Khamenei mourning",
+        "n": 333,
+        "share": 0.2792792793,
+        "successes": 93,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0223057856,
+        "ci_low": 0.0007064475,
+        "measure": "(a) Khamenei mourning",
+        "n": 250,
+        "share": 0.004,
+        "successes": 1,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0979483239,
+        "ci_low": 0.0629515326,
+        "measure": "(a) Khamenei mourning",
+        "n": 915,
+        "share": 0.0786885246,
+        "successes": 72,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.027275057,
+        "ci_low": 1.734723476e-18,
+        "measure": "(a) Khamenei mourning",
+        "n": 137,
+        "share": 0.0,
+        "successes": 0,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0160837186,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 235,
+        "share": 0.0,
+        "successes": 0,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0487238425,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 75,
+        "share": 0.0,
+        "successes": 0,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.1177802696,
+        "ci_low": 0.0589896851,
+        "measure": "(a) Khamenei mourning",
+        "n": 346,
+        "share": 0.0838150289,
+        "successes": 29,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0251336179,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 149,
+        "share": 0.0,
+        "successes": 0,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0267076168,
+        "ci_low": 0.0107781799,
+        "measure": "(a) Khamenei mourning",
+        "n": 1059,
+        "share": 0.0169971671,
+        "successes": 18,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0447506237,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 82,
+        "share": 0.0,
+        "successes": 0,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0159501559,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 237,
+        "share": 0.0,
+        "successes": 0,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0687922361,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 52,
+        "share": 0.0,
+        "successes": 0,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.1060909123,
+        "ci_low": 0.0326501051,
+        "measure": "(a) Khamenei mourning",
+        "n": 168,
+        "share": 0.0595238095,
+        "successes": 10,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.02891762,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 129,
+        "share": 0.0,
+        "successes": 0,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0274980475,
+        "ci_low": 0.0101939732,
+        "measure": "(a) Khamenei mourning",
+        "n": 894,
+        "share": 0.0167785235,
+        "successes": 15,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0388648535,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 95,
+        "share": 0.0,
+        "successes": 0,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0156895766,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 241,
+        "share": 0.0,
+        "successes": 0,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.049992008,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 73,
+        "share": 0.0,
+        "successes": 0,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0449242794,
+        "ci_low": 0.0053278934,
+        "measure": "(a) Khamenei mourning",
+        "n": 192,
+        "share": 0.015625,
+        "successes": 3,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0230246058,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 163,
+        "share": 0.0,
+        "successes": 0,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0265714521,
+        "ci_low": 0.0101573203,
+        "measure": "(a) Khamenei mourning",
+        "n": 972,
+        "share": 0.0164609053,
+        "successes": 16,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0388648535,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 95,
+        "share": 0.0,
+        "successes": 0,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0188453264,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 200,
+        "share": 0.0,
+        "successes": 0,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.1042699975,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 33,
+        "share": 0.0,
+        "successes": 0,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0737458013,
+        "ci_low": 0.013946361,
+        "measure": "(a) Khamenei mourning",
+        "n": 154,
+        "share": 0.0324675325,
+        "successes": 5,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.02891762,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 129,
+        "share": 0.0,
+        "successes": 0,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0072845711,
+        "ci_low": 0.000550295,
+        "measure": "(a) Khamenei mourning",
+        "n": 997,
+        "share": 0.0020060181,
+        "successes": 2,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0558015313,
+        "ci_low": 3.469446952e-18,
+        "measure": "(a) Khamenei mourning",
+        "n": 65,
+        "share": 0.0,
+        "successes": 0,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0258090646,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 145,
+        "share": 0.0,
+        "successes": 0,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0994291205,
+        "ci_low": 0.0033384534,
+        "measure": "(a) Khamenei mourning",
+        "n": 53,
+        "share": 0.0188679245,
+        "successes": 1,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.2236963876,
+        "ci_low": 0.1311210333,
+        "measure": "(a) Khamenei mourning",
+        "n": 255,
+        "share": 0.1725490196,
+        "successes": 44,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0240329314,
+        "ci_low": 1.734723476e-18,
+        "measure": "(a) Khamenei mourning",
+        "n": 156,
+        "share": 0.0,
+        "successes": 0,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0782804008,
+        "ci_low": 0.0476244521,
+        "measure": "(a) Khamenei mourning",
+        "n": 948,
+        "share": 0.0611814346,
+        "successes": 58,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0506511726,
+        "ci_low": 3.469446952e-18,
+        "measure": "(a) Khamenei mourning",
+        "n": 72,
+        "share": 0.0,
+        "successes": 0,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0592438679,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 61,
+        "share": 0.0,
+        "successes": 0,
+        "week": 6,
+        "week_start": "11 Apr"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0700466199,
+        "ci_low": 0.0,
+        "measure": "(a) Khamenei mourning",
+        "n": 51,
+        "share": 0.0,
+        "successes": 0,
+        "week": 6,
+        "week_start": "11 Apr"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.1407534088,
+        "ci_low": 0.0575340024,
+        "measure": "(a) Khamenei mourning",
+        "n": 187,
+        "share": 0.0909090909,
+        "successes": 17,
+        "week": 6,
+        "week_start": "11 Apr"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.027275057,
+        "ci_low": 1.734723476e-18,
+        "measure": "(a) Khamenei mourning",
+        "n": 137,
+        "share": 0.0,
+        "successes": 0,
+        "week": 6,
+        "week_start": "11 Apr"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0172230079,
+        "ci_low": 0.0040715445,
+        "measure": "(a) Khamenei mourning",
+        "n": 834,
+        "share": 0.0083932854,
+        "successes": 7,
+        "week": 6,
+        "week_start": "11 Apr"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0481135851,
+        "ci_low": 3.469446952e-18,
+        "measure": "(a) Khamenei mourning",
+        "n": 76,
+        "share": 0.0,
+        "successes": 0,
+        "week": 6,
+        "week_start": "11 Apr"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0123981433,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 306,
+        "share": 0.0,
+        "successes": 0,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0421348745,
+        "ci_low": 0.0049891921,
+        "measure": "(b) Israeli national commemoration",
+        "n": 205,
+        "share": 0.0146341463,
+        "successes": 3,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0114043528,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 333,
+        "share": 0.0,
+        "successes": 0,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0151332995,
+        "ci_low": 8.67361738e-19,
+        "measure": "(b) Israeli national commemoration",
+        "n": 250,
+        "share": 0.0,
+        "successes": 0,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0041807635,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 915,
+        "share": 0.0,
+        "successes": 0,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.027275057,
+        "ci_low": 1.734723476e-18,
+        "measure": "(b) Israeli national commemoration",
+        "n": 137,
+        "share": 0.0,
+        "successes": 0,
+        "week": 0,
+        "week_start": "28 Feb"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0304941946,
+        "ci_low": 0.0023370352,
+        "measure": "(b) Israeli national commemoration",
+        "n": 235,
+        "share": 0.0085106383,
+        "successes": 2,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0717336555,
+        "ci_low": 0.0023575511,
+        "measure": "(b) Israeli national commemoration",
+        "n": 75,
+        "share": 0.0133333333,
+        "successes": 1,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0109805706,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 346,
+        "share": 0.0,
+        "successes": 0,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0370333601,
+        "ci_low": 0.0011857126,
+        "measure": "(b) Israeli national commemoration",
+        "n": 149,
+        "share": 0.0067114094,
+        "successes": 1,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0036143291,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 1059,
+        "share": 0.0,
+        "successes": 0,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0658933969,
+        "ci_low": 0.0021559921,
+        "measure": "(b) Israeli national commemoration",
+        "n": 82,
+        "share": 0.012195122,
+        "successes": 1,
+        "week": 1,
+        "week_start": "07 Mar"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0159501559,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 237,
+        "share": 0.0,
+        "successes": 0,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0687922361,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 52,
+        "share": 0.0,
+        "successes": 0,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0223546683,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 168,
+        "share": 0.0,
+        "successes": 0,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.02891762,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 129,
+        "share": 0.0,
+        "successes": 0,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0042785492,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 894,
+        "share": 0.0,
+        "successes": 0,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0388648535,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 95,
+        "share": 0.0,
+        "successes": 0,
+        "week": 2,
+        "week_start": "14 Mar"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0297479031,
+        "ci_low": 0.002278776,
+        "measure": "(b) Israeli national commemoration",
+        "n": 241,
+        "share": 0.0082987552,
+        "successes": 2,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.1140009163,
+        "ci_low": 0.0140739404,
+        "measure": "(b) Israeli national commemoration",
+        "n": 73,
+        "share": 0.0410958904,
+        "successes": 3,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0196151461,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 192,
+        "share": 0.0,
+        "successes": 0,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0527081396,
+        "ci_low": 0.0062787507,
+        "measure": "(b) Israeli national commemoration",
+        "n": 163,
+        "share": 0.018404908,
+        "successes": 3,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0039365604,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 972,
+        "share": 0.0,
+        "successes": 0,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0388648535,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 95,
+        "share": 0.0,
+        "successes": 0,
+        "week": 3,
+        "week_start": "21 Mar"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0502870869,
+        "ci_low": 0.0078044264,
+        "measure": "(b) Israeli national commemoration",
+        "n": 200,
+        "share": 0.02,
+        "successes": 4,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.2357260565,
+        "ci_low": 0.0314039415,
+        "measure": "(b) Israeli national commemoration",
+        "n": 33,
+        "share": 0.0909090909,
+        "successes": 3,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0243374513,
+        "ci_low": -1.734723476e-18,
+        "measure": "(b) Israeli national commemoration",
+        "n": 154,
+        "share": 0.0,
+        "successes": 0,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0547666311,
+        "ci_low": 0.0042620704,
+        "measure": "(b) Israeli national commemoration",
+        "n": 129,
+        "share": 0.015503876,
+        "successes": 2,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0038382291,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 997,
+        "share": 0.0,
+        "successes": 0,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0558015313,
+        "ci_low": 3.469446952e-18,
+        "measure": "(b) Israeli national commemoration",
+        "n": 65,
+        "share": 0.0,
+        "successes": 0,
+        "week": 4,
+        "week_start": "28 Mar"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0488925448,
+        "ci_low": 0.0037907525,
+        "measure": "(b) Israeli national commemoration",
+        "n": 145,
+        "share": 0.0137931034,
+        "successes": 2,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.1537020831,
+        "ci_low": 0.0194366615,
+        "measure": "(b) Israeli national commemoration",
+        "n": 53,
+        "share": 0.0566037736,
+        "successes": 3,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0218751205,
+        "ci_low": 0.0006925889,
+        "measure": "(b) Israeli national commemoration",
+        "n": 255,
+        "share": 0.0039215686,
+        "successes": 1,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0354128644,
+        "ci_low": 0.0011324653,
+        "measure": "(b) Israeli national commemoration",
+        "n": 156,
+        "share": 0.0064102564,
+        "successes": 1,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0040358179,
+        "ci_low": 0.0,
+        "measure": "(b) Israeli national commemoration",
+        "n": 948,
+        "share": 0.0,
+        "successes": 0,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0506511726,
+        "ci_low": 3.469446952e-18,
+        "measure": "(b) Israeli national commemoration",
+        "n": 72,
+        "share": 0.0,
+        "successes": 0,
+        "week": 5,
+        "week_start": "04 Apr"
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.1568280168,
+        "ci_low": 0.0257937045,
+        "measure": "(b) Israeli national commemoration",
+        "n": 61,
+        "share": 0.0655737705,
+        "successes": 4,
+        "week": 6,
+        "week_start": "11 Apr"
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.2097823468,
+        "ci_low": 0.0426080731,
+        "measure": "(b) Israeli national commemoration",
+        "n": 51,
+        "share": 0.0980392157,
+        "successes": 5,
+        "week": 6,
+        "week_start": "11 Apr"
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0201290581,
+        "ci_low": 1.734723476e-18,
+        "measure": "(b) Israeli national commemoration",
+        "n": 187,
+        "share": 0.0,
+        "successes": 0,
+        "week": 6,
+        "week_start": "11 Apr"
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0726649884,
+        "ci_low": 0.0114115252,
+        "measure": "(b) Israeli national commemoration",
+        "n": 137,
+        "share": 0.0291970803,
+        "successes": 4,
+        "week": 6,
+        "week_start": "11 Apr"
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0045849472,
+        "ci_low": -4.33680869e-19,
+        "measure": "(b) Israeli national commemoration",
+        "n": 834,
+        "share": 0.0,
+        "successes": 0,
+        "week": 6,
+        "week_start": "11 Apr"
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.2099921775,
+        "ci_low": 0.06356819,
+        "measure": "(b) Israeli national commemoration",
+        "n": 76,
+        "share": 0.1184210526,
+        "successes": 9,
+        "week": 6,
+        "week_start": "11 Apr"
+      }
+    ],
+    "embedding_model": "BAAI/bge-small-en-v1.5",
+    "grid": [
+      {
+        "max_topics": 129,
+        "mean_ari": 0.924081094,
+        "min_ari": 0.9018643014,
+        "min_cluster_size": 20,
+        "min_topics": 116,
+        "noise_share": 0.3139091442
+      },
+      {
+        "max_topics": 76,
+        "mean_ari": 0.9134282665,
+        "min_ari": 0.8670299404,
+        "min_cluster_size": 35,
+        "min_topics": 70,
+        "noise_share": 0.3257899589
+      },
+      {
+        "max_topics": 56,
+        "mean_ari": 0.9123392579,
+        "min_ari": 0.8673585078,
+        "min_cluster_size": 50,
+        "min_topics": 51,
+        "noise_share": 0.338550834
+      },
+      {
+        "max_topics": 38,
+        "mean_ari": 0.4465559469,
+        "min_ari": 0.0067140704,
+        "min_cluster_size": 80,
+        "min_topics": 4,
+        "noise_share": 0.2670773615
+      },
+      {
+        "max_topics": 4,
+        "mean_ari": 0.9024902487,
+        "min_ari": 0.8086613071,
+        "min_cluster_size": 120,
+        "min_topics": 3,
+        "noise_share": 0.0283924231
+      }
+    ],
+    "mean_ari": 0.9123392579270356,
+    "min_ari": 0.8673585078217371,
+    "min_words": 4,
+    "n_posts_in_model": 11931,
+    "n_topics": 51,
+    "noise_share": 0.33710502053474145,
+    "noise_share_by_channel": {
+      "idfofficial": 0.1354385965,
+      "iltvnews": 0.3870967742,
+      "irna-en": 0.3113149847,
+      "jewishbreakingnewstelegram": 0.4487410072,
+      "presstv": 0.3511346445,
+      "thetimesofisrael2022": 0.4758842444
+    },
+    "selection_rule": "mean ARI >= 0.5, 20 <= topics <= 60, then lowest noise share (20-topic floor added after the 120 setting collapsed to 3-4 topics)",
+    "topic_cross_check": [
+      {
+        "channel_slug": "presstv",
+        "holocaust_topic_share_of_assigned": 0.0020983912,
+        "khamenei_topic_share_of_assigned": 0.1042200979
+      },
+      {
+        "channel_slug": "irna-en",
+        "holocaust_topic_share_of_assigned": 0.0,
+        "khamenei_topic_share_of_assigned": 0.1856127886
+      },
+      {
+        "channel_slug": "idfofficial",
+        "holocaust_topic_share_of_assigned": 0.0016233766,
+        "khamenei_topic_share_of_assigned": 0.0
+      },
+      {
+        "channel_slug": "iltvnews",
+        "holocaust_topic_share_of_assigned": 0.0650154799,
+        "khamenei_topic_share_of_assigned": 0.0340557276
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "holocaust_topic_share_of_assigned": 0.1042944785,
+        "khamenei_topic_share_of_assigned": 0.0122699387
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "holocaust_topic_share_of_assigned": 0.0244698206,
+        "khamenei_topic_share_of_assigned": 0.0163132137
+      }
+    ],
+    "topic_kinds": [
+      {
+        "kind": "Iran-only",
+        "posts": 3196,
+        "share_of_clustered_posts": 0.4040965988,
+        "topics": 17
+      },
+      {
+        "kind": "Israel-only",
+        "posts": 2598,
+        "share_of_clustered_posts": 0.3284865343,
+        "topics": 20
+      },
+      {
+        "kind": "shared across Iran/Israel",
+        "posts": 2115,
+        "share_of_clustered_posts": 0.2674168669,
+        "topics": 14
+      }
+    ],
+    "topic_profiles": [
+      {
+        "iran_weight": 0.0,
+        "kind": "Israel-only",
+        "label": "IDF: Home Front Command all-clear (template)",
+        "n_posts": 238,
+        "top_channel": "idfofficial",
+        "top_channel_weight": 1.0,
+        "topic_id": 0
+      },
+      {
+        "iran_weight": 0.0,
+        "kind": "Israel-only",
+        "label": "IDF: missile alert and shelter instructions (template)",
+        "n_posts": 321,
+        "top_channel": "idfofficial",
+        "top_channel_weight": 0.9047824041,
+        "topic_id": 1
+      },
+      {
+        "iran_weight": 0.0197120225,
+        "kind": "Israel-only",
+        "label": "Home Front Command rescue at impact sites",
+        "n_posts": 107,
+        "top_channel": "idfofficial",
+        "top_channel_weight": 0.9278250605,
+        "topic_id": 2
+      },
+      {
+        "iran_weight": 0.0,
+        "kind": "Israel-only",
+        "label": "Home Front Command instructions after sirens",
+        "n_posts": 57,
+        "top_channel": "iltvnews",
+        "top_channel_weight": 0.610522501,
+        "topic_id": 3
+      },
+      {
+        "iran_weight": 0.023996479,
+        "kind": "Israel-only",
+        "label": "Flights and Ben Gurion airport",
+        "n_posts": 73,
+        "top_channel": "jewishbreakingnewstelegram",
+        "top_channel_weight": 0.5586026697,
+        "topic_id": 4
+      },
+      {
+        "iran_weight": 0.6510009639,
+        "kind": "shared across Iran/Israel",
+        "label": "Yemen / Houthis / resistance axis",
+        "n_posts": 82,
+        "top_channel": "presstv",
+        "top_channel_weight": 0.5385890576,
+        "topic_id": 5
+      },
+      {
+        "iran_weight": 0.8997541718,
+        "kind": "Iran-only",
+        "label": "President Pezeshkian statements",
+        "n_posts": 189,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.6802766729,
+        "topic_id": 6
+      },
+      {
+        "iran_weight": 0.0240196896,
+        "kind": "Israel-only",
+        "label": "IDF Chief of Staff Zamir assessments",
+        "n_posts": 71,
+        "top_channel": "idfofficial",
+        "top_channel_weight": 0.5354070085,
+        "topic_id": 7
+      },
+      {
+        "iran_weight": 0.0171162873,
+        "kind": "Israel-only",
+        "label": "IDF waves of strikes on Tehran",
+        "n_posts": 78,
+        "top_channel": "idfofficial",
+        "top_channel_weight": 0.6667492005,
+        "topic_id": 8
+      },
+      {
+        "iran_weight": 0.7621542221,
+        "kind": "shared across Iran/Israel",
+        "label": "Arrests of 'mercenaries' and Mossad plots in Iran",
+        "n_posts": 53,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.4112574019,
+        "topic_id": 9
+      },
+      {
+        "iran_weight": 0.0567631092,
+        "kind": "Israel-only",
+        "label": "Killed Iranian commanders (intelligence/IRGC)",
+        "n_posts": 146,
+        "top_channel": "iltvnews",
+        "top_channel_weight": 0.3399006313,
+        "topic_id": 10
+      },
+      {
+        "iran_weight": 0.0017542626,
+        "kind": "Israel-only",
+        "label": "Israeli Air Force strikes on Iranian targets",
+        "n_posts": 105,
+        "top_channel": "idfofficial",
+        "top_channel_weight": 0.4275018426,
+        "topic_id": 11
+      },
+      {
+        "iran_weight": 0.0021624645,
+        "kind": "Israel-only",
+        "label": "IDF strike reports on the 'Iranian terror regime'",
+        "n_posts": 97,
+        "top_channel": "idfofficial",
+        "top_channel_weight": 0.5570908671,
+        "topic_id": 12
+      },
+      {
+        "iran_weight": 0.900937481,
+        "kind": "Iran-only",
+        "label": "Pro-government rallies in Iran",
+        "n_posts": 350,
+        "top_channel": "presstv",
+        "top_channel_weight": 0.558360921,
+        "topic_id": 13
+      },
+      {
+        "iran_weight": 0.933965957,
+        "kind": "Iran-only",
+        "label": "Quds Day rallies",
+        "n_posts": 100,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.5926643329,
+        "topic_id": 14
+      },
+      {
+        "iran_weight": 0.9687016926,
+        "kind": "Iran-only",
+        "label": "Parliament Speaker Ghalibaf",
+        "n_posts": 108,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.6645192148,
+        "topic_id": 15
+      },
+      {
+        "iran_weight": 0.2134703743,
+        "kind": "shared across Iran/Israel",
+        "label": "Lebanon ceasefire and truce",
+        "n_posts": 102,
+        "top_channel": "thetimesofisrael2022",
+        "top_channel_weight": 0.5952000447,
+        "topic_id": 16
+      },
+      {
+        "iran_weight": 0.484063733,
+        "kind": "shared across Iran/Israel",
+        "label": "Islamabad Iran-US talks",
+        "n_posts": 136,
+        "top_channel": "thetimesofisrael2022",
+        "top_channel_weight": 0.2777732563,
+        "topic_id": 17
+      },
+      {
+        "iran_weight": 0.8222868159,
+        "kind": "Iran-only",
+        "label": "Khamenei / Leader: mourning and martyrdom",
+        "n_posts": 681,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.5266032809,
+        "topic_id": 18
+      },
+      {
+        "iran_weight": 0.8511048539,
+        "kind": "Iran-only",
+        "label": "Funerals of martyred IRGC commanders",
+        "n_posts": 133,
+        "top_channel": "presstv",
+        "top_channel_weight": 0.4792474698,
+        "topic_id": 19
+      },
+      {
+        "iran_weight": 0.0792169329,
+        "kind": "Israel-only",
+        "label": "Trump on Truth Social / Epstein",
+        "n_posts": 56,
+        "top_channel": "jewishbreakingnewstelegram",
+        "top_channel_weight": 0.4724589844,
+        "topic_id": 20
+      },
+      {
+        "iran_weight": 0.170118802,
+        "kind": "Israel-only",
+        "label": "Air-raid sirens",
+        "n_posts": 123,
+        "top_channel": "iltvnews",
+        "top_channel_weight": 0.441148347,
+        "topic_id": 21
+      },
+      {
+        "iran_weight": 0.0299944624,
+        "kind": "Israel-only",
+        "label": "IDF soldiers killed or injured in Lebanon",
+        "n_posts": 82,
+        "top_channel": "iltvnews",
+        "top_channel_weight": 0.3317257997,
+        "topic_id": 22
+      },
+      {
+        "iran_weight": 0.8219855317,
+        "kind": "Iran-only",
+        "label": "Iranian army drone strikes",
+        "n_posts": 104,
+        "top_channel": "presstv",
+        "top_channel_weight": 0.4366255795,
+        "topic_id": 23
+      },
+      {
+        "iran_weight": 0.3755229819,
+        "kind": "shared across Iran/Israel",
+        "label": "Strikes on Gulf bases (Bahrain, Dubai, Iraq)",
+        "n_posts": 378,
+        "top_channel": "jewishbreakingnewstelegram",
+        "top_channel_weight": 0.3275480784,
+        "topic_id": 24
+      },
+      {
+        "iran_weight": 0.7815373247,
+        "kind": "shared across Iran/Israel",
+        "label": "Israeli strikes on Lebanon",
+        "n_posts": 180,
+        "top_channel": "presstv",
+        "top_channel_weight": 0.6087189713,
+        "topic_id": 25
+      },
+      {
+        "iran_weight": 0.0148054178,
+        "kind": "Israel-only",
+        "label": "IDF strikes on Hezbollah in Beirut",
+        "n_posts": 65,
+        "top_channel": "idfofficial",
+        "top_channel_weight": 0.4020319875,
+        "topic_id": 26
+      },
+      {
+        "iran_weight": 0.0028196392,
+        "kind": "Israel-only",
+        "label": "IDF vs Hezbollah in southern Lebanon",
+        "n_posts": 156,
+        "top_channel": "idfofficial",
+        "top_channel_weight": 0.6036900115,
+        "topic_id": 27
+      },
+      {
+        "iran_weight": 0.1203060556,
+        "kind": "Israel-only",
+        "label": "Hezbollah-IDF exchanges",
+        "n_posts": 95,
+        "top_channel": "idfofficial",
+        "top_channel_weight": 0.6061954681,
+        "topic_id": 28
+      },
+      {
+        "iran_weight": 0.0187857896,
+        "kind": "Israel-only",
+        "label": "Missile impacts and injured in Israel",
+        "n_posts": 219,
+        "top_channel": "iltvnews",
+        "top_channel_weight": 0.3875637332,
+        "topic_id": 29
+      },
+      {
+        "iran_weight": 0.6040647038,
+        "kind": "shared across Iran/Israel",
+        "label": "Iranian missiles on Tel Aviv",
+        "n_posts": 122,
+        "top_channel": "presstv",
+        "top_channel_weight": 0.4993619996,
+        "topic_id": 30
+      },
+      {
+        "iran_weight": 0.382769584,
+        "kind": "shared across Iran/Israel",
+        "label": "Footage of Iranian missile aftermath",
+        "n_posts": 128,
+        "top_channel": "presstv",
+        "top_channel_weight": 0.3334448812,
+        "topic_id": 31
+      },
+      {
+        "iran_weight": 0.8887856058,
+        "kind": "Iran-only",
+        "label": "'Occupied territories' missile strikes (Press TV)",
+        "n_posts": 203,
+        "top_channel": "presstv",
+        "top_channel_weight": 0.8249805449,
+        "topic_id": 32
+      },
+      {
+        "iran_weight": 0.0106246825,
+        "kind": "Israel-only",
+        "label": "Holocaust remembrance, Jewish life and antisemitism",
+        "n_posts": 81,
+        "top_channel": "thetimesofisrael2022",
+        "top_channel_weight": 0.5280691732,
+        "topic_id": 33
+      },
+      {
+        "iran_weight": 0.0369000971,
+        "kind": "Israel-only",
+        "label": "Missile launches toward Israel (breaking alerts)",
+        "n_posts": 132,
+        "top_channel": "jewishbreakingnewstelegram",
+        "top_channel_weight": 0.6719588022,
+        "topic_id": 34
+      },
+      {
+        "iran_weight": 0.8839208763,
+        "kind": "Iran-only",
+        "label": "Nuclear sites and the IAEA",
+        "n_posts": 74,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.6362476781,
+        "topic_id": 35
+      },
+      {
+        "iran_weight": 0.9509255747,
+        "kind": "Iran-only",
+        "label": "Minab school strike",
+        "n_posts": 152,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.525697796,
+        "topic_id": 36
+      },
+      {
+        "iran_weight": 0.8482658055,
+        "kind": "Iran-only",
+        "label": "Civilian damage from US-Israeli airstrikes in Iran",
+        "n_posts": 159,
+        "top_channel": "presstv",
+        "top_channel_weight": 0.6580993878,
+        "topic_id": 37
+      },
+      {
+        "iran_weight": 0.7911245859,
+        "kind": "shared across Iran/Israel",
+        "label": "Casualty tolls and Red Crescent",
+        "n_posts": 86,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.4808124247,
+        "topic_id": 38
+      },
+      {
+        "iran_weight": 0.9569469962,
+        "kind": "Iran-only",
+        "label": "Drones shot down by Iranian air defence",
+        "n_posts": 120,
+        "top_channel": "presstv",
+        "top_channel_weight": 0.6522494942,
+        "topic_id": 39
+      },
+      {
+        "iran_weight": 0.3775646912,
+        "kind": "shared across Iran/Israel",
+        "label": "Downed US fighter jet and rescue mission",
+        "n_posts": 164,
+        "top_channel": "jewishbreakingnewstelegram",
+        "top_channel_weight": 0.3169502209,
+        "topic_id": 40
+      },
+      {
+        "iran_weight": 0.2365273437,
+        "kind": "shared across Iran/Israel",
+        "label": "Commentary on Israel, Iran and the West",
+        "n_posts": 333,
+        "top_channel": "thetimesofisrael2022",
+        "top_channel_weight": 0.3417425341,
+        "topic_id": 41
+      },
+      {
+        "iran_weight": 0.8817226847,
+        "kind": "Iran-only",
+        "label": "Khatam al-Anbiya HQ / armed forces statements",
+        "n_posts": 149,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.514559463,
+        "topic_id": 42
+      },
+      {
+        "iran_weight": 0.7014989674,
+        "kind": "shared across Iran/Israel",
+        "label": "Oil prices and war economy",
+        "n_posts": 65,
+        "top_channel": "presstv",
+        "top_channel_weight": 0.4981835667,
+        "topic_id": 43
+      },
+      {
+        "iran_weight": 0.9197324402,
+        "kind": "Iran-only",
+        "label": "Foreign Minister Araghchi",
+        "n_posts": 219,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.7435330666,
+        "topic_id": 44
+      },
+      {
+        "iran_weight": 0.7227823328,
+        "kind": "shared across Iran/Israel",
+        "label": "Attacks on universities and the Pasteur Institute",
+        "n_posts": 80,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.521846784,
+        "topic_id": 45
+      },
+      {
+        "iran_weight": 0.9300517774,
+        "kind": "Iran-only",
+        "label": "Iranian diplomacy at the UN (Baqaei)",
+        "n_posts": 140,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.7659974268,
+        "topic_id": 46
+      },
+      {
+        "iran_weight": 0.8874057316,
+        "kind": "Iran-only",
+        "label": "IRGC statements",
+        "n_posts": 100,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.465358576,
+        "topic_id": 47
+      },
+      {
+        "iran_weight": 0.9815049881,
+        "kind": "Iran-only",
+        "label": "Operation True Promise 4 waves",
+        "n_posts": 215,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.5638514826,
+        "topic_id": 48
+      },
+      {
+        "iran_weight": 0.1861615469,
+        "kind": "Israel-only",
+        "label": "Trump, the war and Hormuz",
+        "n_posts": 296,
+        "top_channel": "thetimesofisrael2022",
+        "top_channel_weight": 0.5263223108,
+        "topic_id": 49
+      },
+      {
+        "iran_weight": 0.7257577346,
+        "kind": "shared across Iran/Israel",
+        "label": "Strait of Hormuz shipping",
+        "n_posts": 206,
+        "top_channel": "irna-en",
+        "top_channel_weight": 0.3946563726,
+        "topic_id": 50
+      }
+    ],
+    "unstable": false
+  },
+  "04_actors": {
+    "actor_shares": [
+      {
+        "actor": "Trump",
+        "channel_slug": "idfofficial",
+        "ci_high": 0.002688513,
+        "ci_low": 0.0,
+        "n": 1425,
+        "share": 0.0,
+        "successes": 0
+      },
+      {
+        "actor": "Trump",
+        "channel_slug": "iltvnews",
+        "ci_high": 0.1195658788,
+        "ci_low": 0.0706751832,
+        "n": 542,
+        "share": 0.0922509225,
+        "successes": 50
+      },
+      {
+        "actor": "Trump",
+        "channel_slug": "irna-en",
+        "ci_high": 0.1001800849,
+        "ci_low": 0.073016326,
+        "n": 1635,
+        "share": 0.0856269113,
+        "successes": 140
+      },
+      {
+        "actor": "Trump",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.1360442094,
+        "ci_low": 0.0984039809,
+        "n": 1113,
+        "share": 0.115902965,
+        "successes": 129
+      },
+      {
+        "actor": "Trump",
+        "channel_slug": "presstv",
+        "ci_high": 0.0848205309,
+        "ci_low": 0.0718858413,
+        "n": 6619,
+        "share": 0.0781084756,
+        "successes": 517
+      },
+      {
+        "actor": "Trump",
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.2240877086,
+        "ci_low": 0.1623383669,
+        "n": 622,
+        "share": 0.191318328,
+        "successes": 119
+      },
+      {
+        "actor": "Netanyahu",
+        "channel_slug": "idfofficial",
+        "ci_high": 0.002688513,
+        "ci_low": 0.0,
+        "n": 1425,
+        "share": 0.0,
+        "successes": 0
+      },
+      {
+        "actor": "Netanyahu",
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0800403732,
+        "ci_low": 0.0405834045,
+        "n": 542,
+        "share": 0.057195572,
+        "successes": 31
+      },
+      {
+        "actor": "Netanyahu",
+        "channel_slug": "irna-en",
+        "ci_high": 0.0303311052,
+        "ci_low": 0.0159463785,
+        "n": 1635,
+        "share": 0.0220183486,
+        "successes": 36
+      },
+      {
+        "actor": "Netanyahu",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0403055814,
+        "ci_low": 0.0204384556,
+        "n": 1113,
+        "share": 0.0287511231,
+        "successes": 32
+      },
+      {
+        "actor": "Netanyahu",
+        "channel_slug": "presstv",
+        "ci_high": 0.0155172366,
+        "ci_low": 0.0101275656,
+        "n": 6619,
+        "share": 0.0125396586,
+        "successes": 83
+      },
+      {
+        "actor": "Netanyahu",
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0972390987,
+        "ci_low": 0.0559010576,
+        "n": 622,
+        "share": 0.0739549839,
+        "successes": 46
+      },
+      {
+        "actor": "Khamenei / Mojtaba",
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0119598358,
+        "ci_low": 0.003326296,
+        "n": 1425,
+        "share": 0.0063157895,
+        "successes": 9
+      },
+      {
+        "actor": "Khamenei / Mojtaba",
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0926785411,
+        "ci_low": 0.0499296422,
+        "n": 542,
+        "share": 0.0682656827,
+        "successes": 37
+      },
+      {
+        "actor": "Khamenei / Mojtaba",
+        "channel_slug": "irna-en",
+        "ci_high": 0.2219786231,
+        "ci_low": 0.1830889051,
+        "n": 1635,
+        "share": 0.2018348624,
+        "successes": 330
+      },
+      {
+        "actor": "Khamenei / Mojtaba",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0475419223,
+        "ci_low": 0.0257374659,
+        "n": 1113,
+        "share": 0.0350404313,
+        "successes": 39
+      },
+      {
+        "actor": "Khamenei / Mojtaba",
+        "channel_slug": "presstv",
+        "ci_high": 0.0544146135,
+        "ci_low": 0.0440086181,
+        "n": 6619,
+        "share": 0.0489499924,
+        "successes": 324
+      },
+      {
+        "actor": "Khamenei / Mojtaba",
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0548746214,
+        "ci_low": 0.0247644918,
+        "n": 622,
+        "share": 0.036977492,
+        "successes": 23
+      },
+      {
+        "actor": "Araghchi",
+        "channel_slug": "idfofficial",
+        "ci_high": 0.002688513,
+        "ci_low": 0.0,
+        "n": 1425,
+        "share": 0.0,
+        "successes": 0
+      },
+      {
+        "actor": "Araghchi",
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0103759846,
+        "ci_low": 0.0003257653,
+        "n": 542,
+        "share": 0.0018450185,
+        "successes": 1
+      },
+      {
+        "actor": "Araghchi",
+        "channel_slug": "irna-en",
+        "ci_high": 0.1416734855,
+        "ci_low": 0.1096268807,
+        "n": 1635,
+        "share": 0.1247706422,
+        "successes": 204
+      },
+      {
+        "actor": "Araghchi",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0092041775,
+        "ci_low": 0.0013984544,
+        "n": 1113,
+        "share": 0.0035938904,
+        "successes": 4
+      },
+      {
+        "actor": "Araghchi",
+        "channel_slug": "presstv",
+        "ci_high": 0.0297784948,
+        "ci_low": 0.0221390184,
+        "n": 6619,
+        "share": 0.025683638,
+        "successes": 170
+      },
+      {
+        "actor": "Araghchi",
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0090499098,
+        "ci_low": 0.0002838579,
+        "n": 622,
+        "share": 0.001607717,
+        "successes": 1
+      },
+      {
+        "actor": "Hezbollah",
+        "channel_slug": "idfofficial",
+        "ci_high": 0.2164706794,
+        "ci_low": 0.1753442805,
+        "n": 1425,
+        "share": 0.1950877193,
+        "successes": 278
+      },
+      {
+        "actor": "Hezbollah",
+        "channel_slug": "iltvnews",
+        "ci_high": 0.1092929171,
+        "ci_low": 0.062627807,
+        "n": 542,
+        "share": 0.0830258303,
+        "successes": 45
+      },
+      {
+        "actor": "Hezbollah",
+        "channel_slug": "irna-en",
+        "ci_high": 0.0253571261,
+        "ci_low": 0.0123777375,
+        "n": 1635,
+        "share": 0.0177370031,
+        "successes": 29
+      },
+      {
+        "actor": "Hezbollah",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.1712803594,
+        "ci_low": 0.1294261162,
+        "n": 1113,
+        "share": 0.149146451,
+        "successes": 166
+      },
+      {
+        "actor": "Hezbollah",
+        "channel_slug": "presstv",
+        "ci_high": 0.040718332,
+        "ci_low": 0.0317341737,
+        "n": 6619,
+        "share": 0.0359570932,
+        "successes": 238
+      },
+      {
+        "actor": "Hezbollah",
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.1520094489,
+        "ci_low": 0.1001973306,
+        "n": 622,
+        "share": 0.1237942122,
+        "successes": 77
+      },
+      {
+        "actor": "IRGC",
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0616066061,
+        "ci_low": 0.0390633863,
+        "n": 1425,
+        "share": 0.049122807,
+        "successes": 70
+      },
+      {
+        "actor": "IRGC",
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0451566413,
+        "ci_low": 0.016842055,
+        "n": 542,
+        "share": 0.0276752768,
+        "successes": 15
+      },
+      {
+        "actor": "IRGC",
+        "channel_slug": "irna-en",
+        "ci_high": 0.1235984404,
+        "ci_low": 0.0935314454,
+        "n": 1635,
+        "share": 0.1076452599,
+        "successes": 176
+      },
+      {
+        "actor": "IRGC",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0767332229,
+        "ci_low": 0.0484783349,
+        "n": 1113,
+        "share": 0.0610961366,
+        "successes": 68
+      },
+      {
+        "actor": "IRGC",
+        "channel_slug": "presstv",
+        "ci_high": 0.0801160765,
+        "ci_low": 0.0675307402,
+        "n": 6619,
+        "share": 0.0735760689,
+        "successes": 487
+      },
+      {
+        "actor": "IRGC",
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0313876167,
+        "ci_low": 0.0099031262,
+        "n": 622,
+        "share": 0.0176848875,
+        "successes": 11
+      },
+      {
+        "actor": "IDF",
+        "channel_slug": "idfofficial",
+        "ci_high": 0.6707160956,
+        "ci_low": 0.6211287396,
+        "n": 1425,
+        "share": 0.6463157895,
+        "successes": 921
+      },
+      {
+        "actor": "IDF",
+        "channel_slug": "iltvnews",
+        "ci_high": 0.1878656593,
+        "ci_low": 0.1269537009,
+        "n": 542,
+        "share": 0.1549815498,
+        "successes": 84
+      },
+      {
+        "actor": "IDF",
+        "channel_slug": "irna-en",
+        "ci_high": 0.0604844835,
+        "ci_low": 0.0394894694,
+        "n": 1635,
+        "share": 0.0489296636,
+        "successes": 80
+      },
+      {
+        "actor": "IDF",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.2042790517,
+        "ci_low": 0.1591041802,
+        "n": 1113,
+        "share": 0.1805929919,
+        "successes": 201
+      },
+      {
+        "actor": "IDF",
+        "channel_slug": "presstv",
+        "ci_high": 0.0191665193,
+        "ci_low": 0.0131219569,
+        "n": 6619,
+        "share": 0.0158634235,
+        "successes": 105
+      },
+      {
+        "actor": "IDF",
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.1520094489,
+        "ci_low": 0.1001973306,
+        "n": 622,
+        "share": 0.1237942122,
+        "successes": 77
+      },
+      {
+        "actor": "Hormuz",
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0051030067,
+        "ci_low": 0.0003849771,
+        "n": 1425,
+        "share": 0.0014035088,
+        "successes": 2
+      },
+      {
+        "actor": "Hormuz",
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0239389544,
+        "ci_low": 0.0050831335,
+        "n": 542,
+        "share": 0.0110701107,
+        "successes": 6
+      },
+      {
+        "actor": "Hormuz",
+        "channel_slug": "irna-en",
+        "ci_high": 0.100833807,
+        "ci_low": 0.0735829783,
+        "n": 1635,
+        "share": 0.0862385321,
+        "successes": 141
+      },
+      {
+        "actor": "Hormuz",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0577269786,
+        "ci_low": 0.0334600543,
+        "n": 1113,
+        "share": 0.0440251572,
+        "successes": 49
+      },
+      {
+        "actor": "Hormuz",
+        "channel_slug": "presstv",
+        "ci_high": 0.0521930607,
+        "ci_low": 0.0420023783,
+        "n": 6619,
+        "share": 0.0468348693,
+        "successes": 310
+      },
+      {
+        "actor": "Hormuz",
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0624199678,
+        "ci_low": 0.0300019355,
+        "n": 622,
+        "share": 0.0434083601,
+        "successes": 27
+      }
+    ],
+    "ner_model": "spaCy 3.8.11 core_web_sm 3.8.0",
+    "top_entities": [
+      {
+        "channel_slug": "idfofficial",
+        "entity": "IDF",
+        "posts": 823,
+        "share_of_posts": 0.5775438596
+      },
+      {
+        "channel_slug": "idfofficial",
+        "entity": "Home Front Command",
+        "posts": 752,
+        "share_of_posts": 0.5277192982
+      },
+      {
+        "channel_slug": "idfofficial",
+        "entity": "Israel",
+        "posts": 738,
+        "share_of_posts": 0.5178947368
+      },
+      {
+        "channel_slug": "idfofficial",
+        "entity": "Iran",
+        "posts": 681,
+        "share_of_posts": 0.4778947368
+      },
+      {
+        "channel_slug": "idfofficial",
+        "entity": "Hezbollah",
+        "posts": 262,
+        "share_of_posts": 0.1838596491
+      },
+      {
+        "channel_slug": "idfofficial",
+        "entity": "Israeli Air Force",
+        "posts": 262,
+        "share_of_posts": 0.1838596491
+      },
+      {
+        "channel_slug": "idfofficial",
+        "entity": "Lebanon",
+        "posts": 246,
+        "share_of_posts": 0.1726315789
+      },
+      {
+        "channel_slug": "idfofficial",
+        "entity": "Tehran",
+        "posts": 149,
+        "share_of_posts": 0.1045614035
+      },
+      {
+        "channel_slug": "iltvnews",
+        "entity": "Iran",
+        "posts": 264,
+        "share_of_posts": 0.4870848708
+      },
+      {
+        "channel_slug": "iltvnews",
+        "entity": "Israel",
+        "posts": 218,
+        "share_of_posts": 0.4022140221
+      },
+      {
+        "channel_slug": "iltvnews",
+        "entity": "US",
+        "posts": 90,
+        "share_of_posts": 0.1660516605
+      },
+      {
+        "channel_slug": "iltvnews",
+        "entity": "IDF",
+        "posts": 56,
+        "share_of_posts": 0.1033210332
+      },
+      {
+        "channel_slug": "iltvnews",
+        "entity": "Tehran",
+        "posts": 46,
+        "share_of_posts": 0.0848708487
+      },
+      {
+        "channel_slug": "iltvnews",
+        "entity": "Hezbollah",
+        "posts": 45,
+        "share_of_posts": 0.0830258303
+      },
+      {
+        "channel_slug": "iltvnews",
+        "entity": "Lebanon",
+        "posts": 45,
+        "share_of_posts": 0.0830258303
+      },
+      {
+        "channel_slug": "iltvnews",
+        "entity": "Trump",
+        "posts": 43,
+        "share_of_posts": 0.0793357934
+      },
+      {
+        "channel_slug": "irna-en",
+        "entity": "Iran",
+        "posts": 1182,
+        "share_of_posts": 0.7229357798
+      },
+      {
+        "channel_slug": "irna-en",
+        "entity": "US",
+        "posts": 973,
+        "share_of_posts": 0.5951070336
+      },
+      {
+        "channel_slug": "irna-en",
+        "entity": "Israel",
+        "posts": 782,
+        "share_of_posts": 0.4782874618
+      },
+      {
+        "channel_slug": "irna-en",
+        "entity": "Tehran",
+        "posts": 246,
+        "share_of_posts": 0.1504587156
+      },
+      {
+        "channel_slug": "irna-en",
+        "entity": "Khamenei",
+        "posts": 190,
+        "share_of_posts": 0.1162079511
+      },
+      {
+        "channel_slug": "irna-en",
+        "entity": "Abbas Araghchi",
+        "posts": 182,
+        "share_of_posts": 0.1113149847
+      },
+      {
+        "channel_slug": "irna-en",
+        "entity": "IRGC",
+        "posts": 158,
+        "share_of_posts": 0.0966360856
+      },
+      {
+        "channel_slug": "irna-en",
+        "entity": "Trump",
+        "posts": 112,
+        "share_of_posts": 0.0685015291
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "entity": "Iran",
+        "posts": 594,
+        "share_of_posts": 0.5336927224
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "entity": "Israel",
+        "posts": 501,
+        "share_of_posts": 0.4501347709
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "entity": "US",
+        "posts": 219,
+        "share_of_posts": 0.1967654987
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "entity": "Hezbollah",
+        "posts": 157,
+        "share_of_posts": 0.1410601977
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "entity": "Lebanon",
+        "posts": 141,
+        "share_of_posts": 0.1266846361
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "entity": "IDF",
+        "posts": 133,
+        "share_of_posts": 0.1194968553
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "entity": "Trump",
+        "posts": 97,
+        "share_of_posts": 0.0871518419
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "entity": "Tehran",
+        "posts": 87,
+        "share_of_posts": 0.0781671159
+      },
+      {
+        "channel_slug": "presstv",
+        "entity": "Iran",
+        "posts": 4231,
+        "share_of_posts": 0.639220426
+      },
+      {
+        "channel_slug": "presstv",
+        "entity": "US",
+        "posts": 3080,
+        "share_of_posts": 0.4653270887
+      },
+      {
+        "channel_slug": "presstv",
+        "entity": "Israel",
+        "posts": 2501,
+        "share_of_posts": 0.3778516392
+      },
+      {
+        "channel_slug": "presstv",
+        "entity": "Tehran",
+        "posts": 511,
+        "share_of_posts": 0.0772019943
+      },
+      {
+        "channel_slug": "presstv",
+        "entity": "Trump",
+        "posts": 447,
+        "share_of_posts": 0.0675328599
+      },
+      {
+        "channel_slug": "presstv",
+        "entity": "Lebanon",
+        "posts": 439,
+        "share_of_posts": 0.0663242182
+      },
+      {
+        "channel_slug": "presstv",
+        "entity": "IRGC",
+        "posts": 359,
+        "share_of_posts": 0.0542378003
+      },
+      {
+        "channel_slug": "presstv",
+        "entity": "Palestine",
+        "posts": 345,
+        "share_of_posts": 0.0521226771
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "entity": "Iran",
+        "posts": 345,
+        "share_of_posts": 0.5546623794
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "entity": "Israel",
+        "posts": 216,
+        "share_of_posts": 0.347266881
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "entity": "US",
+        "posts": 130,
+        "share_of_posts": 0.2090032154
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "entity": "Hezbollah",
+        "posts": 75,
+        "share_of_posts": 0.1205787781
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "entity": "Lebanon",
+        "posts": 72,
+        "share_of_posts": 0.115755627
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "entity": "Trump",
+        "posts": 71,
+        "share_of_posts": 0.11414791
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "entity": "Netanyahu",
+        "posts": 45,
+        "share_of_posts": 0.0723472669
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "entity": "IDF",
+        "posts": 34,
+        "share_of_posts": 0.0546623794
+      }
+    ],
+    "triangle_shares": [
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.5437554985,
+        "ci_low": 0.4919377547,
+        "measure": "Iran",
+        "n": 1425,
+        "share": 0.5178947368,
+        "successes": 738
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.578472545,
+        "ci_low": 0.4948088069,
+        "measure": "Iran",
+        "n": 542,
+        "share": 0.536900369,
+        "successes": 291
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.8174993154,
+        "ci_low": 0.7786535307,
+        "measure": "Iran",
+        "n": 1635,
+        "share": 0.7987767584,
+        "successes": 1306
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.5993192501,
+        "ci_low": 0.5412557606,
+        "measure": "Iran",
+        "n": 1113,
+        "share": 0.5705300988,
+        "successes": 635
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.6969755379,
+        "ci_low": 0.6746172316,
+        "measure": "Iran",
+        "n": 6619,
+        "share": 0.6859042151,
+        "successes": 4540
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.6043449232,
+        "ci_low": 0.5266786753,
+        "measure": "Iran",
+        "n": 622,
+        "share": 0.5659163987,
+        "successes": 352
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.7875533955,
+        "ci_low": 0.7436461965,
+        "measure": "Israel",
+        "n": 1425,
+        "share": 0.7663157895,
+        "successes": 1092
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.578472545,
+        "ci_low": 0.4948088069,
+        "measure": "Israel",
+        "n": 542,
+        "share": 0.536900369,
+        "successes": 291
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.5932298296,
+        "ci_low": 0.5452826536,
+        "measure": "Israel",
+        "n": 1635,
+        "share": 0.5694189602,
+        "successes": 931
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.6028700725,
+        "ci_low": 0.544867996,
+        "measure": "Israel",
+        "n": 1113,
+        "share": 0.5741239892,
+        "successes": 639
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.4648029674,
+        "ci_low": 0.4408266624,
+        "measure": "Israel",
+        "n": 6619,
+        "share": 0.4527874301,
+        "successes": 2997
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.5247759742,
+        "ci_low": 0.4464627481,
+        "measure": "Israel",
+        "n": 622,
+        "share": 0.4855305466,
+        "successes": 302
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0198788838,
+        "ci_low": 0.0080048668,
+        "measure": "US",
+        "n": 1425,
+        "share": 0.0126315789,
+        "successes": 18
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.25631326,
+        "ci_low": 0.1867484659,
+        "measure": "US",
+        "n": 542,
+        "share": 0.2195571956,
+        "successes": 119
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.6620710986,
+        "ci_low": 0.6155640549,
+        "measure": "US",
+        "n": 1635,
+        "share": 0.6391437309,
+        "successes": 1045
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.338675024,
+        "ci_low": 0.2843690557,
+        "measure": "US",
+        "n": 1113,
+        "share": 0.3108715184,
+        "successes": 346
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.5285690245,
+        "ci_low": 0.5044983532,
+        "measure": "US",
+        "n": 6619,
+        "share": 0.5165432845,
+        "successes": 3419
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.3838784854,
+        "ci_low": 0.3093345523,
+        "measure": "US",
+        "n": 622,
+        "share": 0.345659164,
+        "successes": 215
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.5381653212,
+        "ci_low": 0.4863300487,
+        "measure": "pair_Iran_Israel",
+        "n": 1425,
+        "share": 0.5122807018,
+        "successes": 730
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.336837485,
+        "ci_low": 0.2601150798,
+        "measure": "pair_Iran_Israel",
+        "n": 542,
+        "share": 0.2970479705,
+        "successes": 161
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.5251227224,
+        "ci_low": 0.476707839,
+        "measure": "pair_Iran_Israel",
+        "n": 1635,
+        "share": 0.5009174312,
+        "successes": 819
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.3524143086,
+        "ci_low": 0.2974912381,
+        "measure": "pair_Iran_Israel",
+        "n": 1113,
+        "share": 0.3243486074,
+        "successes": 361
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.329498393,
+        "ci_low": 0.3070624375,
+        "measure": "pair_Iran_Israel",
+        "n": 6619,
+        "share": 0.3181749509,
+        "successes": 2106
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.2879983307,
+        "ci_low": 0.2198642507,
+        "measure": "pair_Iran_Israel",
+        "n": 622,
+        "share": 0.2524115756,
+        "successes": 157
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0164235663,
+        "ci_low": 0.0058612426,
+        "measure": "pair_Iran_US",
+        "n": 1425,
+        "share": 0.0098245614,
+        "successes": 14
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.1918189129,
+        "ci_low": 0.1303285825,
+        "measure": "pair_Iran_US",
+        "n": 542,
+        "share": 0.1586715867,
+        "successes": 86
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.5865610817,
+        "ci_low": 0.5385272842,
+        "measure": "pair_Iran_US",
+        "n": 1635,
+        "share": 0.5626911315,
+        "successes": 920
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.232359032,
+        "ci_low": 0.1847471339,
+        "measure": "pair_Iran_US",
+        "n": 1113,
+        "share": 0.2075471698,
+        "successes": 231
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.4148002115,
+        "ci_low": 0.3911743075,
+        "measure": "pair_Iran_US",
+        "n": 6619,
+        "share": 0.4029309563,
+        "successes": 2667
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.3046596259,
+        "ci_low": 0.2351599307,
+        "measure": "pair_Iran_US",
+        "n": 622,
+        "share": 0.268488746,
+        "successes": 167
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0198788838,
+        "ci_low": 0.0080048668,
+        "measure": "pair_Israel_US",
+        "n": 1425,
+        "share": 0.0126315789,
+        "successes": 18
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.1256945959,
+        "ci_low": 0.0755386689,
+        "measure": "pair_Israel_US",
+        "n": 542,
+        "share": 0.0977859779,
+        "successes": 53
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.511080105,
+        "ci_low": 0.4626818475,
+        "measure": "pair_Israel_US",
+        "n": 1635,
+        "share": 0.4868501529,
+        "successes": 796
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.1216283446,
+        "ci_low": 0.0859583787,
+        "measure": "pair_Israel_US",
+        "n": 1113,
+        "share": 0.102425876,
+        "successes": 114
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.2971555919,
+        "ci_low": 0.2753843794,
+        "measure": "pair_Israel_US",
+        "n": 6619,
+        "share": 0.2861459435,
+        "successes": 1894
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.1641585246,
+        "ci_low": 0.1104181376,
+        "measure": "pair_Israel_US",
+        "n": 622,
+        "share": 0.1350482315,
+        "successes": 84
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0164235663,
+        "ci_low": 0.0058612426,
+        "measure": "triangle",
+        "n": 1425,
+        "share": 0.0098245614,
+        "successes": 14
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0968550916,
+        "ci_low": 0.0530812269,
+        "measure": "triangle",
+        "n": 542,
+        "share": 0.0719557196,
+        "successes": 39
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.4780351368,
+        "ci_low": 0.4298266034,
+        "measure": "triangle",
+        "n": 1635,
+        "share": 0.45382263,
+        "successes": 742
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0944500109,
+        "ci_low": 0.0629953073,
+        "measure": "triangle",
+        "n": 1113,
+        "share": 0.0772686433,
+        "successes": 86
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.2528030137,
+        "ci_low": 0.2321612541,
+        "measure": "triangle",
+        "n": 6619,
+        "share": 0.2423326787,
+        "successes": 1604
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.1204329169,
+        "ci_low": 0.0742513072,
+        "measure": "triangle",
+        "n": 622,
+        "share": 0.0948553055,
+        "successes": 59
+      }
+    ]
+  },
+  "05_tone": {
+    "channel_mean_range": {
+      "early": 0.21745893765766394,
+      "late": 0.3337672266342428
+    },
+    "emotion_label_shares": [
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.3160698696,
+        "ci_low": 0.2689085783,
+        "label": "fear",
+        "n": 1425,
+        "share": 0.2919298246,
+        "successes": 416
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.3501212642,
+        "ci_low": 0.2724797737,
+        "label": "fear",
+        "n": 542,
+        "share": 0.3099630996,
+        "successes": 168
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.2162866995,
+        "ci_low": 0.17779746,
+        "label": "fear",
+        "n": 1635,
+        "share": 0.1963302752,
+        "successes": 321
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.3825508045,
+        "ci_low": 0.3264499696,
+        "label": "fear",
+        "n": 1113,
+        "share": 0.3539982031,
+        "successes": 394
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.2850865507,
+        "ci_low": 0.263596591,
+        "label": "fear",
+        "n": 6619,
+        "share": 0.2742106058,
+        "successes": 1815
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.3806006251,
+        "ci_low": 0.3062210177,
+        "label": "fear",
+        "n": 622,
+        "share": 0.3424437299,
+        "successes": 213
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.1304704039,
+        "ci_low": 0.0975755118,
+        "label": "anger",
+        "n": 1425,
+        "share": 0.1129824561,
+        "successes": 161
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.2056109361,
+        "ci_low": 0.1421850324,
+        "label": "anger",
+        "n": 542,
+        "share": 0.1715867159,
+        "successes": 93
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.3142444227,
+        "ci_low": 0.2702181278,
+        "label": "anger",
+        "n": 1635,
+        "share": 0.2917431193,
+        "successes": 477
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.1360442094,
+        "ci_low": 0.0984039809,
+        "label": "anger",
+        "n": 1113,
+        "share": 0.115902965,
+        "successes": 129
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.2772900403,
+        "ci_low": 0.255991857,
+        "label": "anger",
+        "n": 6619,
+        "share": 0.2665055144,
+        "successes": 1764
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.1693461659,
+        "ci_low": 0.1148175889,
+        "label": "anger",
+        "n": 622,
+        "share": 0.1398713826,
+        "successes": 87
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0307126913,
+        "ci_low": 0.0153676198,
+        "label": "sadness",
+        "n": 1425,
+        "share": 0.021754386,
+        "successes": 31
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.171991562,
+        "ci_low": 0.1135152574,
+        "label": "sadness",
+        "n": 542,
+        "share": 0.1402214022,
+        "successes": 76
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.140385873,
+        "ci_low": 0.1084737447,
+        "label": "sadness",
+        "n": 1635,
+        "share": 0.1235474006,
+        "successes": 202
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.1168028228,
+        "ci_low": 0.0818300781,
+        "label": "sadness",
+        "n": 1113,
+        "share": 0.097933513,
+        "successes": 109
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0931164167,
+        "ci_low": 0.0795951703,
+        "label": "sadness",
+        "n": 6619,
+        "share": 0.0861157275,
+        "successes": 570
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.2206942434,
+        "ci_low": 0.1593404371,
+        "label": "sadness",
+        "n": 622,
+        "share": 0.1881028939,
+        "successes": 117
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0249385034,
+        "ci_low": 0.0113436597,
+        "label": "disgust",
+        "n": 1425,
+        "share": 0.0168421053,
+        "successes": 24
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.1051612966,
+        "ci_low": 0.0594312922,
+        "label": "disgust",
+        "n": 542,
+        "share": 0.0793357934,
+        "successes": 43
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.1040994155,
+        "ci_low": 0.0764192413,
+        "label": "disgust",
+        "n": 1635,
+        "share": 0.0892966361,
+        "successes": 146
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0993333676,
+        "ci_low": 0.0670657729,
+        "label": "disgust",
+        "n": 1113,
+        "share": 0.0817610063,
+        "successes": 91
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.1225703195,
+        "ci_low": 0.1072164673,
+        "label": "disgust",
+        "n": 6619,
+        "share": 0.1146698897,
+        "successes": 759
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0433318172,
+        "ci_low": 0.0171331109,
+        "label": "disgust",
+        "n": 622,
+        "share": 0.0273311897,
+        "successes": 17
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0039643608,
+        "ci_low": 0.0001238876,
+        "label": "surprise",
+        "n": 1425,
+        "share": 0.0007017544,
+        "successes": 1
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0103759846,
+        "ci_low": 0.0003257653,
+        "label": "surprise",
+        "n": 542,
+        "share": 0.0018450185,
+        "successes": 1
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0120072741,
+        "ci_low": 0.003760852,
+        "label": "surprise",
+        "n": 1635,
+        "share": 0.0067278287,
+        "successes": 11
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0297472145,
+        "ci_low": 0.0130891777,
+        "label": "surprise",
+        "n": 1113,
+        "share": 0.0197663971,
+        "successes": 22
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0124963827,
+        "ci_low": 0.0077126861,
+        "label": "surprise",
+        "n": 6619,
+        "share": 0.0098202145,
+        "successes": 65
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0251723127,
+        "ci_low": 0.0065313377,
+        "label": "surprise",
+        "n": 622,
+        "share": 0.0128617363,
+        "successes": 8
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0091558181,
+        "ci_low": 0.0019311074,
+        "label": "joy",
+        "n": 1425,
+        "share": 0.0042105263,
+        "successes": 6
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.051882253,
+        "ci_low": 0.021108646,
+        "label": "joy",
+        "n": 542,
+        "share": 0.0332103321,
+        "successes": 18
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.1171155454,
+        "ci_low": 0.0878105974,
+        "label": "joy",
+        "n": 1635,
+        "share": 0.101529052,
+        "successes": 166
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0371696918,
+        "ci_low": 0.0182020517,
+        "label": "joy",
+        "n": 1113,
+        "share": 0.0260557053,
+        "successes": 29
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0585333852,
+        "ci_low": 0.0477414612,
+        "label": "joy",
+        "n": 6619,
+        "share": 0.0528780783,
+        "successes": 350
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0661572194,
+        "ci_low": 0.032656079,
+        "label": "joy",
+        "n": 622,
+        "share": 0.0466237942,
+        "successes": 29
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.5772277735,
+        "ci_low": 0.5256527799,
+        "label": "neutral",
+        "n": 1425,
+        "share": 0.5515789474,
+        "successes": 786
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.3025087633,
+        "ci_low": 0.2284905848,
+        "label": "neutral",
+        "n": 542,
+        "share": 0.2638376384,
+        "successes": 143
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.2105889489,
+        "ci_low": 0.1725118419,
+        "label": "neutral",
+        "n": 1635,
+        "share": 0.1908256881,
+        "successes": 312
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.3322542614,
+        "ci_low": 0.278254467,
+        "label": "neutral",
+        "n": 1113,
+        "share": 0.3045822102,
+        "successes": 339
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.2055348831,
+        "ci_low": 0.1864179479,
+        "label": "neutral",
+        "n": 6619,
+        "share": 0.1957999698,
+        "successes": 1296
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.2779724045,
+        "ci_low": 0.2107159917,
+        "label": "neutral",
+        "n": 622,
+        "share": 0.2427652733,
+        "successes": 151
+      }
+    ],
+    "model_note": "cardiffnlp/twitter-roberta-base-sentiment-latest + j-hartmann/emotion-english-distilroberta-base; did not pass validation (kappa < 0.6)",
+    "sentiment_label_shares": [
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.2310061602,
+        "ci_low": 0.188803508,
+        "label": "negative",
+        "n": 1425,
+        "share": 0.209122807,
+        "successes": 298
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.4700625905,
+        "ci_low": 0.3870387734,
+        "label": "negative",
+        "n": 542,
+        "share": 0.4280442804,
+        "successes": 232
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.3745307648,
+        "ci_low": 0.3283080929,
+        "label": "negative",
+        "n": 1635,
+        "share": 0.3510703364,
+        "successes": 574
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.4668660877,
+        "ci_low": 0.4086757819,
+        "label": "negative",
+        "n": 1113,
+        "share": 0.4375561545,
+        "successes": 487
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.4788725515,
+        "ci_low": 0.4548417005,
+        "label": "negative",
+        "n": 6619,
+        "share": 0.4668378909,
+        "successes": 3090
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.4813886538,
+        "ci_low": 0.4035662354,
+        "label": "negative",
+        "n": 622,
+        "share": 0.4421221865,
+        "successes": 275
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.8037776204,
+        "ci_low": 0.7610156217,
+        "label": "neutral",
+        "n": 1425,
+        "share": 0.7831578947,
+        "successes": 1116
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.5766515987,
+        "ci_low": 0.4929656856,
+        "label": "neutral",
+        "n": 542,
+        "share": 0.5350553506,
+        "successes": 290
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.6047379566,
+        "ci_low": 0.5569616384,
+        "label": "neutral",
+        "n": 1635,
+        "share": 0.5810397554,
+        "successes": 950
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.5360366534,
+        "ci_low": 0.4773940802,
+        "label": "neutral",
+        "n": 1113,
+        "share": 0.5067385445,
+        "successes": 564
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.4994302123,
+        "ci_low": 0.4753540248,
+        "label": "neutral",
+        "n": 6619,
+        "share": 0.4873848013,
+        "successes": 3226
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.5662781397,
+        "ci_low": 0.4880487182,
+        "label": "neutral",
+        "n": 622,
+        "share": 0.5273311897,
+        "successes": 328
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0137698397,
+        "ci_low": 0.0043157629,
+        "label": "positive",
+        "n": 1425,
+        "share": 0.0077192982,
+        "successes": 11
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.056306726,
+        "ci_low": 0.0240123083,
+        "label": "positive",
+        "n": 542,
+        "share": 0.036900369,
+        "successes": 20
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.0811239409,
+        "ci_low": 0.0566816154,
+        "label": "positive",
+        "n": 1635,
+        "share": 0.0678899083,
+        "successes": 111
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.0707710102,
+        "ci_low": 0.0436959607,
+        "label": "positive",
+        "n": 1113,
+        "share": 0.055705301,
+        "successes": 62
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0510812293,
+        "ci_low": 0.0410003135,
+        "label": "positive",
+        "n": 6619,
+        "share": 0.0457773078,
+        "successes": 303
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0472148643,
+        "ci_low": 0.0196414589,
+        "label": "positive",
+        "n": 622,
+        "share": 0.0305466238,
+        "successes": 19
+      }
+    ],
+    "sentiment_mean_ci": [
+      {
+        "channel_slug": "presstv",
+        "ci_high": -0.340726632,
+        "ci_low": -0.3602035944,
+        "mean": -0.3502254637,
+        "n": 6619
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": -0.2134345309,
+        "ci_low": -0.254875694,
+        "mean": -0.2342089385,
+        "n": 1635
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": -0.1410720347,
+        "ci_low": -0.1725085818,
+        "mean": -0.1569958905,
+        "n": 1425
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": -0.2750508226,
+        "ci_low": -0.3421036664,
+        "mean": -0.3084716405,
+        "n": 542
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": -0.319977174,
+        "ci_low": -0.3760867881,
+        "mean": -0.3473682421,
+        "n": 622
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": -0.2811447914,
+        "ci_low": -0.3295556976,
+        "mean": -0.3052001659,
+        "n": 1113
+      }
+    ],
+    "tost_equivalent_pairs": 6,
+    "tost_margin": 0.1,
+    "tost_pairs": [
+      {
+        "ci90_high": -0.096919363,
+        "ci90_low": -0.1351136873,
+        "equivalent": false,
+        "mean_diff": -0.1160165251,
+        "p_tost": 0.9161497764,
+        "p_tost_bh": 1.0,
+        "pair": "Press TV - IRNA",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": -0.1775511539,
+        "ci90_low": -0.2089079924,
+        "equivalent": false,
+        "mean_diff": -0.1932295732,
+        "p_tost": 1.0,
+        "p_tost_bh": 1.0,
+        "pair": "Press TV - IDF",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": -0.0131047125,
+        "ci90_low": -0.0704029339,
+        "equivalent": true,
+        "mean_diff": -0.0417538232,
+        "p_tost": 0.0004293339,
+        "p_tost_bh": 0.0016100022,
+        "pair": "Press TV - ILTV",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": 0.0229743753,
+        "ci90_low": -0.0286888185,
+        "equivalent": true,
+        "mean_diff": -0.0028572216,
+        "p_tost": 5e-10,
+        "p_tost_bh": 7.2e-09,
+        "pair": "Press TV - ToI",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": -0.0228400938,
+        "ci90_low": -0.0672105018,
+        "equivalent": true,
+        "mean_diff": -0.0450252978,
+        "p_tost": 2.38709e-05,
+        "p_tost_bh": 0.0001193546,
+        "pair": "Press TV - JBN",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": -0.0553671057,
+        "ci90_low": -0.0990589903,
+        "equivalent": false,
+        "mean_diff": -0.077213048,
+        "p_tost": 0.0431111477,
+        "p_tost_bh": 0.0808334019,
+        "pair": "IRNA - IDF",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": 0.1066918706,
+        "ci90_low": 0.0418335332,
+        "equivalent": false,
+        "mean_diff": 0.0742627019,
+        "p_tost": 0.0958173592,
+        "p_tost_bh": 0.1596955987,
+        "pair": "IRNA - ILTV",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": 0.1431305256,
+        "ci90_low": 0.0831880814,
+        "equivalent": false,
+        "mean_diff": 0.1131593035,
+        "p_tost": 0.7650086192,
+        "p_tost_bh": 1.0,
+        "pair": "IRNA - ToI",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": 0.0978879292,
+        "ci90_low": 0.0440945255,
+        "equivalent": false,
+        "mean_diff": 0.0709912273,
+        "p_tost": 0.0380369517,
+        "p_tost_bh": 0.0808334019,
+        "pair": "IRNA - JBN",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": 0.1820216511,
+        "ci90_low": 0.1209298488,
+        "equivalent": false,
+        "mean_diff": 0.15147575,
+        "p_tost": 0.9971770214,
+        "p_tost_bh": 1.0,
+        "pair": "IDF - ILTV",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": 0.2182939246,
+        "ci90_low": 0.1624507785,
+        "equivalent": false,
+        "mean_diff": 0.1903723516,
+        "p_tost": 0.999999939,
+        "p_tost_bh": 1.0,
+        "pair": "IDF - ToI",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": 0.172794116,
+        "ci90_low": 0.1236144347,
+        "equivalent": false,
+        "mean_diff": 0.1482042754,
+        "p_tost": 0.9993620045,
+        "p_tost_bh": 1.0,
+        "pair": "IDF - JBN",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": 0.0756820954,
+        "ci90_low": 0.0021111078,
+        "equivalent": true,
+        "mean_diff": 0.0388966016,
+        "p_tost": 0.003173068,
+        "p_tost_bh": 0.0079326699,
+        "pair": "ILTV - ToI",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": 0.0310615589,
+        "ci90_low": -0.0376045081,
+        "equivalent": true,
+        "mean_diff": -0.0032714746,
+        "p_tost": 1.962e-06,
+        "p_tost_bh": 1.47153e-05,
+        "pair": "ILTV - JBN",
+        "sample": "all posts"
+      },
+      {
+        "ci90_high": -0.0101453736,
+        "ci90_low": -0.0741907788,
+        "equivalent": true,
+        "mean_diff": -0.0421680762,
+        "p_tost": 0.0015018888,
+        "p_tost_bh": 0.0045056664,
+        "pair": "ToI - JBN",
+        "sample": "all posts"
+      }
+    ],
+    "tost_robustness": [
+      {
+        "equivalent": 0.0,
+        "max_abs_diff": 0.2174589377,
+        "pairs": 15.0,
+        "sample": "28 Feb-9 Mar"
+      },
+      {
+        "equivalent": 0.0,
+        "max_abs_diff": 0.3337672266,
+        "pairs": 15.0,
+        "sample": "8-17 Apr"
+      },
+      {
+        "equivalent": 11.0,
+        "max_abs_diff": 0.1121375597,
+        "pairs": 15.0,
+        "sample": "unique texts only"
+      },
+      {
+        "equivalent": 6.0,
+        "max_abs_diff": 0.1932295732,
+        "pairs": 15.0,
+        "sample": "all posts"
+      }
+    ],
+    "validation": {
+      "agreement": {
+        "emotion": 0.37222222222222223,
+        "sentiment": 0.48777777777777775
+      },
+      "coded_file_present": true,
+      "confusion_row_normalised": [
+        {
+          "agreement": 0.4877777778,
+          "coder_label": "negative",
+          "kappa": 0.2264509405,
+          "model_label": "negative",
+          "n": 256,
+          "row_share": 0.5378151261,
+          "scale": "sentiment"
+        },
+        {
+          "agreement": 0.4877777778,
+          "coder_label": "negative",
+          "kappa": 0.2264509405,
+          "model_label": "neutral",
+          "n": 219,
+          "row_share": 0.4600840336,
+          "scale": "sentiment"
+        },
+        {
+          "agreement": 0.4877777778,
+          "coder_label": "negative",
+          "kappa": 0.2264509405,
+          "model_label": "positive",
+          "n": 1,
+          "row_share": 0.0021008403,
+          "scale": "sentiment"
+        },
+        {
+          "agreement": 0.4877777778,
+          "coder_label": "neutral",
+          "kappa": 0.2264509405,
+          "model_label": "negative",
+          "n": 35,
+          "row_share": 0.1851851852,
+          "scale": "sentiment"
+        },
+        {
+          "agreement": 0.4877777778,
+          "coder_label": "neutral",
+          "kappa": 0.2264509405,
+          "model_label": "neutral",
+          "n": 151,
+          "row_share": 0.7989417989,
+          "scale": "sentiment"
+        },
+        {
+          "agreement": 0.4877777778,
+          "coder_label": "neutral",
+          "kappa": 0.2264509405,
+          "model_label": "positive",
+          "n": 3,
+          "row_share": 0.0158730159,
+          "scale": "sentiment"
+        },
+        {
+          "agreement": 0.4877777778,
+          "coder_label": "positive",
+          "kappa": 0.2264509405,
+          "model_label": "negative",
+          "n": 64,
+          "row_share": 0.2723404255,
+          "scale": "sentiment"
+        },
+        {
+          "agreement": 0.4877777778,
+          "coder_label": "positive",
+          "kappa": 0.2264509405,
+          "model_label": "neutral",
+          "n": 139,
+          "row_share": 0.5914893617,
+          "scale": "sentiment"
+        },
+        {
+          "agreement": 0.4877777778,
+          "coder_label": "positive",
+          "kappa": 0.2264509405,
+          "model_label": "positive",
+          "n": 32,
+          "row_share": 0.1361702128,
+          "scale": "sentiment"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "anger",
+          "kappa": 0.237965931,
+          "model_label": "anger",
+          "n": 59,
+          "row_share": 0.3782051282,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "anger",
+          "kappa": 0.237965931,
+          "model_label": "disgust",
+          "n": 17,
+          "row_share": 0.108974359,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "anger",
+          "kappa": 0.237965931,
+          "model_label": "fear",
+          "n": 52,
+          "row_share": 0.3333333333,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "anger",
+          "kappa": 0.237965931,
+          "model_label": "joy",
+          "n": 0,
+          "row_share": 0.0,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "anger",
+          "kappa": 0.237965931,
+          "model_label": "neutral",
+          "n": 15,
+          "row_share": 0.0961538462,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "anger",
+          "kappa": 0.237965931,
+          "model_label": "sadness",
+          "n": 13,
+          "row_share": 0.0833333333,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "anger",
+          "kappa": 0.237965931,
+          "model_label": "surprise",
+          "n": 0,
+          "row_share": 0.0,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "disgust",
+          "kappa": 0.237965931,
+          "model_label": "anger",
+          "n": 1,
+          "row_share": 0.0526315789,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "disgust",
+          "kappa": 0.237965931,
+          "model_label": "disgust",
+          "n": 7,
+          "row_share": 0.3684210526,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "disgust",
+          "kappa": 0.237965931,
+          "model_label": "fear",
+          "n": 3,
+          "row_share": 0.1578947368,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "disgust",
+          "kappa": 0.237965931,
+          "model_label": "joy",
+          "n": 0,
+          "row_share": 0.0,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "disgust",
+          "kappa": 0.237965931,
+          "model_label": "neutral",
+          "n": 5,
+          "row_share": 0.2631578947,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "disgust",
+          "kappa": 0.237965931,
+          "model_label": "sadness",
+          "n": 2,
+          "row_share": 0.1052631579,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "disgust",
+          "kappa": 0.237965931,
+          "model_label": "surprise",
+          "n": 1,
+          "row_share": 0.0526315789,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "fear",
+          "kappa": 0.237965931,
+          "model_label": "anger",
+          "n": 14,
+          "row_share": 0.0765027322,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "fear",
+          "kappa": 0.237965931,
+          "model_label": "disgust",
+          "n": 4,
+          "row_share": 0.0218579235,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "fear",
+          "kappa": 0.237965931,
+          "model_label": "fear",
+          "n": 95,
+          "row_share": 0.5191256831,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "fear",
+          "kappa": 0.237965931,
+          "model_label": "joy",
+          "n": 0,
+          "row_share": 0.0,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "fear",
+          "kappa": 0.237965931,
+          "model_label": "neutral",
+          "n": 64,
+          "row_share": 0.349726776,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "fear",
+          "kappa": 0.237965931,
+          "model_label": "sadness",
+          "n": 5,
+          "row_share": 0.0273224044,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "fear",
+          "kappa": 0.237965931,
+          "model_label": "surprise",
+          "n": 1,
+          "row_share": 0.0054644809,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "joy",
+          "kappa": 0.237965931,
+          "model_label": "anger",
+          "n": 51,
+          "row_share": 0.2236842105,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "joy",
+          "kappa": 0.237965931,
+          "model_label": "disgust",
+          "n": 12,
+          "row_share": 0.0526315789,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "joy",
+          "kappa": 0.237965931,
+          "model_label": "fear",
+          "n": 57,
+          "row_share": 0.25,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "joy",
+          "kappa": 0.237965931,
+          "model_label": "joy",
+          "n": 24,
+          "row_share": 0.1052631579,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "joy",
+          "kappa": 0.237965931,
+          "model_label": "neutral",
+          "n": 68,
+          "row_share": 0.298245614,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "joy",
+          "kappa": 0.237965931,
+          "model_label": "sadness",
+          "n": 12,
+          "row_share": 0.0526315789,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "joy",
+          "kappa": 0.237965931,
+          "model_label": "surprise",
+          "n": 4,
+          "row_share": 0.0175438596,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "neutral",
+          "kappa": 0.237965931,
+          "model_label": "anger",
+          "n": 19,
+          "row_share": 0.1021505376,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "neutral",
+          "kappa": 0.237965931,
+          "model_label": "disgust",
+          "n": 9,
+          "row_share": 0.0483870968,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "neutral",
+          "kappa": 0.237965931,
+          "model_label": "fear",
+          "n": 53,
+          "row_share": 0.2849462366,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "neutral",
+          "kappa": 0.237965931,
+          "model_label": "joy",
+          "n": 8,
+          "row_share": 0.0430107527,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "neutral",
+          "kappa": 0.237965931,
+          "model_label": "neutral",
+          "n": 89,
+          "row_share": 0.4784946237,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "neutral",
+          "kappa": 0.237965931,
+          "model_label": "sadness",
+          "n": 6,
+          "row_share": 0.0322580645,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "neutral",
+          "kappa": 0.237965931,
+          "model_label": "surprise",
+          "n": 2,
+          "row_share": 0.0107526882,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "sadness",
+          "kappa": 0.237965931,
+          "model_label": "anger",
+          "n": 5,
+          "row_share": 0.0471698113,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "sadness",
+          "kappa": 0.237965931,
+          "model_label": "disgust",
+          "n": 12,
+          "row_share": 0.1132075472,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "sadness",
+          "kappa": 0.237965931,
+          "model_label": "fear",
+          "n": 20,
+          "row_share": 0.1886792453,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "sadness",
+          "kappa": 0.237965931,
+          "model_label": "joy",
+          "n": 2,
+          "row_share": 0.0188679245,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "sadness",
+          "kappa": 0.237965931,
+          "model_label": "neutral",
+          "n": 8,
+          "row_share": 0.0754716981,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "sadness",
+          "kappa": 0.237965931,
+          "model_label": "sadness",
+          "n": 58,
+          "row_share": 0.5471698113,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "sadness",
+          "kappa": 0.237965931,
+          "model_label": "surprise",
+          "n": 1,
+          "row_share": 0.0094339623,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "surprise",
+          "kappa": 0.237965931,
+          "model_label": "anger",
+          "n": 2,
+          "row_share": 0.0909090909,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "surprise",
+          "kappa": 0.237965931,
+          "model_label": "disgust",
+          "n": 3,
+          "row_share": 0.1363636364,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "surprise",
+          "kappa": 0.237965931,
+          "model_label": "fear",
+          "n": 5,
+          "row_share": 0.2272727273,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "surprise",
+          "kappa": 0.237965931,
+          "model_label": "joy",
+          "n": 0,
+          "row_share": 0.0,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "surprise",
+          "kappa": 0.237965931,
+          "model_label": "neutral",
+          "n": 4,
+          "row_share": 0.1818181818,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "surprise",
+          "kappa": 0.237965931,
+          "model_label": "sadness",
+          "n": 5,
+          "row_share": 0.2272727273,
+          "scale": "emotion"
+        },
+        {
+          "agreement": 0.3722222222,
+          "coder_label": "surprise",
+          "kappa": 0.237965931,
+          "model_label": "surprise",
+          "n": 3,
+          "row_share": 0.1363636364,
+          "scale": "emotion"
+        }
+      ],
+      "kappa": {
+        "emotion": 0.23796593100781827,
+        "sentiment": 0.22645094050812986
+      },
+      "kappa_by_channel": [
+        {
+          "channel_slug": "presstv",
+          "kappa": 0.2728600837,
+          "n": 150,
+          "scale": "sentiment"
+        },
+        {
+          "channel_slug": "presstv",
+          "kappa": 0.2553079117,
+          "n": 150,
+          "scale": "emotion"
+        },
+        {
+          "channel_slug": "irna-en",
+          "kappa": 0.2495888158,
+          "n": 150,
+          "scale": "sentiment"
+        },
+        {
+          "channel_slug": "irna-en",
+          "kappa": 0.2986412894,
+          "n": 150,
+          "scale": "emotion"
+        },
+        {
+          "channel_slug": "idfofficial",
+          "kappa": -0.0163307853,
+          "n": 150,
+          "scale": "sentiment"
+        },
+        {
+          "channel_slug": "idfofficial",
+          "kappa": -0.0696095076,
+          "n": 150,
+          "scale": "emotion"
+        },
+        {
+          "channel_slug": "iltvnews",
+          "kappa": 0.2875931609,
+          "n": 150,
+          "scale": "sentiment"
+        },
+        {
+          "channel_slug": "iltvnews",
+          "kappa": 0.290038525,
+          "n": 150,
+          "scale": "emotion"
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "kappa": 0.3390062301,
+          "n": 150,
+          "scale": "sentiment"
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "kappa": 0.3493855308,
+          "n": 150,
+          "scale": "emotion"
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "kappa": 0.2403268283,
+          "n": 150,
+          "scale": "sentiment"
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "kappa": 0.2035838726,
+          "n": 150,
+          "scale": "emotion"
+        }
+      ],
+      "label_shares_by_rater": [
+        {
+          "channel_slug": "presstv",
+          "label": "negative",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.54
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.1333333333
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "positive",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.3266666667
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "negative",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.6933333333
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.1066666667
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "positive",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.2
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "negative",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.3533333333
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.2
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "positive",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.4466666667
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "negative",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.5533333333
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.2866666667
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "positive",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.16
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "negative",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.5066666667
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.34
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "positive",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.1533333333
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "negative",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.5266666667
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.1933333333
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "positive",
+          "rater": "LLM coder",
+          "scale": "sentiment",
+          "share": 0.28
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "negative",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.46
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.4866666667
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "positive",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.0533333333
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "negative",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.4066666667
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.5266666667
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "positive",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.0666666667
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "negative",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.18
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.8
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "positive",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.02
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "negative",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.4066666667
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.5666666667
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "positive",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.0266666667
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "negative",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.48
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.4933333333
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "positive",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.0266666667
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "negative",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.4333333333
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.52
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "positive",
+          "rater": "model",
+          "scale": "sentiment",
+          "share": 0.0466666667
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "anger",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.2666666667
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "disgust",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.04
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "fear",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1333333333
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "joy",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.3266666667
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1333333333
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "sadness",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.08
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "surprise",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.02
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "anger",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.4333333333
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "disgust",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.0066666667
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "fear",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.08
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "joy",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1933333333
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1133333333
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "sadness",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1733333333
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "surprise",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.0
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "anger",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.06
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "disgust",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.0
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "fear",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.3
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "joy",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.44
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.2
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "sadness",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.0
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "surprise",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.0
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "anger",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.0666666667
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "disgust",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.0533333333
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "fear",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.2333333333
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "joy",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1533333333
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.28
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "sadness",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1733333333
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "surprise",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.04
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "anger",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1333333333
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "disgust",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.02
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "fear",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1666666667
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "joy",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.14
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.3466666667
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "sadness",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1733333333
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "surprise",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.02
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "anger",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.08
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "disgust",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.0066666667
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "fear",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.3066666667
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "joy",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.2666666667
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "neutral",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1666666667
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "sadness",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.1066666667
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "surprise",
+          "rater": "LLM coder",
+          "scale": "emotion",
+          "share": 0.0666666667
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "anger",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.2466666667
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "disgust",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.1333333333
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "fear",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.2933333333
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "joy",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.06
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.16
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "sadness",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0866666667
+        },
+        {
+          "channel_slug": "presstv",
+          "label": "surprise",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.02
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "anger",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.2533333333
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "disgust",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0866666667
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "fear",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.24
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "joy",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.08
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.16
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "sadness",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.1666666667
+        },
+        {
+          "channel_slug": "irna-en",
+          "label": "surprise",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0133333333
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "anger",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.1
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "disgust",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0133333333
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "fear",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.3133333333
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "joy",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.5733333333
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "sadness",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0
+        },
+        {
+          "channel_slug": "idfofficial",
+          "label": "surprise",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "anger",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.1533333333
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "disgust",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.08
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "fear",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.2933333333
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "joy",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.04
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.2733333333
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "sadness",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.1533333333
+        },
+        {
+          "channel_slug": "iltvnews",
+          "label": "surprise",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0066666667
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "anger",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.1533333333
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "disgust",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0266666667
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "fear",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.3466666667
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "joy",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0266666667
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.2533333333
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "sadness",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.1733333333
+        },
+        {
+          "channel_slug": "thetimesofisrael2022",
+          "label": "surprise",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.02
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "anger",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.1
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "disgust",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0866666667
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "fear",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.4133333333
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "joy",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.02
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "neutral",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.2666666667
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "sadness",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.0933333333
+        },
+        {
+          "channel_slug": "jewishbreakingnewstelegram",
+          "label": "surprise",
+          "rater": "model",
+          "scale": "emotion",
+          "share": 0.02
+        }
+      ],
+      "overall_label_shares": {
+        "emotion": {
+          "LLM coder": {
+            "anger": 0.173,
+            "disgust": 0.021,
+            "fear": 0.203,
+            "joy": 0.253,
+            "neutral": 0.207,
+            "sadness": 0.118,
+            "surprise": 0.024
+          },
+          "model": {
+            "anger": 0.168,
+            "disgust": 0.071,
+            "fear": 0.317,
+            "joy": 0.038,
+            "neutral": 0.281,
+            "sadness": 0.112,
+            "surprise": 0.013
+          }
+        },
+        "sentiment": {
+          "LLM coder": {
+            "negative": 0.529,
+            "neutral": 0.21,
+            "positive": 0.261
+          },
+          "model": {
+            "negative": 0.394,
+            "neutral": 0.566,
+            "positive": 0.04
+          }
+        }
+      },
+      "second_coder": "LLM (three Claude Sonnet sub-agents, 300 posts each); not a human and not ground truth",
+      "sheet_rows": 900,
+      "status": "scored",
+      "usable_labels": []
+    }
+  },
+  "06_media": {
+    "all_tests_bh": [
+      {
+        "effect": 0.3301048383,
+        "effect_name": "bias-corrected Cramer's V",
+        "family": "press_tv_topic_split",
+        "p_bh": 3.489710271e-177,
+        "p_raw": 2.684392516e-178,
+        "significant_bh_0.05": true,
+        "test": "Press TV media vs topic - new coding: video / photo / none"
+      },
+      {
+        "effect": 0.1823735342,
+        "effect_name": "bias-corrected Cramer's V",
+        "family": "press_tv_topic_split",
+        "p_bh": 1.012323371e-23,
+        "p_raw": 2.336130856e-24,
+        "significant_bh_0.05": true,
+        "test": "Press TV media vs topic - new coding: any editorial media vs none"
+      },
+      {
+        "effect": 0.3969726797,
+        "effect_name": "bias-corrected Cramer's V",
+        "family": "press_tv_topic_split",
+        "p_bh": 2.637702329e-124,
+        "p_raw": 4.058003584e-125,
+        "significant_bh_0.05": true,
+        "test": "Press TV media vs topic - OLD coding: photo-only flag"
+      },
+      {
+        "effect": -0.1359936372,
+        "effect_name": "difference in proportions",
+        "family": "press_tv_topic_split",
+        "p_bh": 1.06e-08,
+        "p_raw": 4.9e-09,
+        "significant_bh_0.05": true,
+        "test": "Press TV: diplomacy / official actors share, media vs none"
+      },
+      {
+        "effect": -0.0367261748,
+        "effect_name": "difference in proportions",
+        "family": "press_tv_topic_split",
+        "p_bh": 0.0166076,
+        "p_raw": 0.0127750769,
+        "significant_bh_0.05": true,
+        "test": "Press TV: Hormuz / war economy share, media vs none"
+      },
+      {
+        "effect": 0.0589859977,
+        "effect_name": "difference in proportions",
+        "family": "press_tv_topic_split",
+        "p_bh": 0.008439369,
+        "p_raw": 0.0058426401,
+        "significant_bh_0.05": true,
+        "test": "Press TV: Khamenei / Leader and funerals share, media vs none"
+      },
+      {
+        "effect": 0.2304826759,
+        "effect_name": "bias-corrected Cramer's V",
+        "family": "per_channel_topic_split",
+        "p_bh": 5.191239261e-20,
+        "p_raw": 1.996630485e-20,
+        "significant_bh_0.05": true,
+        "test": "IRNA media vs topic (chi-square)"
+      },
+      {
+        "effect": 0.2160250785,
+        "effect_name": "bias-corrected Cramer's V",
+        "family": "per_channel_topic_split",
+        "p_bh": 0.00032526,
+        "p_raw": 0.00020016,
+        "significant_bh_0.05": true,
+        "test": "ILTV media vs topic (chi-square)"
+      },
+      {
+        "effect": 0.3035743806,
+        "effect_name": "bias-corrected Cramer's V",
+        "family": "per_channel_topic_split",
+        "p_bh": 4.803276412e-21,
+        "p_raw": 1.477931204e-21,
+        "significant_bh_0.05": true,
+        "test": "JBN media vs topic (chi-square)"
+      },
+      {
+        "effect": 0.9954342301,
+        "effect_name": "geometric-mean ratio video/photo",
+        "family": "views",
+        "p_bh": 0.5434745743,
+        "p_raw": 0.4598631013,
+        "significant_bh_0.05": false,
+        "test": "Press TV: views video vs photo (Welch, log views)"
+      },
+      {
+        "effect": 0.8979345835,
+        "effect_name": "geometric-mean ratio video/photo",
+        "family": "views",
+        "p_bh": 0.0001614683,
+        "p_raw": 8.69445e-05,
+        "significant_bh_0.05": true,
+        "test": "IRNA: views video vs photo (Welch, log views)"
+      },
+      {
+        "effect": 0.9873744696,
+        "effect_name": "geometric-mean ratio video/photo",
+        "family": "views",
+        "p_bh": 0.5595851752,
+        "p_raw": 0.5165401618,
+        "significant_bh_0.05": false,
+        "test": "ILTV: views video vs photo (Welch, log views)"
+      },
+      {
+        "effect": 1.0028683956,
+        "effect_name": "geometric-mean ratio video/photo",
+        "family": "views",
+        "p_bh": 0.7383224412,
+        "p_raw": 0.7383224412,
+        "significant_bh_0.05": false,
+        "test": "JBN: views video vs photo (Welch, log views)"
+      }
+    ],
+    "media_shares_ci": [
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0026810076,
+        "ci_low": 2.168404345e-19,
+        "media_class": "video",
+        "n": 1429,
+        "share": 0.0,
+        "successes": 0
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.5610338677,
+        "ci_low": 0.4782629719,
+        "media_class": "video",
+        "n": 556,
+        "share": 0.5197841727,
+        "successes": 289
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.1311991851,
+        "ci_low": 0.1002926856,
+        "media_class": "video",
+        "n": 1637,
+        "share": 0.1148442272,
+        "successes": 188
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.4692313052,
+        "ci_low": 0.4151921743,
+        "media_class": "video",
+        "n": 1294,
+        "share": 0.4420401855,
+        "successes": 572
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.4885668422,
+        "ci_low": 0.4646248101,
+        "media_class": "video",
+        "n": 6683,
+        "share": 0.4765823732,
+        "successes": 3185
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0061380702,
+        "ci_low": 4.33680869e-19,
+        "media_class": "video",
+        "n": 622,
+        "share": 0.0,
+        "successes": 0
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.0071752583,
+        "ci_low": 0.0010890607,
+        "media_class": "photo",
+        "n": 1429,
+        "share": 0.0027991603,
+        "successes": 4
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.4114064875,
+        "ci_low": 0.3313778352,
+        "media_class": "photo",
+        "n": 556,
+        "share": 0.3705035971,
+        "successes": 206
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.5433723114,
+        "ci_low": 0.4950226229,
+        "media_class": "photo",
+        "n": 1637,
+        "share": 0.5192425168,
+        "successes": 850
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.4762072525,
+        "ci_low": 0.4220854094,
+        "media_class": "photo",
+        "n": 1294,
+        "share": 0.4489953632,
+        "successes": 581
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.460401244,
+        "ci_low": 0.4365605721,
+        "media_class": "photo",
+        "n": 6683,
+        "share": 0.4484512943,
+        "successes": 2997
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.9997161421,
+        "ci_low": 0.9909500902,
+        "media_class": "photo",
+        "n": 622,
+        "share": 0.998392283,
+        "successes": 621
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.1493406063,
+        "ci_low": 0.1143602076,
+        "media_class": "link preview",
+        "n": 1429,
+        "share": 0.1308607418,
+        "successes": 187
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.0068616905,
+        "ci_low": 4.33680869e-19,
+        "media_class": "link preview",
+        "n": 556,
+        "share": 0.0,
+        "successes": 0
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.2469122226,
+        "ci_low": 0.2064170463,
+        "media_class": "link preview",
+        "n": 1637,
+        "share": 0.2260232132,
+        "successes": 370
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.002959883,
+        "ci_low": 0.0,
+        "media_class": "link preview",
+        "n": 1294,
+        "share": 0.0,
+        "successes": 0
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0643913437,
+        "ci_low": 0.0531292322,
+        "media_class": "link preview",
+        "n": 6683,
+        "share": 0.0585066587,
+        "successes": 391
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0090499098,
+        "ci_low": 0.0002838579,
+        "media_class": "link preview",
+        "n": 622,
+        "share": 0.001607717,
+        "successes": 1
+      },
+      {
+        "channel_slug": "idfofficial",
+        "ci_high": 0.8830047992,
+        "ci_low": 0.8477110756,
+        "media_class": "text only",
+        "n": 1429,
+        "share": 0.866340098,
+        "successes": 1238
+      },
+      {
+        "channel_slug": "iltvnews",
+        "ci_high": 0.138416993,
+        "ci_low": 0.0863635352,
+        "media_class": "text only",
+        "n": 556,
+        "share": 0.1097122302,
+        "successes": 61
+      },
+      {
+        "channel_slug": "irna-en",
+        "ci_high": 0.1575378779,
+        "ci_low": 0.1239283517,
+        "media_class": "text only",
+        "n": 1637,
+        "share": 0.1398900428,
+        "successes": 229
+      },
+      {
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 0.1271135807,
+        "ci_low": 0.0931301608,
+        "media_class": "text only",
+        "n": 1294,
+        "share": 0.1089644513,
+        "successes": 141
+      },
+      {
+        "channel_slug": "presstv",
+        "ci_high": 0.0197996934,
+        "ci_low": 0.013675223,
+        "media_class": "text only",
+        "n": 6683,
+        "share": 0.0164596738,
+        "successes": 110
+      },
+      {
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 0.0061380702,
+        "ci_low": 4.33680869e-19,
+        "media_class": "text only",
+        "n": 622,
+        "share": 0.0,
+        "successes": 0
+      }
+    ],
+    "per_channel_media_vs_topic": [
+      {
+        "channel": "Press TV",
+        "channel_slug": "presstv",
+        "chi2": 974.3111843418,
+        "cramers_v_bc": 0.3301048383,
+        "groups": "video=2159, photo=1886, no editorial media=244",
+        "min_expected": 5.2338540452,
+        "n": 4289.0,
+        "n_topics_after_collapse": 21.0,
+        "p_value": 2.684392516e-178,
+        "tested": true
+      },
+      {
+        "channel": "IRNA",
+        "channel_slug": "irna-en",
+        "chi2": 137.4346603686,
+        "cramers_v_bc": 0.2304826759,
+        "groups": "photo=605, no editorial media=372, video=149",
+        "min_expected": 5.1607460036,
+        "n": 1126.0,
+        "n_topics_after_collapse": 10.0,
+        "p_value": 1.996630485e-20,
+        "tested": true
+      },
+      {
+        "channel": "IDF",
+        "channel_slug": "idfofficial",
+        "chi2": null,
+        "cramers_v_bc": null,
+        "groups": "no editorial media=1229, photo=3",
+        "min_expected": null,
+        "n": null,
+        "n_topics_after_collapse": null,
+        "p_value": null,
+        "tested": false
+      },
+      {
+        "channel": "ILTV",
+        "channel_slug": "iltvnews",
+        "chi2": 17.0327869793,
+        "cramers_v_bc": 0.2160250785,
+        "groups": "video=151, photo=135, no editorial media=37",
+        "min_expected": 6.8730650155,
+        "n": 323.0,
+        "n_topics_after_collapse": 2.0,
+        "p_value": 0.00020016,
+        "tested": true
+      },
+      {
+        "channel": "ToI",
+        "channel_slug": "thetimesofisrael2022",
+        "chi2": null,
+        "cramers_v_bc": null,
+        "groups": "photo=325, no editorial media=1",
+        "min_expected": null,
+        "n": null,
+        "n_topics_after_collapse": null,
+        "p_value": null,
+        "tested": false
+      },
+      {
+        "channel": "JBN",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "chi2": 122.6320859136,
+        "cramers_v_bc": 0.3035743806,
+        "groups": "photo=283, video=258, no editorial media=72",
+        "min_expected": 5.1680261011,
+        "n": 613.0,
+        "n_topics_after_collapse": 6.0,
+        "p_value": 1.477931204e-21,
+        "tested": true
+      }
+    ],
+    "press_tv_media_vs_topic_chi_square": {
+      "new_coding_video_photo_none": {
+        "chi2": 974.3111843417819,
+        "collapsed_topics_table_cols": 21,
+        "cramers_v_bias_corrected": 0.33010483834079946,
+        "dof": 40,
+        "n": 4289,
+        "p_bh": 3.4897102705956655e-177,
+        "p_value": 2.6843925158428196e-178
+      },
+      "old_photo_only_flag": {
+        "chi2": 714.743436796811,
+        "cramers_v_bias_corrected": 0.39697267965835215,
+        "dof": 39,
+        "n": 4289,
+        "p_bh": 2.6377023293452575e-124,
+        "p_value": 4.058003583608089e-125
+      }
+    },
+    "press_tv_topic_groups_media_vs_none": [
+      {
+        "ci_high_pp": -8.5566177002,
+        "ci_low_pp": -19.4169863108,
+        "diff_pp": -13.5993637156,
+        "group": "diplomacy / official actors",
+        "n_media": 4045,
+        "n_none": 244,
+        "p_fisher": 4.9e-09,
+        "share_with_media": 0.1058096415,
+        "share_without_media": 0.2418032787
+      },
+      {
+        "ci_high_pp": -0.7627588684,
+        "ci_low_pp": -7.8398285726,
+        "diff_pp": -3.6726174796,
+        "group": "Hormuz / war economy",
+        "n_media": 4045,
+        "n_none": 244,
+        "p_fisher": 0.0127750769,
+        "share_with_media": 0.0452410383,
+        "share_without_media": 0.0819672131
+      },
+      {
+        "ci_high_pp": 8.7697705423,
+        "ci_low_pp": 1.7909156868,
+        "diff_pp": 5.898599769,
+        "group": "Khamenei / Leader and funerals",
+        "n_media": 4045,
+        "n_none": 244,
+        "p_fisher": 0.0058426401,
+        "share_with_media": 0.1327564895,
+        "share_without_media": 0.0737704918
+      }
+    ],
+    "views_by_media_kind": [
+      {
+        "channel": "Press TV",
+        "channel_slug": "presstv",
+        "ci_high": 8122.0,
+        "ci_low": 8009.0,
+        "media_class": "video",
+        "median_views": 8066.0,
+        "n": 3185
+      },
+      {
+        "channel": "Press TV",
+        "channel_slug": "presstv",
+        "ci_high": 8142.0,
+        "ci_low": 8037.0,
+        "media_class": "photo",
+        "median_views": 8086.0,
+        "n": 2997
+      },
+      {
+        "channel": "Press TV",
+        "channel_slug": "presstv",
+        "ci_high": 7783.0,
+        "ci_low": 7472.0,
+        "media_class": "link preview",
+        "median_views": 7594.0,
+        "n": 391
+      },
+      {
+        "channel": "Press TV",
+        "channel_slug": "presstv",
+        "ci_high": 9293.0,
+        "ci_low": 7813.5,
+        "media_class": "text only",
+        "median_views": 8559.0,
+        "n": 46
+      },
+      {
+        "channel": "IRNA",
+        "channel_slug": "irna-en",
+        "ci_high": 2604.5,
+        "ci_low": 2243.5,
+        "media_class": "video",
+        "median_views": 2413.5,
+        "n": 188
+      },
+      {
+        "channel": "IRNA",
+        "channel_slug": "irna-en",
+        "ci_high": 2850.0125,
+        "ci_low": 2734.5,
+        "media_class": "photo",
+        "median_views": 2781.0,
+        "n": 850
+      },
+      {
+        "channel": "IRNA",
+        "channel_slug": "irna-en",
+        "ci_high": 2355.0,
+        "ci_low": 2191.0,
+        "media_class": "link preview",
+        "median_views": 2283.5,
+        "n": 370
+      },
+      {
+        "channel": "IRNA",
+        "channel_slug": "irna-en",
+        "ci_high": 2508.0,
+        "ci_low": 2293.0,
+        "media_class": "text only",
+        "median_views": 2402.0,
+        "n": 227
+      },
+      {
+        "channel": "IDF",
+        "channel_slug": "idfofficial",
+        "ci_high": 12448.25,
+        "ci_low": 11485.0,
+        "media_class": "link preview",
+        "median_views": 12049.0,
+        "n": 187
+      },
+      {
+        "channel": "IDF",
+        "channel_slug": "idfofficial",
+        "ci_high": 12234.0,
+        "ci_low": 11837.4875,
+        "media_class": "text only",
+        "median_views": 12003.5,
+        "n": 1238
+      },
+      {
+        "channel": "ILTV",
+        "channel_slug": "iltvnews",
+        "ci_high": 6950.0,
+        "ci_low": 6703.0,
+        "media_class": "video",
+        "median_views": 6851.0,
+        "n": 289
+      },
+      {
+        "channel": "ILTV",
+        "channel_slug": "iltvnews",
+        "ci_high": 6927.0,
+        "ci_low": 6710.5,
+        "media_class": "photo",
+        "median_views": 6803.5,
+        "n": 206
+      },
+      {
+        "channel": "ILTV",
+        "channel_slug": "iltvnews",
+        "ci_high": 7397.0,
+        "ci_low": 6378.0,
+        "media_class": "text only",
+        "median_views": 6930.0,
+        "n": 61
+      },
+      {
+        "channel": "ToI",
+        "channel_slug": "thetimesofisrael2022",
+        "ci_high": 5186.0,
+        "ci_low": 5002.0,
+        "media_class": "photo",
+        "median_views": 5109.0,
+        "n": 621
+      },
+      {
+        "channel": "JBN",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 3999.0,
+        "ci_low": 3904.0,
+        "media_class": "video",
+        "median_views": 3961.5,
+        "n": 572
+      },
+      {
+        "channel": "JBN",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 3970.0,
+        "ci_low": 3845.0,
+        "media_class": "photo",
+        "median_views": 3911.0,
+        "n": 581
+      },
+      {
+        "channel": "JBN",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 4099.0,
+        "ci_low": 3871.5,
+        "media_class": "text only",
+        "median_views": 3961.0,
+        "n": 140
+      }
+    ],
+    "views_video_over_photo": [
+      {
+        "channel": "Press TV",
+        "channel_slug": "presstv",
+        "ci_high": 1.0075373223,
+        "ci_low": 0.983877617,
+        "n_photo": 2997,
+        "n_video": 3185,
+        "p_welch": 0.4598631013,
+        "video_over_photo_views": 0.9954342301
+      },
+      {
+        "channel": "IRNA",
+        "channel_slug": "irna-en",
+        "ci_high": 0.9475894333,
+        "ci_low": 0.8532634431,
+        "n_photo": 850,
+        "n_video": 188,
+        "p_welch": 8.69445e-05,
+        "video_over_photo_views": 0.8979345835
+      },
+      {
+        "channel": "ILTV",
+        "channel_slug": "iltvnews",
+        "ci_high": 1.0255098084,
+        "ci_low": 0.95098447,
+        "n_photo": 206,
+        "n_video": 289,
+        "p_welch": 0.5165401618,
+        "video_over_photo_views": 0.9873744696
+      },
+      {
+        "channel": "JBN",
+        "channel_slug": "jewishbreakingnewstelegram",
+        "ci_high": 1.0194136977,
+        "ci_low": 0.98589194,
+        "n_photo": 581,
+        "n_video": 572,
+        "p_welch": 0.7383224412,
+        "video_over_photo_views": 1.0028683956
+      }
+    ]
+  }
+}

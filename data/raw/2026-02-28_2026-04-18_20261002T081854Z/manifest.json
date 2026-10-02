@@ -1,0 +1,77 @@
+{
+  "run_id": "2026-02-28_2026-04-18_20261002T081854Z",
+  "fetched_at": "2026-10-02T08:18:55.837498+00:00",
+  "start": "2026-02-28T00:00:00+00:00",
+  "end": "2026-04-18T00:00:00+00:00",
+  "download_media": false,
+  "git_sha": "ce2bf45bb3a03efc9470028f696af61b5fd26ba9",
+  "package_version": "0.1.0",
+  "channels": [
+    {
+      "slug": "presstv",
+      "title": "Press TV",
+      "chat_id": -1001006487902,
+      "username": "presstv",
+      "message_count": 8574,
+      "min_id": 177130,
+      "max_id": 185999,
+      "first_ts": "2026-02-28T00:01:46+00:00",
+      "last_ts": "2026-04-17T23:28:28+00:00"
+    },
+    {
+      "slug": "irna-en",
+      "title": "IRNA News Agency 🇮🇷",
+      "chat_id": -1001710170626,
+      "username": "Irna_en",
+      "message_count": 2010,
+      "min_id": 32269,
+      "max_id": 34288,
+      "first_ts": "2026-02-28T05:10:43+00:00",
+      "last_ts": "2026-04-17T17:20:29+00:00"
+    },
+    {
+      "slug": "idfofficial",
+      "title": "Israel Defense Forces",
+      "chat_id": -1001341028511,
+      "username": "idfofficial",
+      "message_count": 1429,
+      "min_id": 16467,
+      "max_id": 17902,
+      "first_ts": "2026-02-28T04:37:42+00:00",
+      "last_ts": "2026-04-17T16:46:14+00:00"
+    },
+    {
+      "slug": "iltvnews",
+      "title": "ILTV Israel News 24/7",
+      "chat_id": -1001197744559,
+      "username": "ILTVnews",
+      "message_count": 691,
+      "min_id": 7060,
+      "max_id": 7758,
+      "first_ts": "2026-02-28T07:35:40+00:00",
+      "last_ts": "2026-04-17T12:28:12+00:00"
+    },
+    {
+      "slug": "thetimesofisrael2022",
+      "title": "The Times of Israel",
+      "chat_id": -1001607417124,
+      "username": "TheTimesOfIsrael2022",
+      "message_count": 622,
+      "min_id": 7007,
+      "max_id": 7628,
+      "first_ts": "2026-02-28T06:24:43+00:00",
+      "last_ts": "2026-04-17T19:25:16+00:00"
+    },
+    {
+      "slug": "jewishbreakingnewstelegram",
+      "title": "Jewish Breaking News - JBN",
+      "chat_id": -1001702330601,
+      "username": "JewishBreakingNewsTelegram",
+      "message_count": 1294,
+      "min_id": 15976,
+      "max_id": 17280,
+      "first_ts": "2026-03-01T00:28:39+00:00",
+      "last_ts": "2026-04-17T14:27:02+00:00"
+    }
+  ]
+}

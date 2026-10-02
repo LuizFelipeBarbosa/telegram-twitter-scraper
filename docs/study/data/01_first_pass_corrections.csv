@@ -1,0 +1,4 @@
+metric,first_pass,now,note,channel_slug
+Press TV items flagged as having media,0.635,0.8544698544698545,old flag = photo only; now photo OR video,presstv
+Press TV posts that carry a video,0.0,0.3877338877338877,old pipeline had no video flag at all,presstv
+texts cut at the 200-character cap,0.405,0.502079002079002,share whose FULL text exceeds 200 chars,presstv

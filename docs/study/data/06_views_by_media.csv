@@ -1,0 +1,18 @@
+channel_slug,channel,media_class,n,median_views,ci_low,ci_high
+presstv,Press TV,video,3185,8066.0,8009.0,8122.0
+presstv,Press TV,photo,2997,8086.0,8037.0,8142.0
+presstv,Press TV,link preview,391,7594.0,7472.0,7783.0
+presstv,Press TV,text only,46,8559.0,7813.5,9293.0
+irna-en,IRNA,video,188,2413.5,2243.5,2604.5
+irna-en,IRNA,photo,850,2781.0,2734.5,2850.0125
+irna-en,IRNA,link preview,370,2283.5,2191.0,2355.0
+irna-en,IRNA,text only,227,2402.0,2293.0,2508.0
+idfofficial,IDF,link preview,187,12049.0,11485.0,12448.25
+idfofficial,IDF,text only,1238,12003.5,11837.4875,12234.0
+iltvnews,ILTV,video,289,6851.0,6703.0,6950.0
+iltvnews,ILTV,photo,206,6803.5,6710.5,6927.0
+iltvnews,ILTV,text only,61,6930.0,6378.0,7397.0
+thetimesofisrael2022,ToI,photo,621,5109.0,5002.0,5186.0
+jewishbreakingnewstelegram,JBN,video,572,3961.5,3904.0,3999.0
+jewishbreakingnewstelegram,JBN,photo,581,3911.0,3845.0,3970.0
+jewishbreakingnewstelegram,JBN,text only,140,3961.0,3871.5,4099.0
